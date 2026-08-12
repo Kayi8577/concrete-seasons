@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2c3a47">
+<title>Concrete Seasons</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============ MAIN MENU ============ -->
+<div id="screen-menu" class="screen active">
+  <div class="menu-inner">
+    <div class="title-block">
+      <svg class="title-skyline" width="120" height="64" viewBox="0 0 120 64" aria-hidden="true">
+        <circle cx="92" cy="18" r="10" fill="#e8a53c"/>
+        <rect x="8" y="26" width="14" height="38" rx="2" fill="#7b6855"/>
+        <rect x="26" y="14" width="16" height="50" rx="2" fill="#958270"/>
+        <rect x="46" y="32" width="12" height="32" rx="2" fill="#7b6855"/>
+        <rect x="62" y="20" width="18" height="44" rx="2" fill="#8a7361"/>
+        <rect x="84" y="36" width="14" height="28" rx="2" fill="#958270"/>
+        <rect x="102" y="28" width="12" height="36" rx="2" fill="#7b6855"/>
+        <g fill="#f3ead8" opacity=".85">
+          <rect x="11" y="31" width="3" height="3"/><rect x="16" y="31" width="3" height="3"/>
+          <rect x="30" y="19" width="3" height="3"/><rect x="35" y="19" width="3" height="3"/>
+          <rect x="30" y="26" width="3" height="3"/><rect x="66" y="25" width="3" height="3"/>
+          <rect x="72" y="25" width="3" height="3"/><rect x="66" y="32" width="3" height="3"/>
+          <rect x="105" y="33" width="3" height="3"/><rect x="87" y="41" width="3" height="3"/>
+        </g>
+        <rect x="0" y="60" width="120" height="4" rx="2" fill="#5c8a6f"/>
+      </svg>
+      <h1>Concrete <span>Seasons</span></h1>
+      <p class="subtitle">a Harbor Point life · fully offline</p>
+    </div>
+    <div id="slot-list" class="slot-list"></div>
+    <p class="menu-footnote">Saves are stored on this device. No account, no internet needed.</p>
+  </div>
+</div>
+
+<!-- ============ CHARACTER CREATION ============ -->
+<div id="screen-create" class="screen">
+  <div class="create-inner">
+    <h2>Moving Day</h2>
+    <p class="create-blurb">You signed a lease on a studio in Harbor Point and took over the neglected community farm plot. Who are you?</p>
+
+    <div class="create-section">
+      <label>Name</label>
+      <input id="cc-name" type="text" maxlength="16" placeholder="Your name" autocomplete="off">
+    </div>
+
+    <div class="create-section">
+      <label>Gender</label>
+      <div class="chip-row" id="cc-gender">
+        <button class="chip selected" data-v="F">Female</button>
+        <button class="chip" data-v="M">Male</button>
+      </div>
+    </div>
+
+    <div class="create-section">
+      <label>Birthday</label>
+      <div class="chip-row" id="cc-bseason">
+        <button class="chip selected" data-v="0">Spring</button>
+        <button class="chip" data-v="1">Summer</button>
+        <button class="chip" data-v="2">Fall</button>
+        <button class="chip" data-v="3">Winter</button>
+      </div>
+      <div class="chip-row wrap" id="cc-bday"></div>
+    </div>
+
+    <div class="create-section">
+      <label>Appearance</label>
+      <div class="appearance-row">
+        <canvas id="cc-preview" width="96" height="96"></canvas>
+        <div class="appearance-opts">
+          <div class="opt-line"><span>Skin</span><div class="swatch-row" id="cc-skin"></div></div>
+          <div class="opt-line"><span>Hair</span><div class="swatch-row" id="cc-hair"></div></div>
+          <div class="opt-line"><span>Style</span><div class="chip-row small" id="cc-hairstyle">
+            <button class="chip selected" data-v="short">Short</button>
+            <button class="chip" data-v="long">Long</button>
+            <button class="chip" data-v="bun">Bun</button>
+          </div></div>
+          <div class="opt-line"><span>Outfit</span><div class="swatch-row" id="cc-outfit"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="create-actions">
+      <button id="cc-back" class="btn ghost">Back</button>
+      <button id="cc-start" class="btn primary">Move In →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ GAME ============ -->
+<div id="screen-game" class="screen">
+  <canvas id="game-canvas"></canvas>
+
+  <div id="hud">
+    <div class="hud-left">
+      <div id="hud-date">Spring 1 · Mon</div>
+      <div id="hud-time">9:00 AM <span id="hud-weather"></span></div>
+    </div>
+    <div class="hud-right">
+      <div id="hud-money">$400</div>
+      <div class="energy-wrap"><div id="hud-energy"></div></div>
+    </div>
+  </div>
+
+  <div id="hud-buttons">
+    <button id="btn-inventory" class="hud-btn" title="Bag" aria-label="Bag">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6b5b4c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9h14l-1.2 11a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 9z" fill="#f0e6d4"/><path d="M8.5 9V7a3.5 3.5 0 0 1 7 0v2"/></svg>
+    </button>
+    <button id="btn-journal" class="hud-btn" title="Journal" aria-label="Journal">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6b5b4c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2V4z" fill="#f0e6d4"/><path d="M5 4v14a2 2 0 0 0 2 2"/><line x1="9" y1="9" x2="14" y2="9"/><line x1="9" y1="13" x2="14" y2="13"/></svg>
+    </button>
+    <button id="btn-menu" class="hud-btn" title="Menu" aria-label="Menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" stroke="#6b5b4c" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="7" x2="19" y2="7"/><line x1="5" y1="12" x2="19" y2="12"/><line x1="5" y1="17" x2="19" y2="17"/></svg>
+    </button>
+  </div>
+
+  <div id="scene-label"></div>
+  <div id="action-hint"></div>
+  <div id="toast-area"></div>
+
+  <!-- Dialogue -->
+  <div id="dialogue" class="hidden">
+    <div class="dlg-box">
+      <div class="dlg-head"><canvas id="dlg-portrait" width="80" height="80"></canvas><span id="dlg-name">???</span></div>
+      <div id="dlg-text"></div>
+      <div id="dlg-choices"></div>
+      <div id="dlg-continue">tap to continue ▸</div>
+    </div>
+  </div>
+
+  <!-- Panels -->
+  <div id="panel-backdrop" class="hidden"></div>
+
+  <div id="panel-inventory" class="panel hidden">
+    <div class="panel-head"><h3>Bag</h3><button class="panel-close">✕</button></div>
+    <div id="inv-grid" class="inv-grid"></div>
+    <div id="inv-detail" class="inv-detail"></div>
+  </div>
+
+  <div id="panel-shop" class="panel hidden">
+    <div class="panel-head"><h3 id="shop-title">Corner Market</h3><button class="panel-close">✕</button></div>
+    <div id="shop-list" class="shop-list"></div>
+  </div>
+
+  <div id="panel-sell" class="panel hidden">
+    <div class="panel-head"><h3>Shipping Bin</h3><button class="panel-close">✕</button></div>
+    <p class="panel-note">Malik trucks the bin to the weekend market. You get paid on the spot.</p>
+    <div id="sell-list" class="shop-list"></div>
+  </div>
+
+  <div id="panel-journal" class="panel hidden">
+    <div class="panel-head"><h3>City Journal</h3><button class="panel-close">✕</button></div>
+    <div class="tab-row">
+      <button class="tab selected" data-tab="residents">Residents</button>
+      <button class="tab" data-tab="discoveries">Discoveries</button>
+      <button class="tab" data-tab="farm">Farm</button>
+    </div>
+    <div id="journal-body"></div>
+  </div>
+
+  <div id="panel-menu" class="panel hidden">
+    <div class="panel-head"><h3>Menu</h3><button class="panel-close">✕</button></div>
+    <div class="menu-list">
+      <button id="menu-save" class="btn wide">Save Game</button>
+      <button id="menu-mainmenu" class="btn wide ghost">Save &amp; Quit to Menu</button>
+      <div class="menu-sub">
+        <label>Time speed</label>
+        <div class="chip-row small" id="menu-speed">
+          <button class="chip selected" data-v="1">1×</button>
+          <button class="chip" data-v="2">2×</button>
+          <button class="chip" data-v="3">3×</button>
+        </div>
+      </div>
+      <div class="menu-sub">
+        <label>Developer console</label>
+        <div class="cheat-row">
+          <input id="cheat-input" type="text" placeholder="e.g. MONEYPLEASE" autocomplete="off" autocapitalize="characters">
+          <button id="cheat-go" class="btn small">Run</button>
+        </div>
+        <div id="cheat-log"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-picker" class="panel hidden">
+    <div class="panel-head"><h3 id="picker-title">Choose</h3><button class="panel-close">✕</button></div>
+    <div id="picker-list" class="shop-list"></div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/art.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
