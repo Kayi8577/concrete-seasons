@@ -40,6 +40,68 @@
     circle(ctx, cx - T * .08, sy + T * .24, T * .17, P.leafLight); // top-left light
   };
 
+  A.cherryTree = function (ctx, sx, sy, T, seed) {
+    const cx = sx + T / 2;
+    sh(ctx, cx, sy + T - 4, T * .32, 3.5);
+    rr(ctx, cx - 2.5, sy + T * .55, 5, T * .38, 2, P.wood);
+    const v = (seed % 3);
+    circle(ctx, cx, sy + T * .42, T * .34, '#c98ba0');
+    circle(ctx, cx - T * .14, sy + T * .34, T * .26, '#dba7b8');
+    circle(ctx, cx + T * .13, sy + T * .30 + v, T * .24, '#dba7b8');
+    circle(ctx, cx - T * .08, sy + T * .24, T * .17, '#eec6d2');
+  };
+
+  A.lighthouse = function (ctx, sx, sy, T) {
+    const cx = sx + T / 2;
+    sh(ctx, cx, sy + T - 3, T * .38, 3.5);
+    // tower (extends one tile up, drawn oversize)
+    ctx.fillStyle = '#e8e0d0';
+    ctx.beginPath();
+    ctx.moveTo(cx - T * .30, sy + T - 4);
+    ctx.lineTo(cx - T * .18, sy - T * .55);
+    ctx.lineTo(cx + T * .18, sy - T * .55);
+    ctx.lineTo(cx + T * .30, sy + T - 4);
+    ctx.closePath(); ctx.fill();
+    // red bands
+    ctx.fillStyle = P.red;
+    ctx.fillRect(cx - T * .27, sy + T * .35, T * .54, T * .18);
+    ctx.fillRect(cx - T * .22, sy - T * .25, T * .44, T * .16);
+    // lamp room
+    rr(ctx, cx - T * .16, sy - T * .85, T * .32, T * .3, 2, '#4d4a5e');
+    rr(ctx, cx - T * .11, sy - T * .8, T * .22, T * .2, 1.5, P.yellow);
+    // cap
+    ctx.fillStyle = '#3d3a4a';
+    ctx.beginPath();
+    ctx.moveTo(cx - T * .2, sy - T * .85);
+    ctx.lineTo(cx, sy - T * 1.05);
+    ctx.lineTo(cx + T * .2, sy - T * .85);
+    ctx.closePath(); ctx.fill();
+  };
+
+  A.stall = function (ctx, sx, sy, T, active) {
+    sh(ctx, sx + T / 2, sy + T - 3, T * .4, 3);
+    // table
+    rr(ctx, sx + 3, sy + T * .5, T - 6, T * .34, 2, P.wood);
+    rr(ctx, sx + 3, sy + T * .5, T - 6, 4, 2, P.woodLight);
+    // awning
+    ctx.fillStyle = active ? P.red : '#a8a49c';
+    ctx.beginPath();
+    ctx.moveTo(sx + 1, sy + T * .3); ctx.lineTo(sx + T - 1, sy + T * .3);
+    ctx.lineTo(sx + T - 3, sy + T * .48); ctx.lineTo(sx + 3, sy + T * .48);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = active ? '#e8e0d0' : '#c4c0b8';
+    for (let i = 0; i < 3; i++) ctx.fillRect(sx + 4 + i * (T - 8) / 3 + 2, sy + T * .3, (T - 8) / 6, T * .18);
+    // posts
+    ctx.fillStyle = P.woodDark;
+    ctx.fillRect(sx + 4, sy + T * .46, 2.5, T * .38);
+    ctx.fillRect(sx + T - 7, sy + T * .46, 2.5, T * .38);
+    if (active) { // goods + lantern glow
+      rr(ctx, sx + 8, sy + T * .42, 6, 5, 1.5, P.leafLight);
+      rr(ctx, sx + 17, sy + T * .42, 6, 5, 1.5, P.red);
+      circle(ctx, sx + T / 2, sy + T * .2, 3, 'rgba(232,201,107,.9)');
+    }
+  };
+
   A.bench = function (ctx, sx, sy, T) {
     sh(ctx, sx + T / 2, sy + T - 5, T * .38, 3);
     rr(ctx, sx + 4, sy + T * .40, T - 8, 5, 2, P.woodLight);
@@ -193,8 +255,16 @@
   };
 
   /* ================= crops ================= */
-  A.crop = function (ctx, id, frac, sx, sy, T) {
+  A.crop = function (ctx, id, frac, sx, sy, T, dead) {
     const cx = sx + T / 2, gy = sy + T * .72; // ground line
+    if (dead) { // wilted out-of-season plant
+      ctx.strokeStyle = '#8a7355'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(cx, gy); ctx.quadraticCurveTo(cx + 2, gy - 6, cx + 6, gy - 8); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, gy - 3); ctx.quadraticCurveTo(cx - 3, gy - 7, cx - 6, gy - 7); ctx.stroke();
+      ctx.fillStyle = '#a08b6a';
+      ctx.beginPath(); ctx.ellipse(cx + 6, gy - 9, 3, 1.8, .5, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
     if (frac < 0.34) { // sprout
       ctx.strokeStyle = P.leaf; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(cx, gy); ctx.lineTo(cx, gy - 6); ctx.stroke();
@@ -253,6 +323,52 @@
         ctx.quadraticCurveTo(cx + 5, gy - 20, cx + 5, gy - 12);
         ctx.quadraticCurveTo(cx, gy - 9, cx - 5, gy - 12);
         ctx.fill();
+        break;
+      }
+      case 'tomato':
+        circle(ctx, cx, gy - 8, 7, P.leafDark);
+        circle(ctx, cx - 3, gy - 11, 4.5, P.leaf);
+        circle(ctx, cx + 3, gy - 11, 4.5, P.leaf);
+        for (const [bx, by] of [[-5, 0], [5, 1], [0, 4]]) {
+          circle(ctx, cx + bx, gy - 8 + by, 3.4, P.red);
+          circle(ctx, cx + bx - 1, gy - 9 + by, 1.1, 'rgba(255,255,255,.45)');
+        }
+        break;
+      case 'basil':
+        ctx.strokeStyle = P.leafDark; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(cx, gy); ctx.lineTo(cx, gy - 10); ctx.stroke();
+        for (const [lx, ly, a] of [[-5, -8, -.6], [5, -8, .6], [-4, -12, -.4], [4, -12, .4], [0, -15, 0]]) {
+          ctx.fillStyle = ly < -10 ? P.leafLight : P.leaf;
+          ctx.beginPath(); ctx.ellipse(cx + lx, gy + ly, 4.5, 2.8, a, 0, Math.PI * 2); ctx.fill();
+        }
+        break;
+      case 'cucumber':
+        circle(ctx, cx, gy - 6, 8, P.leafDark);
+        circle(ctx, cx - 4, gy - 9, 5, P.leaf);
+        circle(ctx, cx + 4, gy - 9, 5, P.leaf);
+        ctx.fillStyle = '#4f7d3a';
+        ctx.save(); ctx.translate(cx + 2, gy - 1); ctx.rotate(.5);
+        ctx.beginPath(); ctx.ellipse(0, 0, 7, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+        ctx.fillStyle = 'rgba(255,255,255,.25)';
+        ctx.save(); ctx.translate(cx + 1, gy - 2); ctx.rotate(.5);
+        ctx.beginPath(); ctx.ellipse(0, 0, 4, 1.2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+        break;
+      case 'sunflower': {
+        ctx.strokeStyle = P.leafDark; ctx.lineWidth = 2.4;
+        ctx.beginPath(); ctx.moveTo(cx, gy); ctx.lineTo(cx, gy - 16); ctx.stroke();
+        ctx.fillStyle = P.leaf;
+        ctx.beginPath(); ctx.ellipse(cx - 4, gy - 6, 5, 2.2, -.6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(cx + 4, gy - 8, 5, 2.2, .6, 0, Math.PI * 2); ctx.fill();
+        for (let i = 0; i < 8; i++) {
+          const a = i / 8 * Math.PI * 2;
+          ctx.fillStyle = P.yellow;
+          ctx.beginPath();
+          ctx.ellipse(cx + Math.cos(a) * 5.5, gy - 18 + Math.sin(a) * 5.5, 3.2, 1.8, a, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        circle(ctx, cx, gy - 18, 3.6, '#6b4a2a');
         break;
       }
     }
@@ -425,7 +541,8 @@
     const item = CS.ITEMS[id];
     if (item && item.type === 'seed') {
       // seed packet with crop color band
-      const bandCols = { lettuce: P.leafLight, radish: P.berry, strawberry: P.red, tulip: P.pink };
+      const bandCols = { lettuce: P.leafLight, radish: P.berry, strawberry: P.red, tulip: P.pink,
+                         tomato: P.red, basil: P.leaf, cucumber: '#4f7d3a', sunflower: P.yellow };
       rr(ctx, S * .2, S * .12, S * .6, S * .74, S * .08, P.cream);
       rr(ctx, S * .2, S * .12, S * .6, S * .2, S * .08, bandCols[item.crop] || P.leaf);
       ctx.strokeStyle = P.paper; ctx.lineWidth = 1;
@@ -440,8 +557,100 @@
     }
     switch (id) {
       case 'lettuce': case 'radish': case 'strawberry': case 'tulip':
+      case 'tomato': case 'basil': case 'cucumber': case 'sunflower':
         A.crop(ctx, id, 1, 0, S * .05, S);
-        // remove glint zone overlap: acceptable
+        break;
+      case 'meal_salad': case 'meal_roast': case 'meal_galette': case 'meal_pasta': {
+        // plate + food mound
+        circle(ctx, S / 2, S * .58, S * .38, '#e8e0d0');
+        circle(ctx, S / 2, S * .58, S * .3, '#f6f1e6');
+        const food = { meal_salad: P.leafLight, meal_roast: P.berry, meal_galette: P.red, meal_pasta: '#d9a75c' };
+        circle(ctx, S / 2, S * .55, S * .2, food[id]);
+        if (id === 'meal_salad') { circle(ctx, S * .42, S * .5, S * .07, P.leaf); circle(ctx, S * .58, S * .55, S * .06, P.berry); }
+        if (id === 'meal_galette') { circle(ctx, S * .5, S * .55, S * .12, '#c99a5b'); circle(ctx, S * .5, S * .53, S * .07, P.red); }
+        if (id === 'meal_pasta') { ctx.strokeStyle = P.leaf; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(S*.44,S*.48); ctx.lineTo(S*.5,S*.44); ctx.lineTo(S*.56,S*.49); ctx.stroke(); }
+        break;
+      }
+      case 'vinyl_record':
+        circle(ctx, S / 2, S / 2, S * .36, '#2a2723');
+        circle(ctx, S / 2, S / 2, S * .13, P.red);
+        circle(ctx, S / 2, S / 2, S * .04, '#f6f1e6');
+        ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(S/2, S/2, S * .26, .4, 1.8); ctx.stroke();
+        break;
+      case 'film_camera':
+        rr(ctx, S * .18, S * .34, S * .64, S * .38, S * .06, '#4a4642');
+        rr(ctx, S * .18, S * .34, S * .64, S * .1, S * .06, '#8f8a80');
+        circle(ctx, S / 2, S * .53, S * .14, '#2a2723');
+        circle(ctx, S / 2, S * .53, S * .09, '#5b87a8');
+        circle(ctx, S * .47, S * .5, S * .03, 'rgba(255,255,255,.6)');
+        rr(ctx, S * .66, S * .38, S * .1, S * .06, S * .02, P.red);
+        break;
+      case 'ceramic_vase':
+        ctx.fillStyle = '#a8b8ab';
+        ctx.beginPath();
+        ctx.moveTo(S * .4, S * .24); ctx.quadraticCurveTo(S * .3, S * .4, S * .34, S * .6);
+        ctx.quadraticCurveTo(S * .38, S * .78, S * .5, S * .78);
+        ctx.quadraticCurveTo(S * .62, S * .78, S * .66, S * .6);
+        ctx.quadraticCurveTo(S * .7, S * .4, S * .6, S * .24);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.25)';
+        ctx.fillRect(S * .42, S * .3, S * .06, S * .4);
+        break;
+      case 'brass_lamp':
+        ctx.fillStyle = P.yellow;
+        ctx.beginPath();
+        ctx.moveTo(S * .32, S * .42); ctx.lineTo(S * .68, S * .42); ctx.lineTo(S * .58, S * .2); ctx.lineTo(S * .42, S * .2);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#b3924b';
+        ctx.fillRect(S * .47, S * .42, S * .06, S * .3);
+        rr(ctx, S * .36, S * .72, S * .28, S * .08, S * .03, '#b3924b');
+        break;
+      case 'old_poster':
+        rr(ctx, S * .24, S * .16, S * .52, S * .68, S * .03, P.cream);
+        rr(ctx, S * .28, S * .22, S * .44, S * .2, S * .02, P.berry);
+        ctx.fillStyle = P.paper;
+        ctx.fillRect(S * .3, S * .5, S * .4, S * .05);
+        ctx.fillRect(S * .3, S * .6, S * .3, S * .05);
+        break;
+      case 'wool_scarf':
+        ctx.strokeStyle = P.berry; ctx.lineWidth = S * .14; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(S * .3, S * .3); ctx.quadraticCurveTo(S * .7, S * .3, S * .66, S * .55);
+        ctx.quadraticCurveTo(S * .62, S * .78, S * .34, S * .72);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = S * .03;
+        ctx.beginPath(); ctx.moveTo(S * .32, S * .27); ctx.quadraticCurveTo(S * .68, S * .27, S * .64, S * .52); ctx.stroke();
+        break;
+      case 'planter_box':
+        rr(ctx, S * .22, S * .44, S * .56, S * .32, S * .04, P.wood);
+        rr(ctx, S * .22, S * .44, S * .56, S * .08, S * .04, P.woodLight);
+        ctx.strokeStyle = P.leaf; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(S * .4, S * .44); ctx.lineTo(S * .38, S * .3); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(S * .6, S * .44); ctx.lineTo(S * .63, S * .28); ctx.stroke();
+        break;
+      case 'transit_sign':
+        circle(ctx, S / 2, S / 2, S * .34, '#1f1c19');
+        circle(ctx, S / 2, S / 2, S * .28, P.leaf);
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${S * .3}px sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('H', S / 2, S / 2 + 1);
+        break;
+      case 'paperback':
+        rr(ctx, S * .28, S * .2, S * .44, S * .6, S * .03, '#c9856b');
+        ctx.fillStyle = P.cream;
+        ctx.fillRect(S * .68, S * .22, S * .05, S * .56);
+        ctx.fillStyle = 'rgba(255,255,255,.35)';
+        ctx.fillRect(S * .32, S * .3, S * .3, S * .06);
+        break;
+      case 'enamel_pot':
+        rr(ctx, S * .26, S * .4, S * .48, S * .36, S * .06, '#5b87a8');
+        rr(ctx, S * .26, S * .4, S * .48, S * .08, S * .06, 'rgba(255,255,255,.3)');
+        ctx.strokeStyle = '#3f5f78'; ctx.lineWidth = S * .05; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(S * .2, S * .5); ctx.lineTo(S * .26, S * .5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(S * .74, S * .5); ctx.lineTo(S * .8, S * .5); ctx.stroke();
+        rr(ctx, S * .4, S * .32, S * .2, S * .08, S * .03, '#3f5f78');
         break;
       case 'bread':
         ctx.fillStyle = '#c99a5b';

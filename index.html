@@ -61,6 +61,17 @@
     </div>
 
     <div class="create-section">
+      <label>Interested in</label>
+      <div class="chip-row wrap" id="cc-pref">
+        <button class="chip" data-v="M">Men</button>
+        <button class="chip" data-v="W">Women</button>
+        <button class="chip" data-v="MW">Everyone</button>
+        <button class="chip selected" data-v="discover">I'll figure it out</button>
+        <button class="chip" data-v="none">No romance</button>
+      </div>
+    </div>
+
+    <div class="create-section">
       <label>Birthday</label>
       <div class="chip-row" id="cc-bseason">
         <button class="chip selected" data-v="0">Spring</button>
@@ -111,6 +122,10 @@
   </div>
 
   <div id="hud-buttons">
+    <button id="btn-phone" class="hud-btn" title="Phone" aria-label="Phone">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6b5b4c" stroke-width="2" stroke-linecap="round"><rect x="7" y="3" width="10" height="18" rx="2.5" fill="#f0e6d4"/><line x1="10.5" y1="18" x2="13.5" y2="18"/></svg>
+      <span id="phone-badge"></span>
+    </button>
     <button id="btn-inventory" class="hud-btn" title="Bag" aria-label="Bag">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6b5b4c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9h14l-1.2 11a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 9z" fill="#f0e6d4"/><path d="M8.5 9V7a3.5 3.5 0 0 1 7 0v2"/></svg>
     </button>
@@ -194,9 +209,15 @@
     <div class="panel-head"><h3 id="picker-title">Choose</h3><button class="panel-close">✕</button></div>
     <div id="picker-list" class="shop-list"></div>
   </div>
+
+  <div id="panel-phone" class="panel hidden">
+    <div class="panel-head"><h3 id="phone-title">Messages</h3><button class="panel-close">✕</button></div>
+    <div id="phone-body"></div>
+  </div>
 </div>
 
 <script src="js/data.js"></script>
+<script src="js/data2.js"></script>
 <script src="js/art.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/game.js"></script>

@@ -35,8 +35,30 @@
   /* ================= boot a loaded/new state ================= */
   G.start = function (state) {
     S = state;
+    // ---- migrations & Phase-2 defaults (works for v1 saves too) ----
+    S.saveVersion = CS.SAVE_VERSION;
+    S.player.pref = S.player.pref || 'discover';
+    S.phone = S.phone || {};              // npcId/'hp' -> {msgs:[{from,text,day}], unread, repliedDay}
+    S.couples = S.couples || [];          // [[a,b], ...]
+    S.pairMomentum = S.pairMomentum || {};
+    S.recipes = S.recipes || ['meal_salad', 'meal_roast'];
+    S.thrift = S.thrift || null;          // {day, items:[{id, price, sold}]}
     for (const id of Object.keys(CS.NPCS)) {
-      if (!S.npcs[id]) S.npcs[id] = { met: false, fam: 0, friend: 0, talkedToday: false };
+      S.npcs[id] = Object.assign(
+        { met: false, fam: 0, friend: 0, talkedToday: false, attraction: 0, romance: null, giftedDay: -1 },
+        S.npcs[id] || {});
+    }
+    // the map grew in v2 — rescue positions/plots saved against the old layout
+    const mapOf = sc => CS.MAPS[sc] && CS.MAPS[sc].grid;
+    const tileOf = (sc, x, y) => { const g = mapOf(sc); return g && g[y] && g[y][x] || '#'; };
+    if (!CS.WALKABLE.has(tileOf(S.player.scene, S.player.x, S.player.y))) {
+      S.player.scene = 'apartment'; S.player.x = 5; S.player.y = 4;
+    }
+    for (const key of Object.keys(S.farm.plots)) {
+      const [sc, xy] = key.split(':');
+      const [x, y] = xy.split(',').map(Number);
+      const t = tileOf(sc, x, y);
+      if (t !== 's' && t !== 'g') delete S.farm.plots[key];
     }
     S.animT = 0;
     S.playerRT = {
@@ -103,26 +125,44 @@
   }
 
   G.sleep = function (passedOut, early) {
-    const wasBirthdayEve = false;
     // advance day
     S.time.day += 1;
-    if (S.time.day > 30) { S.time.day = 1; S.time.seasonIndex = (S.time.seasonIndex + 1) % 4; if (S.time.seasonIndex === 0) S.time.year += 1; }
+    let seasonChanged = false;
+    if (S.time.day > 30) {
+      S.time.day = 1; seasonChanged = true;
+      S.time.seasonIndex = (S.time.seasonIndex + 1) % 4;
+      if (S.time.seasonIndex === 0) S.time.year += 1;
+    }
     S.time.weekdayIndex = G.weekdayIndex();
     S.time.minutes = passedOut ? 480 : (early ? 315 : 390);
     S.player.energy = passedOut ? 65 : 100;
     S.weather.today = S.weather.tomorrow;
     S.weather.tomorrow = rollWeather();
 
-    // crops grow
+    // crops grow; out-of-season outdoor plants wilt at the turn of the season
     for (const key of Object.keys(S.farm.plots)) {
       const pl = S.farm.plots[key];
       const indoor = key.startsWith('greenhouse');
-      if (pl.crop) {
+      if (pl.crop && !pl.dead) {
+        if (seasonChanged && !indoor && CS.CROPS[pl.crop].season !== S.time.seasonIndex) {
+          pl.dead = true;
+          continue;
+        }
         if (pl.watered || indoor || S.weather.today === 'rain' && !indoor) pl.days += 1;
         pl.watered = false;
         if (!indoor && S.weather.today === 'rain') pl.watered = true; // rain pre-waters today
       }
     }
+    if (seasonChanged) {
+      CS.ui.toast(`${CS.SEASONS[S.time.seasonIndex]} begins.`);
+      G.addMsg('hp', `${CS.SEASONS[S.time.seasonIndex]} has arrived in Harbor Point. The market has new seeds.`);
+    }
+
+    // ---- NPC↔NPC life (weekly, Mondays) ----
+    if (S.time.weekdayIndex === 0) simulatePairs();
+
+    // ---- phone: morning texts ----
+    generateTexts();
     // daily resets
     for (const id of Object.keys(S.npcs)) S.npcs[id].talkedToday = false;
     if (S.pet) { S.pet.fedToday = false; S.pet.walkedToday = false; }
@@ -142,6 +182,8 @@
     CS.ui.refreshHUD();
     CS.ui.showSceneLabel(`${CS.SEASONS[S.time.seasonIndex]} ${S.time.day} — ${CS.WEEKDAYS[S.time.weekdayIndex]}`);
     CS.ui.toast(`Autosaved · ${S.weather.today}`);
+    const unread = G.unreadTotal();
+    if (unread > 0) CS.ui.toast(`${unread} new message${unread > 1 ? 's' : ''} on your phone`);
 
     if (isPlayerBirthday()) {
       CS.ui.toast(`It's your birthday, ${S.player.name}!`);
@@ -159,6 +201,68 @@
     return S.time.seasonIndex === S.player.birthSeason && S.time.day === S.player.birthDay;
   }
   G.isPlayerBirthday = isPlayerBirthday;
+
+  /* NPC↔NPC romance: momentum accrues weekly for compatible pairs, invisibly.
+     The player only ever sees the resulting behavior. */
+  function simulatePairs() {
+    for (const [a, b, compat] of CS.NPC_PAIRS) {
+      const inCoupleAlready = coupleOf(a) || coupleOf(b);
+      const datingPlayer = S.npcs[a].romance === 'seeing' || S.npcs[b].romance === 'seeing';
+      if (inCoupleAlready || datingPlayer) continue;
+      const k = a + '+' + b;
+      S.pairMomentum[k] = (S.pairMomentum[k] || 0) + (0.4 + Math.random() * 0.6) * compat * 10;
+      if (S.pairMomentum[k] >= 30) {
+        S.couples.push([a, b]);
+        S.flags.pendingGossip = [a, b];
+      }
+    }
+    // rare breakups; history keeps momentum from instantly re-forming
+    S.couples = S.couples.filter(([a, b]) => {
+      if (Math.random() < 0.03) { S.pairMomentum[a + '+' + b] = 5; return false; }
+      return true;
+    });
+  }
+
+  function generateTexts() {
+    // gossip about a new couple, from whichever friend would absolutely text you this
+    if (S.flags.pendingGossip) {
+      const [a, b] = S.flags.pendingGossip;
+      const teller = Object.keys(CS.NPCS)
+        .filter(id => id !== a && id !== b && S.npcs[id].hasNumber && G.tierOf(id) >= 2)
+        .sort((x, y) => S.npcs[y].friend - S.npcs[x].friend)[0];
+      if (teller) {
+        G.addMsg(teller, `ok not to gossip BUT. ${CS.NPCS[a].name.split(' ')[0]} and ${CS.NPCS[b].name.split(' ')[0]} were at the bar last night looking extremely Together. you heard it here first`);
+        S.flags.pendingGossip = null;
+      }
+    }
+    for (const id of Object.keys(CS.NPCS)) {
+      const r = S.npcs[id];
+      if (!r.hasNumber || !CS.MESSAGES[id]) continue;
+      const M = CS.MESSAGES[id];
+      if (isPlayerBirthday() && G.tierOf(id) >= 2 && Math.random() < .8) {
+        G.addMsg(id, `Happy birthday, ${S.player.name}!!`);
+        continue;
+      }
+      if (r.romance === 'seeing' && M.partner && M.partner.length && Math.random() < .5) {
+        G.addMsg(id, M.partner[Math.floor(Math.random() * M.partner.length)]);
+        continue;
+      }
+      let chance = G.tierOf(id) >= 3 ? .3 : .12;
+      if (id === 'jordan') chance = .06; // famously bad texter
+      if (M.casual && M.casual.length && Math.random() < chance) {
+        G.addMsg(id, M.casual[Math.floor(Math.random() * M.casual.length)]);
+      }
+    }
+    // neighborhood announcements
+    const today = G.festivalToday();
+    if (today) G.addMsg('hp', CS.ANNOUNCEMENTS.festivalDay(today));
+    for (const key of Object.keys(CS.FESTIVALS)) {
+      const f = CS.FESTIVALS[key];
+      if (S.time.seasonIndex === f.season && S.time.day + 1 === f.day) {
+        G.addMsg('hp', CS.ANNOUNCEMENTS.festivalEve(f));
+      }
+    }
+  }
 
   /* ================= player movement ================= */
   function setPlayerTile(x, y) {
@@ -275,7 +379,7 @@
   function interactionFor(scene, x, y, ch) {
     if (scene === 'apartment') {
       if (ch === 'b') return () => promptSleep();
-      if (ch === 'K') return () => CS.ui.narrate("A modest kitchen. Once you learn some recipes, this is where they'll happen. For now: cereal.");
+      if (ch === 'K') return () => openCooking();
       if (ch === 'W') return () => CS.ui.narrate(windowFlavor());
       if (ch === 'q') return () => S.pet && S.pet.type === 'fish'
         ? G.interactPet()
@@ -285,13 +389,60 @@
       if (scene === 'cafe') return () => CS.ui.buyPrompt('coffee', 4, 'Juniper pour-over. +18 energy.');
       if (scene === 'bakery') return () => CS.ui.buyPrompt('bread', 6, "Grace's sesame roll. +25 energy.");
       if (scene === 'market') return () => CS.ui.openShop();
+      if (scene === 'thrift') return () => CS.ui.openThrift();
+      if (scene === 'bar') return () => barMenu();
     }
     if (ch === 'X') return () => CS.ui.openSell();
-    if (ch === 'N') return () => noticeboard();
+    if (ch === 'N') return () => noticeboard(scene);
+    if (ch === 'k') return () => {
+      const fest = G.currentFestival();
+      if (fest && fest.key === 'night_market') CS.ui.openSell(1.5, 'Night Market Stall');
+      else CS.ui.narrate("An empty market stall. On festival nights, Main Street lights up and these come alive.");
+    };
+    if (ch === 'i') return () => CS.ui.narrate("The old lighthouse. Decommissioned for decades, still the most reliable thing on the island. Locals say if you're here at the right moment, you'll understand why people stay.");
     if (ch === 'P') return () => CS.ui.narrate("The tram sways off toward Manhattan. Trips into the city open up once you know more people. For now, Harbor Point is plenty.");
     if (ch === 'h') return () => CS.ui.narrate("You sit for a moment. The river doesn't care about anyone's schedule. It's the most relaxing thing in New York.");
     if (ch === 's' || ch === 'g') return () => farmAction(scene, x, y);
     return null;
+  }
+
+  function barMenu() {
+    CS.ui.choose("The Anchor. Wood polished by decades of elbows.", [
+      { label: 'Seltzer with lime — $3 (+8 energy)', fn: () => buyEnergy(3, 8, 'Crisp. Bubbly. Judgment-free.') },
+      { label: 'Bar snacks — $6 (+15 energy)', fn: () => buyEnergy(6, 15, 'Salty enough to justify another seltzer.') },
+      { label: 'Just soaking it in', fn: () => {} },
+    ]);
+  }
+  function buyEnergy(price, energy, flavor) {
+    if (S.player.money < price) { CS.ui.toast('Not enough money.'); return; }
+    S.player.money -= price;
+    S.player.energy = Math.min(100, S.player.energy + energy);
+    CS.ui.refreshHUD();
+    CS.ui.narrate(flavor);
+  }
+
+  function openCooking() {
+    const cookable = S.recipes.map(rid => {
+      const rec = CS.RECIPES[rid];
+      const have = Object.keys(rec.needs).every(ing => (S.inv[ing] || 0) >= rec.needs[ing]);
+      const needsTxt = Object.keys(rec.needs).map(ing => `${rec.needs[ing]}× ${CS.ITEMS[ing].name}`).join(', ');
+      return { rid, rec, have, needsTxt };
+    });
+    if (!cookable.length) { CS.ui.narrate("You don't know any recipes yet. People teach the good ones."); return; }
+    CS.ui.pick('Cook what?', cookable.map(c => ({
+      icon: c.rid, name: CS.ITEMS[c.rid].name + (c.have ? '' : ' (missing ingredients)'),
+      desc: `Needs: ${c.needsTxt}`,
+      fn: () => {
+        if (!c.have) { CS.ui.toast('Missing ingredients'); return; }
+        for (const ing of Object.keys(c.rec.needs)) G.removeItem(ing, c.rec.needs[ing]);
+        G.addItem(c.rid, 1);
+        CS.ui.toast(`Cooked ${CS.ITEMS[c.rid].name}`);
+        if (!S.flags.firstCook) {
+          S.flags.firstCook = true;
+          discover('first_cook', `First meal cooked in the studio: ${CS.ITEMS[c.rid].name}. The radiator hissed approvingly.`);
+        }
+      },
+    })));
   }
 
   function windowFlavor() {
@@ -328,7 +479,11 @@
     CS.ui.choose('Call it a day?', opts);
   }
 
-  function noticeboard() {
+  function noticeboard(scene) {
+    if (scene === 'harbor_house') {
+      CS.ui.narrate("Harbor House bulletin: after-school program schedules, a redevelopment community-input flyer (Priya's handwriting), and a sign-up sheet for the next neighborhood picnic.");
+      return;
+    }
     if (!S.pet && S.flags.gardenIntro && G.totalDay() >= 2) {
       CS.ui.choose("Community noticeboard. A flyer catches your eye: 'HARBOR POINT RESCUE — adoption weekend! Cats, dogs & a very confused tank of fish need homes.'", [
         { label: 'Adopt a cat', fn: () => adoptPet('cat') },
@@ -361,9 +516,21 @@
       CS.ui.toast('Tilled the soil');
       return;
     }
+    if (pl.dead) {
+      pl.crop = null; pl.dead = false; pl.days = 0;
+      CS.ui.toast('Cleared the wilted plant');
+      return;
+    }
     if (!pl.crop) {
-      const seeds = Object.keys(S.inv).filter(k => CS.ITEMS[k] && CS.ITEMS[k].type === 'seed' && S.inv[k] > 0);
-      if (!seeds.length) { CS.ui.narrate("Tilled and ready — but you're out of seeds. The Corner Market sells them."); return; }
+      const inSeason = k => scene === 'greenhouse' || CS.CROPS[CS.ITEMS[k].crop].season === S.time.seasonIndex;
+      const seeds = Object.keys(S.inv).filter(k => CS.ITEMS[k] && CS.ITEMS[k].type === 'seed' && S.inv[k] > 0 && inSeason(k));
+      if (!seeds.length) {
+        const offSeason = Object.keys(S.inv).some(k => CS.ITEMS[k] && CS.ITEMS[k].type === 'seed' && S.inv[k] > 0);
+        CS.ui.narrate(offSeason
+          ? "Your seeds are out of season for outdoor planting. The greenhouse doesn't care about seasons, though."
+          : "Tilled and ready — but you're out of seeds. The Corner Market sells them.");
+        return;
+      }
       CS.ui.pick('Plant what?', seeds.map(sd => ({
         icon: sd, name: `${CS.ITEMS[sd].name} ×${S.inv[sd]}`, desc: CS.ITEMS[sd].desc,
         fn: () => {
@@ -411,7 +578,7 @@
     ctx.fillRect(sx + 3, sy + 3, T - 6, T - 6);
     ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.strokeRect(sx + 3, sy + 3, T - 6, T - 6);
     if (pl.crop) {
-      CS.art.crop(ctx, pl.crop, Math.min(1, pl.days / CS.CROPS[pl.crop].days), sx, sy, T);
+      CS.art.crop(ctx, pl.crop, Math.min(1, pl.days / CS.CROPS[pl.crop].days), sx, sy, T, pl.dead);
     }
   };
 
@@ -434,10 +601,10 @@
     S.inv[id] -= n; if (S.inv[id] <= 0) delete S.inv[id];
     return true;
   };
-  G.sellItem = function (id, n) {
+  G.sellItem = function (id, n, mult) {
     const def = CS.ITEMS[id];
     if (!def || !def.sell || !G.removeItem(id, n)) return;
-    const amt = def.sell * n;
+    const amt = Math.round(def.sell * n * (mult || 1));
     S.player.money += amt;
     S.totalEarned += amt;
     S.shipped[id] = (S.shipped[id] || 0) + n;
@@ -471,8 +638,56 @@
     for (const b of blocks) if (m < b.until) return b;
     return blocks[blocks.length - 1];
   }
+
+  /* ---- festivals ---- */
+  G.currentFestival = function () {
+    if (!S) return null;
+    for (const key of Object.keys(CS.FESTIVALS)) {
+      const f = CS.FESTIVALS[key];
+      if (S.time.seasonIndex === f.season && S.time.day === f.day
+          && S.time.minutes >= f.start && S.time.minutes < f.end) return { key, ...f };
+    }
+    return null;
+  };
+  G.festivalToday = function () {
+    for (const key of Object.keys(CS.FESTIVALS)) {
+      const f = CS.FESTIVALS[key];
+      if (S.time.seasonIndex === f.season && S.time.day === f.day) return { key, ...f };
+    }
+    return null;
+  };
+
+  const FESTIVAL_SPOTS = {
+    cherry: ['lawn_a', 'lawn_b', 'lawn_c', 'lawn_d', 'lawn_e', 'lighthouse_park'],
+    night_market: ['stall_a', 'stall_b', 'mainstreet', 'mainstreet_b'],
+  };
+  const COUPLE_SPOTS = ['cafe_table_b', 'waterfront_b', 'bar_table']; // rotates by weekday
+
+  function coupleOf(id) {
+    for (const [a, b] of S.couples) { if (a === id) return b; if (b === id) return a; }
+    return null;
+  }
+  G.coupleOf = coupleOf;
+
   G.npcStatus = function (id) {
+    const npc = CS.NPCS[id];
+    // festival override: everyone (except staff who ARE the festival backdrop) attends
+    const fest = G.currentFestival();
+    if (fest && !npc.decorative) {
+      const spots = FESTIVAL_SPOTS[fest.key];
+      const idx = Object.keys(CS.NPCS).indexOf(id) % spots.length;
+      return { spot: CS.SPOTS[spots[idx]], act: `at the ${fest.name}` };
+    }
     const b = currentBlock(id);
+    // couple co-location: evenings together (only when both would be free/visible-ish)
+    const partner = coupleOf(id);
+    if (partner && S.time.minutes >= 1140 && S.time.minutes < 1290) {
+      const spotName = COUPLE_SPOTS[S.time.weekdayIndex % COUPLE_SPOTS.length];
+      return { spot: CS.SPOTS[spotName], act: `out with ${CS.NPCS[partner].name.split(' ')[0]}` };
+    }
+    if (partner && (S.time.weekdayIndex >= 5) && S.time.minutes >= 780 && S.time.minutes < 900) {
+      return { spot: CS.SPOTS.lighthouse_park, act: `a slow afternoon with ${CS.NPCS[partner].name.split(' ')[0]}` };
+    }
     return { spot: b.at ? CS.SPOTS[b.at] : null, act: b.act };
   };
 
@@ -537,6 +752,23 @@
     return 0;
   };
 
+  function prefAllows(npcGender) {
+    const p = S.player.pref;
+    if (p === 'none') return false;
+    if (p === 'M') return npcGender === 'M';
+    if (p === 'W') return npcGender === 'F';
+    return true; // 'MW' or 'discover'
+  }
+  function canFlirt(id) {
+    const npc = CS.NPCS[id], r = S.npcs[id];
+    return !npc.decorative && npc.rom && npc.rom.includes(S.player.gender)
+      && prefAllows(npc.gender) && !coupleOf(id) && r.romance !== 'seeing' && G.tierOf(id) >= 2;
+  }
+  function canAskOut(id) {
+    const r = S.npcs[id];
+    return canFlirt(id) && r.attraction >= 25 && r.friend >= 60;
+  }
+
   G.talkTo = function (id) {
     const npc = CS.NPCS[id];
     const r = S.npcs[id];
@@ -550,15 +782,137 @@
       });
       return;
     }
+    // interaction menu
+    const opts = [{ label: 'Talk', fn: () => doTalk(id) }];
+    const giftables = Object.keys(S.inv).filter(k => S.inv[k] > 0 && CS.ITEMS[k] && CS.ITEMS[k].type !== 'seed');
+    if (!npc.decorative && r.giftedDay !== G.totalDay() && giftables.length) {
+      opts.push({ label: 'Give a gift', fn: () => giftPicker(id) });
+    }
+    if (canAskOut(id)) opts.push({ label: 'Ask them out', fn: () => askOut(id) });
+    else if (canFlirt(id)) opts.push({ label: 'Flirt', fn: () => flirt(id) });
+    if (id === 'joan' && canWorkShift()) opts.push({ label: 'Help with the morning rush ($45)', fn: () => workShift() });
+    opts.push({ label: 'Never mind', fn: () => {} });
+    const status = r.romance === 'seeing' ? 'seeing each other' : G.npcStatus(id).act;
+    CS.ui.choose(`${npc.name} — ${status}`, opts);
+  };
+
+  function doTalk(id) {
+    const npc = CS.NPCS[id];
+    const r = S.npcs[id];
     r.fam += 1;
     if (!r.talkedToday && !npc.decorative) { r.friend += 8; r.talkedToday = true; }
+    // festival warmth: first chat with each person at a festival is worth more
+    const fest = G.currentFestival();
+    if (fest && r.festDay !== G.totalDay()) { r.festDay = G.totalDay(); r.friend += 5; }
+    // exchanging numbers at Acquaintance
+    if (!r.hasNumber && G.tierOf(id) >= 2 && CS.MESSAGES[id]) {
+      r.hasNumber = true;
+      G.addMsg(id, CS.MESSAGES[id].hello);
+      CS.ui.toast(`${npc.name.split(' ')[0]} texted you — you have their number now`);
+    }
     const line = pickLine(id);
     CS.ui.dialogue(npc, [line], () => checkEvents('talk', id));
+  }
+
+  function giftPicker(id) {
+    const npc = CS.NPCS[id];
+    const giftables = Object.keys(S.inv).filter(k => S.inv[k] > 0 && CS.ITEMS[k] && CS.ITEMS[k].type !== 'seed');
+    CS.ui.pick(`Give ${npc.name.split(' ')[0]} what?`, giftables.map(k => ({
+      icon: k, name: CS.ITEMS[k].name, desc: CS.ITEMS[k].desc,
+      fn: () => {
+        const r = S.npcs[id];
+        G.removeItem(k, 1);
+        r.giftedDay = G.totalDay();
+        let gain = 5, react;
+        const first = npc.name.split(' ')[0];
+        if ((npc.loved || []).includes(k)) {
+          gain = 22;
+          react = `${first}'s whole face changes. "Okay — you actually get me. Thank you." That one landed.`;
+        } else if ((npc.liked || []).includes(k)) {
+          gain = 12;
+          react = `"Oh — that's really thoughtful." ${first} means it.`;
+        } else {
+          react = `${first} accepts it with the polite warmth of a good neighbor.`;
+        }
+        r.friend += gain;
+        if (r.romance === 'seeing' || r.attraction > 0) r.attraction += Math.floor(gain / 3);
+        CS.ui.narrate(react);
+      },
+    })));
+  }
+
+  function flirt(id) {
+    const npc = CS.NPCS[id], r = S.npcs[id];
+    const first = npc.name.split(' ')[0];
+    const gain = 5 + G.tierOf(id) * 2;
+    r.attraction += gain;
+    r.friend += 2;
+    const lines = r.attraction >= 25 ? [
+      `${first} holds your gaze a beat longer than necessary. Neither of you mentions it. Both of you noticed.`,
+      `There's a smile ${first} does that you're starting to suspect is just for you.`,
+    ] : [
+      `${first} laughs — a real one. "Smooth. Keep practicing."`,
+      `A little awkward. A little charming. ${first} files it away with a smile.`,
+    ];
+    CS.ui.narrate(lines[Math.floor(Math.random() * lines.length)]);
+  }
+
+  function askOut(id) {
+    const npc = CS.NPCS[id], r = S.npcs[id];
+    const first = npc.name.split(' ')[0];
+    r.romance = 'seeing';
+    r.attraction += 10;
+    discover('seeing_' + id, `You and ${npc.name} are seeing each other. It started at ${CS.MAPS[S.playerRT.scene].name}, ${CS.SEASONS[S.time.seasonIndex]} ${S.time.day}.`);
+    CS.ui.dialogue(npc, [
+      `You ask. The pause is only a second, but you'll remember it. Then ${first} smiles: "Yeah. I'd like that. I was starting to wonder if you'd ever ask."`,
+    ]);
+  }
+
+  function canWorkShift() {
+    const wd = S.time.weekdayIndex;
+    return wd <= 4 && S.time.minutes >= 420 && S.time.minutes < 600 && !S.flags['shift' + G.totalDay()];
+  }
+  function workShift() {
+    if (!G.spendEnergy(25)) return;
+    S.flags['shift' + G.totalDay()] = true;
+    S.time.minutes += 180;
+    S.player.money += 45;
+    refreshNPCs(true);
+    CS.ui.refreshHUD();
+    CS.ui.narrate("Three hours of steaming milk, calling names, and learning who orders what. Joan nods at the end — high praise. You made $45 and about forty micro-acquaintances.");
+  }
+
+  /* ---- phone ---- */
+  function thread(id) {
+    S.phone[id] = S.phone[id] || { msgs: [], unread: 0, repliedDay: -1 };
+    return S.phone[id];
+  }
+  G.addMsg = function (id, text) {
+    const t = thread(id);
+    t.msgs.push({ text, day: G.totalDay() });
+    if (t.msgs.length > 40) t.msgs.splice(0, t.msgs.length - 40);
+    t.unread += 1;
+  };
+  G.unreadTotal = () => S ? Object.values(S.phone).reduce((n, t) => n + (t.unread || 0), 0) : 0;
+  G.markRead = (id) => { thread(id).unread = 0; };
+  G.replyTo = function (id) {
+    const t = thread(id);
+    if (t.repliedDay === G.totalDay()) return false;
+    t.repliedDay = G.totalDay();
+    if (S.npcs[id]) S.npcs[id].friend += 2;
+    return true;
   };
 
   function pickLine(id) {
     const tier = G.tierOf(id);
     const m = S.time.minutes;
+    const r = S.npcs[id];
+    // festivals color everyone's small talk
+    const fest = G.currentFestival();
+    if (fest && CS.FESTIVAL_LINES && CS.FESTIVAL_LINES[fest.key] && Math.random() < .5) {
+      const fl = CS.FESTIVAL_LINES[fest.key];
+      return fl[Math.floor(Math.random() * fl.length)];
+    }
     const pools = CS.DIALOGUE[id].pools;
     let best = [], bestScore = -1;
     for (const pool of pools) {
@@ -570,6 +924,7 @@
       if (c.before !== undefined) { if (m < c.before) score += 3; else ok = false; }
       if (c.after !== undefined) { if (m >= c.after) score += 3; else ok = false; }
       if (c.birthday) { if (isPlayerBirthday()) score += 10; else ok = false; }
+      if (c.seeing) { if (r.romance === 'seeing') score += 8; else ok = false; }
       if (!ok) continue;
       if (score > bestScore) { bestScore = score; best = [...pool.lines]; }
       else if (score === bestScore) best.push(...pool.lines);
@@ -678,7 +1033,7 @@
     if (pet.type === 'dog' && !pet.walkedToday && S.playerRT.scene === 'apartment') {
       opts.push({ label: `Take ${pet.name} for a walk`, fn: () => {
         pet.walkedToday = true; pet.affection += 4;
-        enterScene('outdoor', 6, 7);
+        enterScene('outdoor', 19, 7);
         CS.ui.toast(`${pet.name} trots along beside you`);
         if (!S.flags.dogWalkEvent && S.npcRT.malik) {
           S.flags.dogWalkEvent = true;
@@ -713,9 +1068,24 @@
     const p = S.playerRT;
     const m = S.time.minutes;
 
+    // Festival attendance — first time each year
+    const fest = G.currentFestival();
+    if (fest && !S.flags['fest_' + fest.key + '_' + S.time.year]) {
+      const onSite = (fest.key === 'cherry' && p.scene === 'outdoor' && p.y >= 23)
+                  || (fest.key === 'night_market' && p.scene === 'outdoor' && p.y >= 14 && p.y <= 20);
+      if (onSite) {
+        S.flags['fest_' + fest.key + '_' + S.time.year] = true;
+        discover('fest_' + fest.key + '_' + S.time.year,
+          fest.key === 'cherry'
+            ? `Cherry Blossom Picnic, Year ${S.time.year}. The whole neighborhood on one lawn, petals in everyone's coffee.`
+            : `Night Market, Year ${S.time.year}. Main Street under string lights, your produce selling at festival prices.`);
+        CS.ui.toast(`${fest.name} — everyone's here`);
+      }
+    }
+
     // Garden introduction — first time entering the farm area
     if (trigger === 'enter' && !S.flags.gardenIntro && p.scene === 'outdoor'
-        && p.x >= 22 && p.x <= 38 && p.y >= 2 && p.y <= 12) {
+        && p.x >= 38 && p.x <= 54 && p.y >= 2 && p.y <= 12) {
       S.flags.gardenIntro = true;
       const malikHere = !!S.npcRT.malik && S.npcRT.malik.scene === 'outdoor';
       S.npcs.malik.met = true; S.npcs.malik.fam = Math.max(1, S.npcs.malik.fam); S.npcs.malik.friend += 10;
@@ -763,6 +1133,30 @@
       return;
     }
 
+    // Recipes are taught, not bought — friends share the good ones
+    if (trigger === 'talk' && arg === 'grace' && G.tierOf('grace') >= 3 && !S.recipes.includes('meal_galette')) {
+      S.recipes.push('meal_galette');
+      CS.ui.dialogueSeq(CS.NPCS.grace, [
+        `Grace looks at you a moment, then wipes her hands. "Come around the counter. If you're going to grow strawberries, you should know what they're for."`,
+        `Fifteen minutes of flour, heat, and exactly zero written measurements later, you know how to make her galette. "Rustic on purpose," she says. "Remember that."`,
+      ], () => {
+        discover('recipe_galette', "Grace taught you the Moonrise strawberry galette. No written recipe exists. You are the written recipe now.");
+        CS.ui.toast('Learned: Strawberry Galette');
+      });
+      return;
+    }
+    if (trigger === 'talk' && arg === 'nico' && G.tierOf('nico') >= 3 && !S.recipes.includes('meal_pasta')) {
+      S.recipes.push('meal_pasta');
+      CS.ui.dialogueSeq(CS.NPCS.nico, [
+        `"Okay. OKAY. You've earned this." Nico looks around like his nonna might materialize. "The pomodoro. The real one. Basil goes in at the END. The end! People die on this hill."`,
+        `He talks you through it twice, gesturing the whole time. "Grow the basil, make the sauce, think of Queens. That's the whole recipe."`,
+      ], () => {
+        discover('recipe_pasta', "Nico taught you the Bellini family pomodoro. Basil at the end. People die on this hill.");
+        CS.ui.toast('Learned: Basil Pomodoro');
+      });
+      return;
+    }
+
     // Birthday greetings when talking (handled in dialogue picker) + first-talk birthday toast
     if (trigger === 'talk' && isPlayerBirthday() && arg && !S.flags['bday_' + S.time.year + '_' + arg]) {
       S.flags['bday_' + S.time.year + '_' + arg] = true;
@@ -771,6 +1165,46 @@
       }
     }
   }
+
+  /* ================= thrift (Second Life) ================= */
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  G.getThrift = function () {
+    const day = G.totalDay();
+    if (!S.thrift || S.thrift.day !== day) {
+      const rnd = mulberry32(day * 7919 + 13);
+      const pool = [...CS.THRIFT_POOL];
+      const items = [];
+      for (let i = 0; i < 4 && pool.length; i++) {
+        const idx = Math.floor(rnd() * pool.length);
+        const [id, price] = pool.splice(idx, 1)[0];
+        items.push({ id, price, sold: false });
+      }
+      S.thrift = { day, items };
+    }
+    return S.thrift;
+  };
+  G.buyThrift = function (i) {
+    const t = G.getThrift();
+    const it = t.items[i];
+    if (!it || it.sold) return;
+    if (S.player.money < it.price) { CS.ui.toast('Not enough money.'); return; }
+    S.player.money -= it.price;
+    it.sold = true;
+    G.addItem(it.id, 1);
+    CS.ui.refreshHUD();
+    CS.ui.toast(`Bought ${CS.ITEMS[it.id].name}`);
+    if (CS.ITEMS[it.id].rare && !S.flags['found_' + it.id]) {
+      S.flags['found_' + it.id] = true;
+      discover('found_' + it.id, `Second Life find: ${CS.ITEMS[it.id].name}. ${CS.ITEMS[it.id].desc} The good stuff surfaces when it surfaces.`);
+    }
+  };
   G.checkEvents = checkEvents;
 
   /* ================= save / load ================= */
@@ -861,7 +1295,48 @@
         const id = npcByName(parts[1] || '');
         if (!id) return 'unknown NPC';
         const r = S.npcs[id], st = G.npcStatus(id);
-        return `${CS.NPCS[id].name}: fam ${r.fam}, friend ${r.friend}, tier ${CS.TIERS[G.tierOf(id)]}, now: ${st.act}${st.spot ? ` @ ${st.spot.scene}` : ' (away)'}`;
+        return `${CS.NPCS[id].name}: fam ${r.fam}, friend ${r.friend}, attract ${r.attraction}, tier ${CS.TIERS[G.tierOf(id)]}, ${r.romance === 'seeing' ? 'seeing you, ' : ''}${coupleOf(id) ? 'with ' + coupleOf(id) + ', ' : ''}now: ${st.act}${st.spot ? ` @ ${st.spot.scene}` : ' (away)'}`;
+      }
+      case 'SETSEASON': {
+        const idx = CS.SEASONS.findIndex(s2 => s2.toUpperCase() === (parts[1] || ''));
+        if (idx < 0) return 'usage: SETSEASON SUMMER';
+        S.time.seasonIndex = idx; S.time.weekdayIndex = G.weekdayIndex();
+        G.refreshNPCs(true); CS.ui.refreshHUD();
+        return 'season: ' + CS.SEASONS[idx];
+      }
+      case 'NEXTFESTIVAL': {
+        let best = null;
+        for (const key of Object.keys(CS.FESTIVALS)) {
+          const f = CS.FESTIVALS[key];
+          let dist = (f.season - S.time.seasonIndex) * 30 + (f.day - S.time.day);
+          if (dist < 0) dist += 120;
+          if (!best || dist < best.dist) best = { f, dist };
+        }
+        S.time.seasonIndex = best.f.season; S.time.day = best.f.day;
+        S.time.minutes = Math.max(390, best.f.start);
+        S.time.weekdayIndex = G.weekdayIndex();
+        G.refreshNPCs(true); CS.ui.refreshHUD();
+        return `jumped to ${best.f.name}`;
+      }
+      case 'NPCDATE': {
+        const a = npcByName(parts[1] || ''), b = npcByName(parts[2] || '');
+        if (!a || !b) return 'usage: NPCDATE MAYA LENA';
+        if (!coupleOf(a) && !coupleOf(b)) { S.couples.push([a, b]); S.flags.pendingGossip = [a, b]; }
+        G.refreshNPCs(true);
+        return `${a} & ${b} are now a couple`;
+      }
+      case 'NPCBREAKUP': {
+        const a = npcByName(parts[1] || ''), b = npcByName(parts[2] || '');
+        S.couples = S.couples.filter(([x, y]) => !((x === a && y === b) || (x === b && y === a)));
+        G.refreshNPCs(true);
+        return 'done';
+      }
+      case 'TEXTME': { generateTexts(); return 'generated morning texts'; }
+      case 'ATTRACT': {
+        const id = npcByName(parts[1] || '');
+        if (!id) return 'unknown NPC';
+        S.npcs[id].attraction += 30;
+        return `${id} attraction +30`;
       }
       default: return 'unknown code';
     }

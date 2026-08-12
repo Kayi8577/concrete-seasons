@@ -123,14 +123,17 @@
     '.': '#7fae6d', '-': '#cbb389', '~': '#5b87a8', 'T': '#7fae6d', 'F': '#8a6f4d',
     '#': '#8d7a68', 's': '#8a6242', 'g': '#8a6242', 'P': '#a8a49c', 'h': '#7fae6d',
     'X': '#7fae6d', 'N': '#7fae6d', 'o': '#7fae6d',
-    'A': '#6e5741', 'C': '#6e5741', 'B': '#6e5741', 'M': '#6e5741', 'G': '#88a89b', 'E': '#b09a7d',
+    'A': '#6e5741', 'C': '#6e5741', 'B': '#6e5741', 'M': '#6e5741', 'G': '#88a89b',
+    'S': '#6e5741', 'R': '#6e5741', 'L': '#88a89b', 'H': '#6e5741', 'E': '#b09a7d',
+    'c': '#7fae6d', 'i': '#7fae6d', 'k': '#7fae6d',
     'K': '#d8cfc0', 'b': '#d8cfc0', 't': '#d8cfc0', 'W': '#d8cfc0', '=': '#d8cfc0',
     'O': '#d8cfc0', 'd': '#d8cfc0', 'U': '#d8cfc0', 'q': '#d8cfc0',
   };
 
   const INTERIOR_FLOOR = '#e6d9bf';
   // exterior door accent per building
-  const DOOR_ACCENT = { A:'#8a5a3b', C:'#5c8a6f', B:'#b07a2a', M:'#4a6fa5', G:'#88a89b' };
+  const DOOR_ACCENT = { A:'#8a5a3b', C:'#5c8a6f', B:'#b07a2a', M:'#4a6fa5', G:'#88a89b',
+                        S:'#7d5ba6', R:'#8a3b4a', L:'#5b8aa6', H:'#c9553e' };
 
   /* ---------------- render ---------------- */
   E.render = function (state) {
@@ -196,6 +199,9 @@
         const night = state.time.minutes >= 1140 || state.time.minutes < 390;
         switch (ch) {
           case 'T': A.tree(ctx, sx, sy, TILE, x * 31 + y * 17); break;
+          case 'c': A.cherryTree(ctx, sx, sy, TILE, x * 31 + y * 17); break;
+          case 'i': A.lighthouse(ctx, sx, sy, TILE); break;
+          case 'k': A.stall(ctx, sx, sy, TILE, !!(CS.game.currentFestival && CS.game.currentFestival()) ); break;
           case 'h': A.bench(ctx, sx, sy, TILE); break;
           case 'X': A.bin(ctx, sx, sy, TILE); break;
           case 'N': A.board(ctx, sx, sy, TILE); break;
@@ -215,7 +221,7 @@
             break;
           }
         }
-        if ('ACBMG'.includes(ch) && isOut) A.doorOut(ctx, sx, sy, TILE, DOOR_ACCENT[ch]);
+        if ('ACBMGSRLH'.includes(ch) && isOut) A.doorOut(ctx, sx, sy, TILE, DOOR_ACCENT[ch]);
       }
     }
 

@@ -5,7 +5,7 @@
    ========================================================================= */
 window.CS = window.CS || {};
 
-CS.SAVE_VERSION = 1;
+CS.SAVE_VERSION = 2;
 CS.SEASONS = ['Spring', 'Summer', 'Fall', 'Winter'];
 CS.WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 CS.DAY_START = 360;      // 6:00
@@ -19,10 +19,15 @@ CS.OUTFITS = ['#5c8a6f', '#4a6fa5', '#b0653a', '#7d5ba6', '#c74f6d'];
 
 /* ---------------- Items & crops ---------------- */
 CS.CROPS = {
-  lettuce:    { name:'Lettuce',    days:4, sell:32, seedCost:12, regrow:0 },
-  radish:     { name:'Radish',     days:3, sell:22, seedCost:9,  regrow:0 },
-  strawberry: { name:'Strawberry', days:8, sell:48, seedCost:34, regrow:3 },
-  tulip:      { name:'Tulip',      days:5, sell:30, seedCost:11, regrow:0 },
+  // season: 0 spring, 1 summer (greenhouse ignores season)
+  lettuce:    { name:'Lettuce',    days:4, sell:32, seedCost:12, regrow:0, season:0 },
+  radish:     { name:'Radish',     days:3, sell:22, seedCost:9,  regrow:0, season:0 },
+  strawberry: { name:'Strawberry', days:8, sell:48, seedCost:34, regrow:3, season:0 },
+  tulip:      { name:'Tulip',      days:5, sell:30, seedCost:11, regrow:0, season:0 },
+  tomato:     { name:'Tomato',     days:7, sell:40, seedCost:26, regrow:3, season:1 },
+  basil:      { name:'Basil',      days:5, sell:34, seedCost:20, regrow:2, season:1 },
+  cucumber:   { name:'Cucumber',   days:6, sell:36, seedCost:22, regrow:4, season:1 },
+  sunflower:  { name:'Sunflower',  days:8, sell:52, seedCost:30, regrow:0, season:1 },
 };
 
 CS.ITEMS = {
@@ -34,19 +39,78 @@ CS.ITEMS = {
   radish:     { name:'Radish',     type:'crop', sell:22, energy:8,  desc:'Peppery and quick.' },
   strawberry: { name:'Strawberry', type:'crop', sell:48, energy:15, desc:'The good stuff.' },
   tulip:      { name:'Tulip',      type:'crop', sell:30, energy:0,  desc:'Not edible. Very sellable.' },
+  tomato_seed:    { name:'Tomato Seeds',    type:'seed', crop:'tomato',    desc:'Summer star. Regrows. 7 days.' },
+  basil_seed:     { name:'Basil Seeds',     type:'seed', crop:'basil',     desc:'Nico will find you. 5 days.' },
+  cucumber_seed:  { name:'Cucumber Seeds',  type:'seed', crop:'cucumber',  desc:'Cool in every sense. 6 days.' },
+  sunflower_seed: { name:'Sunflower Seeds', type:'seed', crop:'sunflower', desc:'Taller than your problems. 8 days.' },
+  tomato:     { name:'Tomato',    type:'crop', sell:40, energy:12, desc:'Sun in edible form.' },
+  basil:      { name:'Basil',     type:'crop', sell:34, energy:5,  desc:'Half of Queens wants this.' },
+  cucumber:   { name:'Cucumber',  type:'crop', sell:36, energy:10, desc:'Crisp. Hydrating. Smug.' },
+  sunflower:  { name:'Sunflower', type:'crop', sell:52, energy:0,  desc:'Instant good mood, bouquet-sized.' },
   bread:      { name:'Sesame Roll',type:'food', energy:25, desc:'Moonrise Bakery. Still warm.' },
   coffee:     { name:'Coffee',     type:'food', energy:18, desc:'Juniper Café pour-over.' },
   pet_food:   { name:'Pet Food',   type:'misc', desc:'For a hungry roommate.' },
   warm_roll:  { name:'5:42 Roll',  type:'food', energy:30, desc:'Grace\'s first batch. You were there.' },
+  // meals (cooked at your kitchen)
+  meal_salad:   { name:'Garden Salad',      type:'meal', energy:40, sell:55,  desc:'Your lettuce, your radish, your kitchen.' },
+  meal_roast:   { name:'Roasted Radishes',  type:'meal', energy:35, sell:48,  desc:'Peppery, caramelized, gone.' },
+  meal_galette: { name:'Strawberry Galette',type:'meal', energy:60, sell:95,  desc:'Grace\'s recipe. Rustic on purpose.' },
+  meal_pasta:   { name:'Basil Pomodoro',    type:'meal', energy:65, sell:110, desc:'The Bellini family would approve. Mostly.' },
+  // thrift finds (Second Life)
+  vinyl_record: { name:'Vinyl Record',   type:'thrift', sell:24, desc:'Someone\'s entire 1978.' },
+  film_camera:  { name:'Film Camera',    type:'thrift', sell:70, desc:'Heavy, mechanical, perfect.', rare:true },
+  ceramic_vase: { name:'Ceramic Vase',   type:'thrift', sell:30, desc:'Hand-thrown. Slightly crooked. Better for it.' },
+  brass_lamp:   { name:'Brass Lamp',     type:'thrift', sell:34, desc:'Warm light, minor electrical mystery.' },
+  old_poster:   { name:'Concert Poster', type:'thrift', sell:14, desc:'A venue that no longer exists.' },
+  wool_scarf:   { name:'Wool Scarf',     type:'thrift', sell:16, desc:'Softer than it looks.' },
+  planter_box:  { name:'Planter Box',    type:'thrift', sell:22, desc:'Cedar. Someone loved plants once.' },
+  transit_sign: { name:'Transit Sign',   type:'thrift', sell:90, desc:'Authentic. Don\'t ask how it got here.', rare:true },
+  paperback:    { name:'Worn Paperback', type:'thrift', sell:8,  desc:'Margins full of a stranger\'s thoughts.' },
+  enamel_pot:   { name:'Enamel Pot',     type:'thrift', sell:33, desc:'Decades of Sunday sauce in its bones.' },
 };
 
+/* Market stock — seeds filtered by current season at display time */
 CS.SHOP_MARKET = [
-  { item:'lettuce_seed',    price:12 },
-  { item:'radish_seed',     price:9 },
-  { item:'strawberry_seed', price:34 },
-  { item:'tulip_seed',      price:11 },
+  { item:'lettuce_seed',    price:12, season:0 },
+  { item:'radish_seed',     price:9,  season:0 },
+  { item:'strawberry_seed', price:34, season:0 },
+  { item:'tulip_seed',      price:11, season:0 },
+  { item:'tomato_seed',     price:26, season:1 },
+  { item:'basil_seed',      price:20, season:1 },
+  { item:'cucumber_seed',   price:22, season:1 },
+  { item:'sunflower_seed',  price:30, season:1 },
   { item:'pet_food',        price:10 },
   { item:'bread',           price:6 },
+];
+
+/* Second Life daily stock pool: [itemId, buyPrice] */
+CS.THRIFT_POOL = [
+  ['vinyl_record', 14], ['film_camera', 38], ['ceramic_vase', 18], ['brass_lamp', 22],
+  ['old_poster', 9], ['wool_scarf', 12], ['planter_box', 16], ['transit_sign', 45],
+  ['paperback', 5], ['enamel_pot', 20],
+];
+
+/* Recipes — cooked at the apartment kitchen */
+CS.RECIPES = {
+  meal_salad:   { needs:{ lettuce:1, radish:1 } },
+  meal_roast:   { needs:{ radish:3 } },
+  meal_galette: { needs:{ strawberry:2, bread:1 }, teacher:'grace' },
+  meal_pasta:   { needs:{ basil:2, tomato:1 },     teacher:'nico' },
+};
+
+/* Festivals */
+CS.FESTIVALS = {
+  cherry: { name:'Cherry Blossom Picnic', season:0, day:15, start:600, end:960,
+            blurb:'South Point lawn, blankets, everyone you know.' },
+  night_market: { name:'Night Market', season:1, day:8, start:1080, end:1440,
+            blurb:'Main Street stalls after dark. Sell what you grew — prices run hot.' },
+};
+
+/* NPC↔NPC chemistry pairs: [a, b, compatibility 0..1] */
+CS.NPC_PAIRS = [
+  ['maya', 'lena', .9], ['maya', 'daniel', .5], ['sofia', 'gabriel', .95],
+  ['theo', 'avery', .7], ['theo', 'naomi', .5], ['avery', 'nico', .6],
+  ['arjun', 'priya', .9], ['mei_lin', 'naomi', .7], ['mei_lin', 'jordan', .6],
 ];
 
 /* ---------------- Maps ----------------
@@ -55,7 +119,7 @@ CS.SHOP_MARKET = [
           A/C/B/M/G door tiles (apartment/cafe/bakery/market/greenhouse)  E interior exit
           K kitchen  b bed  t table  W window  = shelf  O oven  d display  U counter  q aquarium spot
 */
-CS.WALKABLE = new Set(['.', '-', 's', 'g', 'P', 'A', 'C', 'B', 'M', 'G', 'E']);
+CS.WALKABLE = new Set(['.', '-', 's', 'g', 'P', 'A', 'C', 'B', 'M', 'G', 'E', 'S', 'R', 'L', 'H']);
 
 function _grid(w, h, fill) {
   const g = [];
@@ -69,46 +133,61 @@ function _fromAscii(rows) {
   return rows.map(r => r.split(''));
 }
 
+/* Phase 2 map: 56×42. Zones — Lighthouse Park (NW), Harbor Studios,
+   Harbor House, Community Farm (NE), Main Street with five storefronts,
+   South Point lawn (festival ground), Pier Labs (SE), waterfront. */
 function buildOutdoor() {
-  const W = 40, H = 30;
+  const W = 56, H = 42;
   const g = _grid(W, H, '.');
-  // border trees
   for (let x = 0; x < W; x++) g[0][x] = 'T';
-  for (let y = 0; y < 25; y++) { g[y][0] = 'T'; g[y][W - 1] = 'T'; }
+  for (let y = 0; y < 37; y++) { g[y][0] = 'T'; g[y][W - 1] = 'T'; }
   // water south
-  _rect(g, 0, 25, W, 5, '~');
-  // apartment building
-  _rect(g, 3, 2, 8, 5, '#');
-  g[6][6] = 'A';
-  // path from apartment to main street
-  for (let y = 7; y <= 13; y++) g[y][6] = '-';
+  _rect(g, 0, 38, W, 4, '~');
+  // lighthouse park (NW): cherry trees + lighthouse + bench
+  [[7,3],[11,4],[8,8],[12,7],[3,8]].forEach(([x,y]) => { g[y][x] = 'c'; });
+  g[4][4] = 'i';
+  g[6][10] = 'h';
+  // apartment building (Harbor Studios)
+  _rect(g, 16, 2, 8, 5, '#'); g[6][19] = 'A';
+  for (let y = 7; y <= 15; y++) g[y][19] = '-';
+  // Harbor House community center
+  _rect(g, 26, 2, 10, 6, '#'); g[7][30] = 'H';
+  for (let y = 8; y <= 15; y++) g[y][30] = '-';
+  // farm fence + interior (NE)
+  for (let x = 38; x <= 54; x++) { g[2][x] = 'F'; g[11][x] = 'F'; }
+  for (let y = 2; y <= 11; y++) { g[y][38] = 'F'; g[y][54] = 'F'; }
+  g[11][44] = '.'; g[11][45] = '.'; // gate
+  _rect(g, 47, 3, 6, 4, '#'); g[6][49] = 'G'; // greenhouse
+  _rect(g, 39, 5, 6, 4, 's');                 // 24 soil plots
+  g[10][39] = 'X'; g[10][46] = 'N';
+  for (let y = 12; y <= 15; y++) { g[y][44] = '-'; g[y][45] = '-'; }
   // tram platform
-  _rect(g, 2, 12, 4, 2, 'P');
-  // farm fence + interior
-  _rect(g, 22, 2, 17, 10, '.');
-  for (let x = 22; x <= 38; x++) { g[2][x] = 'F'; g[11][x] = 'F'; }
-  for (let y = 2; y <= 11; y++) { g[y][22] = 'F'; g[y][38] = 'F'; }
-  g[11][28] = '.'; g[11][29] = '.'; // gate
-  _rect(g, 31, 3, 6, 4, '#');      // greenhouse
-  g[6][33] = 'G';
-  _rect(g, 23, 5, 6, 4, 's');      // 24 soil plots
-  g[10][23] = 'X';                 // shipping bin
-  g[10][30] = 'N';                 // noticeboard
+  _rect(g, 2, 13, 4, 2, 'P');
   // main street
-  _rect(g, 1, 14, 38, 2, '-');
-  // planters along street
-  [3, 13, 22, 33].forEach(x => { g[16][x] = 'o'; });
-  // shops south of street
-  _rect(g, 4, 17, 8, 4, '#');  g[17][7]  = 'C'; // Juniper Café
-  _rect(g, 14, 17, 7, 4, '#'); g[17][17] = 'B'; // Moonrise Bakery
-  _rect(g, 23, 17, 8, 4, '#'); g[17][26] = 'M'; // Corner Market
+  _rect(g, 1, 16, 54, 2, '-');
+  // street furniture: planters + market stalls
+  [10, 37, 49].forEach(x => { g[18][x] = 'o'; });
+  g[18][20] = 'k'; g[18][28] = 'k';
+  // storefronts south of street
+  _rect(g, 3, 19, 7, 4, '#');  g[19][6]  = 'S'; // Second Life thrift
+  _rect(g, 12, 19, 8, 4, '#'); g[19][15] = 'C'; // Juniper Café
+  _rect(g, 22, 19, 6, 4, '#'); g[19][24] = 'B'; // Moonrise Bakery
+  _rect(g, 30, 19, 7, 4, '#'); g[19][33] = 'M'; // Corner Market
+  _rect(g, 39, 19, 8, 4, '#'); g[19][42] = 'R'; // The Anchor bar
+  // south point lawn: cherries at the fringe
+  [[16,26],[22,25],[30,25],[38,26],[26,24]].forEach(([x,y]) => { g[y][x] = 'c'; });
+  // paths to waterfront
+  for (let y = 23; y <= 33; y++) { g[y][15] = '-'; g[y][33] = '-'; }
+  // Pier Labs (SE)
+  _rect(g, 44, 26, 9, 6, '#'); g[26][48] = 'L';
+  for (let y = 23; y <= 25; y++) g[y][48] = '-';
   // waterfront promenade
-  _rect(g, 1, 22, 38, 2, '-');
-  [10, 20, 28].forEach(x => { g[23][x] = 'h'; });
+  _rect(g, 1, 34, 54, 2, '-');
+  [12, 28, 45].forEach(x => { g[36][x] = 'h'; });
   // scattered trees
-  [[14,4],[17,8],[12,10],[19,7],[34,13],[2,9]].forEach(([x,y]) => { if (g[y][x] === '.') g[y][x] = 'T'; });
-  // connect gate & street with a faint path
-  for (let y = 12; y <= 13; y++) { g[y][28] = '-'; g[y][29] = '-'; }
+  [[24,10],[34,13],[13,10],[52,13],[8,24],[42,24],[6,30],[41,32]].forEach(([x,y]) => {
+    if (g[y][x] === '.') g[y][x] = 'T';
+  });
   return g;
 }
 
@@ -118,17 +197,25 @@ CS.MAPS = {
     outdoor: true,
     grid: buildOutdoor(),
     labels: [
-      { x:3,  y:1,  text:'Harbor Studios' },
-      { x:24, y:1,  text:'Community Farm' },
-      { x:31, y:2.4,  text:'Greenhouse' },
-      { x:2,  y:11, text:'Tram' },
-      { x:4.5,y:18.4, text:'Juniper Café' },
-      { x:14, y:18.4, text:'Moonrise' },
-      { x:23.5,y:18.4, text:'Corner Market' },
-      { x:16, y:24.5, text:'East River' },
+      { x:2,  y:1,    text:'Lighthouse Park' },
+      { x:16, y:1,    text:'Harbor Studios' },
+      { x:26, y:1,    text:'Harbor House' },
+      { x:40, y:1,    text:'Community Farm' },
+      { x:47, y:2.4,  text:'Greenhouse' },
+      { x:2,  y:12,   text:'Tram' },
+      { x:3,  y:20.4, text:'Second Life' },
+      { x:12, y:20.4, text:'Juniper Café' },
+      { x:22, y:20.4, text:'Moonrise' },
+      { x:30, y:20.4, text:'Corner Market' },
+      { x:39, y:20.4, text:'The Anchor' },
+      { x:23, y:29,   text:'South Point' },
+      { x:44, y:27.4, text:'Pier Labs' },
+      { x:25, y:36.6, text:'East River' },
     ],
-    doors: { A:'apartment', C:'cafe', B:'bakery', M:'market', G:'greenhouse' },
-    doorSpawns: { A:[6,7], C:[7,16], B:[17,16], M:[26,16], G:[33,7] },
+    doors: { A:'apartment', C:'cafe', B:'bakery', M:'market', G:'greenhouse',
+             S:'thrift', R:'bar', L:'labs', H:'harbor_house' },
+    doorSpawns: { A:[19,7], C:[15,18], B:[24,18], M:[33,18], G:[49,7],
+                  S:[6,18], R:[42,18], L:[48,25], H:[30,8] },
   },
   apartment: {
     name: 'Your Studio', outdoor: false, exitTo: 'outdoor', exitKey: 'A',
@@ -196,19 +283,80 @@ CS.MAPS = {
     ]),
     labels: [],
   },
+  thrift: {
+    name: 'Second Life', outdoor: false, exitTo: 'outdoor', exitKey: 'S',
+    grid: _fromAscii([
+      '############',
+      '#U..===.===#',
+      '#..........#',
+      '#.===..===.#',
+      '#..........#',
+      '#..........#',
+      '#####E######',
+    ]),
+    labels: [],
+  },
+  bar: {
+    name: 'The Anchor', outdoor: false, exitTo: 'outdoor', exitKey: 'R',
+    grid: _fromAscii([
+      '##############',
+      '#UUUUUU......#',
+      '#............#',
+      '#.tt..tt..tt.#',
+      '#............#',
+      '#.tt..tt.....#',
+      '######E#######',
+    ]),
+    labels: [],
+  },
+  labs: {
+    name: 'Pier Labs', outdoor: false, exitTo: 'outdoor', exitKey: 'L',
+    grid: _fromAscii([
+      '############',
+      '#tt..tt..tt#',
+      '#..........#',
+      '#tt..tt....#',
+      '#..........#',
+      '#####E######',
+    ]),
+    labels: [],
+  },
+  harbor_house: {
+    name: 'Harbor House', outdoor: false, exitTo: 'outdoor', exitKey: 'H',
+    grid: _fromAscii([
+      '##############',
+      '#N....tt.....#',
+      '#............#',
+      '#.tt......tt.#',
+      '#............#',
+      '#............#',
+      '######E#######',
+    ]),
+    labels: [],
+  },
 };
 // interior spawn points (stepping through an outdoor door lands here)
-CS.INTERIOR_SPAWNS = { apartment:[5,6], cafe:[6,6], bakery:[4,5], market:[5,5], greenhouse:[4,4] };
+CS.INTERIOR_SPAWNS = { apartment:[5,6], cafe:[6,6], bakery:[4,5], market:[5,5], greenhouse:[4,4],
+                       thrift:[5,5], bar:[6,5], labs:[5,4], harbor_house:[6,5] };
 
 /* ---------------- Named spots for NPC schedules ---------------- */
 CS.SPOTS = {
-  tram:            { scene:'outdoor', x:3,  y:12 },
-  mainstreet:      { scene:'outdoor', x:18, y:14 },
-  farm_center:     { scene:'outdoor', x:26, y:4 },
-  farm_gate:       { scene:'outdoor', x:28, y:12 },
-  waterfront_a:    { scene:'outdoor', x:11, y:22 },
-  waterfront_b:    { scene:'outdoor', x:27, y:22 },
-  waterfront_c:    { scene:'outdoor', x:19, y:22 },
+  tram:            { scene:'outdoor', x:3,  y:14 },
+  mainstreet:      { scene:'outdoor', x:24, y:16 },
+  mainstreet_b:    { scene:'outdoor', x:40, y:17 },
+  farm_center:     { scene:'outdoor', x:41, y:4 },
+  farm_gate:       { scene:'outdoor', x:44, y:12 },
+  waterfront_a:    { scene:'outdoor', x:12, y:34 },
+  waterfront_b:    { scene:'outdoor', x:28, y:34 },
+  waterfront_c:    { scene:'outdoor', x:45, y:34 },
+  lighthouse_park: { scene:'outdoor', x:9,  y:6 },
+  lawn_a:          { scene:'outdoor', x:20, y:28 },
+  lawn_b:          { scene:'outdoor', x:26, y:29 },
+  lawn_c:          { scene:'outdoor', x:32, y:28 },
+  lawn_d:          { scene:'outdoor', x:24, y:26 },
+  lawn_e:          { scene:'outdoor', x:35, y:30 },
+  stall_a:         { scene:'outdoor', x:20, y:17 },
+  stall_b:         { scene:'outdoor', x:28, y:17 },
   cafe_table_a:    { scene:'cafe', x:2,  y:4 },
   cafe_table_b:    { scene:'cafe', x:7,  y:4 },
   cafe_table_c:    { scene:'cafe', x:11, y:4 },
@@ -218,6 +366,16 @@ CS.SPOTS = {
   bakery_front:    { scene:'bakery', x:5, y:4 },
   market_counter:  { scene:'market', x:2, y:2 },
   market_aisle:    { scene:'market', x:8, y:4 },
+  bar_seat_a:      { scene:'bar', x:2, y:2 },
+  bar_seat_b:      { scene:'bar', x:4, y:2 },
+  bar_work:        { scene:'bar', x:8, y:2 },
+  bar_table:       { scene:'bar', x:9, y:4 },
+  thrift_browse:   { scene:'thrift', x:6, y:4 },
+  lab_a:           { scene:'labs', x:2, y:2 },
+  lab_b:           { scene:'labs', x:6, y:2 },
+  lab_c:           { scene:'labs', x:9, y:2 },
+  hh_a:            { scene:'harbor_house', x:3, y:2 },
+  hh_b:            { scene:'harbor_house', x:9, y:3 },
 };
 
 /* ---------------- NPCs ---------------- */
@@ -225,37 +383,43 @@ CS.SPOTS = {
    vector character renderer (see art.js). No image assets needed. */
 CS.NPCS = {
   maya: {
-    name:'Maya Chen', color:'#c74f6d',
+    name:'Maya Chen', color:'#c74f6d', gender:'F', rom:['F','M'],
     look:{ skin:'#e8b98a', hair:'#26221e', style:'long', outfit:'#c74f6d' },
     bio:'Emergency medicine resident. Dry humor, always slightly under-slept.',
+    loved:['coffee'], liked:['strawberry','meal_salad'],
   },
   daniel: {
-    name:'Daniel Park', color:'#4a6fa5',
+    name:'Daniel Park', color:'#4a6fa5', gender:'M', rom:['F','M'],
     look:{ skin:'#e8b98a', hair:'#1f1c19', style:'short', outfit:'#4a6fa5' },
     bio:'Product manager at a healthcare-tech startup. Structured. Funny about it.',
+    loved:['basil'], liked:['bread','coffee'],
   },
   lena: {
-    name:'Lena Hoffman', color:'#7d5ba6',
+    name:'Lena Hoffman', color:'#7d5ba6', gender:'F', rom:['F'],
     look:{ skin:'#f6d7b8', hair:'#a0632a', style:'bun', outfit:'#7d5ba6' },
     bio:'Neuroscience PhD student. Intense, curious, keeps strange hours.',
+    loved:['coffee'], liked:['strawberry','paperback'],
   },
   nico: {
-    name:'Nico Russo', color:'#b0653a',
+    name:'Nico Russo', color:'#b0653a', gender:'M', rom:['F','M','NB'],
     look:{ skin:'#e0aa78', hair:'#3a2c1e', style:'curly', outfit:'#b0653a' },
     bio:'Manages his family\'s restaurant in Queens. Warm, social, impulsive.',
+    loved:['basil','tomato'], liked:['meal_pasta','enamel_pot'],
   },
   grace: {
-    name:'Grace Okafor', color:'#b07a2a',
+    name:'Grace Okafor', color:'#b07a2a', gender:'F', rom:[],
     look:{ skin:'#8d5a33', hair:'#b3542e', style:'wrap', outfit:'#b07a2a' },
     bio:'Owns Moonrise Bakery. The neighborhood runs on her ovens.',
+    loved:['strawberry'], liked:['tulip','meal_galette'],
   },
   malik: {
-    name:'Malik Johnson', color:'#5c8a6f',
+    name:'Malik Johnson', color:'#5c8a6f', gender:'M', rom:[],
     look:{ skin:'#8d5a33', hair:'#3f4f3a', style:'cap', outfit:'#5c8a6f' },
     bio:'Retired transit worker. Coordinates the community farm. Knows everyone.',
+    loved:['tulip'], liked:['lettuce','radish','sunflower'],
   },
   joan: {
-    name:'Joan', color:'#8a7361',
+    name:'Joan', color:'#8a7361', gender:'F', rom:[],
     look:{ skin:'#f6d7b8', hair:'#8a8a8a', style:'short', outfit:'#8a7361' },
     bio:'Juniper Café barista.', decorative:true,
   },

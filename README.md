@@ -22,7 +22,8 @@ No frameworks, no build step, no image assets. Plain JS modules loaded in order,
 
 | File | Responsibility |
 |---|---|
-| `js/data.js` | **All content**: maps, crops, items, NPC definitions & looks, schedules, dialogue pools, shops, constants. Adding content = editing data, not logic. |
+| `js/data.js` | **Core content**: maps, crops, items, the founding NPCs, shops, recipes, festivals, constants. Adding content = editing data, not logic. |
+| `js/data2.js` | **Phase 2 content**: the ten remaining major NPCs (definitions, schedules, dialogue), phone-message pools, festival lines. |
 | `js/art.js` | **All visuals**: every sprite, portrait, and icon drawn procedurally with canvas vectors (cozy sage/earth palette, rounded forms, soft upper-left light). No emoji, no PNGs. |
 | `js/engine.js` | Canvas renderer, camera, BFS pathfinding, tap/keyboard input. |
 | `js/game.js` | Simulation: time/calendar, weather, farming, NPC schedules & relationships, events, pets, economy, save/load, cheats. |
@@ -38,22 +39,26 @@ No frameworks, no build step, no image assets. Plain JS modules loaded in order,
 - **NPCs live without you**: schedules run whether or not you watch; off-screen NPCs are simulated abstractly.
 - **No emoji art**: everything is drawn vector art in `art.js` (single source of truth for the game's look).
 
-## Current vertical slice (v0.1)
+## Current build (v0.2 — Phase 2)
 
-- Character creation: name (Unicode OK), gender, birthday (season + day), appearance (skin/hair/style/outfit)
-- 3 local save slots, autosave on sleep & app-background, delete slot
-- Time: 4 seasons × 30 days, weekdays, day/night tint; weather (sun/cloud/rain — rain waters outdoor plots)
-- Harbor Point map: apartment, community farm + greenhouse, Juniper Café, Moonrise Bakery, Corner Market, tram, waterfront
-- Farming: till / plant / water / harvest / regrowth; 4 crops (lettuce, radish, strawberry, tulip); shipping bin
-- Economy: seeds, coffee/bread, pet food, weekly rent, energy
-- 6 NPCs (Maya, Daniel, Lena, Nico, Grace, Malik) with weekday/weekend/weather schedules, tiered relationships, condition-based dialogue
-- Pets: adopt a cat, dog, or fish; feeding, petting, dog walks, animated aquarium
-- Events: move-in, garden intro, first café visit, hidden 5:42 AM bakery scene, first rain, birthday greetings
-- City Journal: residents, discoveries, farm stats
-- Cheats: `MONEYPLEASE, MAXENERGY, ALLSEEDS, FASTGROW, SUNNYDAY, RAINYDAY, NEXTDAY, TIMEFREEZE, SETTIME hh:mm, SETDAY n, FRIEND <name>, NPCSTATE <name>` (Menu → Developer console)
+Everything from the v0.1 slice, plus:
+
+- **Expanded Harbor Point** (56×42): Lighthouse Park with cherry trees, Harbor House community center, The Anchor bar, Second Life thrift shop, Pier Labs, South Point festival lawn
+- **All 16 residents** — the complete 14-strong major cast (Maya, Daniel, Lena, Nico, Sofia, Gabriel, Theo, Avery, Naomi, Arjun, Priya, Jordan, Mei-Lin, Mateo) plus Grace and Malik, each with weekday/weekend/weather schedules and condition-based dialogue
+- **Phone / messaging**: numbers get exchanged at Acquaintance, morning texts scale with friendship (Jordan famously barely texts), birthday texts, community announcements, gossip about new couples, daily reply for a small friendship bump
+- **Romance**: romantic-preference selection at creation, NPC orientations, flirting, attraction, asking someone out at Friend+; partners text and get their own dialogue
+- **NPCs live without you**: compatible pairs build momentum weekly and quietly start dating — you notice because they're suddenly *together* in the evenings, or because a friend texts you about it; rare breakups too
+- **Gifts**: loved/liked favorites per NPC, once per day
+- **Cooking**: kitchen + recipes; Grace and Nico teach their family recipes at Friend tier
+- **Thrifting**: Second Life rotates 4 finds daily (seeded), with rare items worth flipping
+- **Seasons matter**: summer crops (tomato, basil, cucumber, sunflower), season-gated market stock, out-of-season outdoor crops wilt at the turn, greenhouse ignores seasons
+- **Festivals**: Cherry Blossom Picnic (Spring 15) — everyone on the lawn, warmer first-chats; Night Market (Summer 8) — sell at 1.5× from the Main Street stalls
+- **Job**: help Joan with the café morning rush for $45
+- Save migration: v1 saves load cleanly onto the new map (`saveVersion` 2)
+- New cheats: `SETSEASON, NEXTFESTIVAL, NPCDATE A B, NPCBREAKUP A B, ATTRACT <name>, TEXTME`
 
 ## Roadmap
 
-- **Phase 2**: full 14-NPC cast, romance, messaging app, cooking, thrifting, jobs, festivals, outer-NYC hubs, NPC↔NPC relationships
+- **Phase 2.5**: outer-NYC hubs via the tram, dates/hangouts, more pets & pet events, more festivals (Pride, Harbor Lights, Lunar New Year), hidden-economy price waves
 - **Phase 3**: Years 2–5 arcs — careers, layoffs, relocations, marriage, children, redevelopment, business turnover, aging
 - See the design document for the complete five-year vision.

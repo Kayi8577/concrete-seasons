@@ -24,7 +24,88 @@
     $('hud-money').textContent = '$' + S.player.money;
     $('hud-energy').style.width = Math.max(0, S.player.energy) + '%';
     $('hud-energy').style.background = S.player.energy < 25 ? '#c74f6d' : '';
+    const unread = G().unreadTotal ? G().unreadTotal() : 0;
+    $('phone-badge').style.display = unread > 0 ? 'flex' : 'none';
+    $('phone-badge').textContent = unread > 9 ? '9+' : unread;
   };
+
+  /* ---- phone ---- */
+  $('btn-phone').onclick = () => { renderPhoneThreads(); openPanel('panel-phone'); };
+
+  function senderName(id) {
+    return id === 'hp' ? CS.ANNOUNCEMENTS.senderName : CS.NPCS[id] ? CS.NPCS[id].name : id;
+  }
+  function renderPhoneThreads() {
+    const S = G().state();
+    $('phone-title').textContent = 'Messages';
+    const body = $('phone-body');
+    body.innerHTML = '';
+    const ids = Object.keys(S.phone).sort((a, b) => {
+      const la = S.phone[a].msgs.at(-1), lb = S.phone[b].msgs.at(-1);
+      return (lb ? lb.day : 0) - (la ? la.day : 0);
+    });
+    if (!ids.length) {
+      body.innerHTML = '<div style="color:#8a7361;padding:20px;text-align:center">No messages yet. Get to know people — numbers get exchanged around Acquaintance.</div>';
+      return;
+    }
+    for (const id of ids) {
+      const t = S.phone[id];
+      const last = t.msgs.at(-1);
+      const row = document.createElement('div');
+      row.className = 'phone-thread';
+      if (id !== 'hp' && CS.NPCS[id]) {
+        const pc = document.createElement('canvas');
+        pc.width = pc.height = 72;
+        pc.className = 'thread-avatar';
+        CS.art.portrait(pc, CS.NPCS[id].look);
+        row.appendChild(pc);
+      } else {
+        row.insertAdjacentHTML('beforeend', '<div class="thread-avatar hp-avatar">HP</div>');
+      }
+      row.insertAdjacentHTML('beforeend', `
+        <div class="thread-info">
+          <div class="thread-name">${senderName(id)}</div>
+          <div class="thread-preview">${last ? last.text.slice(0, 48) : ''}${last && last.text.length > 48 ? '…' : ''}</div>
+        </div>
+        ${t.unread ? `<span class="thread-unread">${t.unread}</span>` : ''}`);
+      row.onclick = () => renderPhoneThread(id);
+      body.appendChild(row);
+    }
+  }
+  function renderPhoneThread(id) {
+    const S = G().state();
+    G().markRead(id);
+    U.refreshHUD();
+    $('phone-title').textContent = senderName(id);
+    const body = $('phone-body');
+    body.innerHTML = '<button class="btn small ghost" id="phone-back">‹ All messages</button><div class="bubble-list"></div>';
+    $('phone-back').onclick = renderPhoneThreads;
+    const list = body.querySelector('.bubble-list');
+    const t = S.phone[id];
+    let lastDay = -1;
+    for (const m of t.msgs) {
+      if (m.day !== lastDay) {
+        lastDay = m.day;
+        const dayNum = m.day % 30 + 1, seasonIdx = Math.floor(m.day / 30) % 4;
+        list.insertAdjacentHTML('beforeend', `<div class="bubble-day">${CS.SEASONS[seasonIdx]} ${dayNum}</div>`);
+      }
+      list.insertAdjacentHTML('beforeend', `<div class="bubble them">${m.text}</div>`);
+    }
+    if (id !== 'hp' && S.phone[id].repliedDay !== G().totalDay()) {
+      const reply = document.createElement('button');
+      reply.className = 'btn small primary';
+      reply.style.marginTop = '10px';
+      reply.textContent = 'Reply';
+      reply.onclick = () => {
+        if (G().replyTo(id)) {
+          list.insertAdjacentHTML('beforeend', '<div class="bubble you">Replied.</div>');
+          reply.remove();
+        }
+      };
+      body.appendChild(reply);
+    }
+    list.scrollTop = list.scrollHeight;
+  }
 
   let labelTimer = null;
   U.showSceneLabel = function (text) {
@@ -211,9 +292,11 @@
   /* ---- shop ---- */
   U.openShop = function () {
     const S = G().state();
+    $('shop-title').textContent = 'Corner Market';
     const list = $('shop-list');
     list.innerHTML = '';
-    for (const row of CS.SHOP_MARKET) {
+    const stock = CS.SHOP_MARKET.filter(r => r.season === undefined || r.season === S.time.seasonIndex);
+    for (const row of stock) {
       const def = CS.ITEMS[row.item];
       const el = document.createElement('div');
       el.className = 'shop-row';
@@ -230,9 +313,14 @@
     openPanel('panel-shop');
   };
 
-  /* ---- sell ---- */
-  U.openSell = function () {
+  /* ---- sell (shipping bin, or festival stall at a premium) ---- */
+  U.openSell = function (mult, title) {
+    mult = mult || 1;
     const S = G().state();
+    document.querySelector('#panel-sell h3').textContent = title || 'Shipping Bin';
+    document.querySelector('#panel-sell .panel-note').textContent = mult > 1
+      ? 'Festival prices — everything sells at a premium tonight.'
+      : 'Malik trucks the bin to the weekend market. You get paid on the spot.';
     const list = $('sell-list');
     list.innerHTML = '';
     const sellables = Object.keys(S.inv).filter(k => CS.ITEMS[k] && CS.ITEMS[k].sell && S.inv[k] > 0);
@@ -241,19 +329,45 @@
     }
     for (const k of sellables) {
       const def = CS.ITEMS[k];
+      const unit = Math.round(def.sell * mult);
       const el = document.createElement('div');
       el.className = 'shop-row';
       el.appendChild(CS.art.iconCanvas(k, 30));
       el.insertAdjacentHTML('beforeend',
-        `<div class="info"><div class="nm">${def.name} ×${S.inv[k]}</div><div class="ds">$${def.sell} each</div></div>`);
+        `<div class="info"><div class="nm">${def.name} ×${S.inv[k]}</div><div class="ds">$${unit} each${mult > 1 ? ' (festival!)' : ''}</div></div>`);
       const b = document.createElement('button');
       b.className = 'buy sell';
-      b.textContent = `Sell all ($${def.sell * S.inv[k]})`;
-      b.onclick = () => { G().sellItem(k, S.inv[k]); U.openSell(); };
+      b.textContent = `Sell all ($${unit * S.inv[k]})`;
+      b.onclick = () => { G().sellItem(k, S.inv[k], mult); U.openSell(mult, title); };
       el.appendChild(b);
       list.appendChild(el);
     }
     openPanel('panel-sell');
+  };
+
+  /* ---- thrift (Second Life) ---- */
+  U.openThrift = function () {
+    const S = G().state();
+    const t = G().getThrift();
+    $('shop-title').textContent = 'Second Life';
+    const list = $('shop-list');
+    list.innerHTML = '<div style="font-size:13px;color:#8a7361;padding:0 2px 6px">Today\'s finds — stock turns over daily. The good stuff surfaces when it surfaces.</div>';
+    t.items.forEach((it, i) => {
+      const def = CS.ITEMS[it.id];
+      const el = document.createElement('div');
+      el.className = 'shop-row';
+      el.appendChild(CS.art.iconCanvas(it.id, 30));
+      el.insertAdjacentHTML('beforeend',
+        `<div class="info"><div class="nm">${def.name}${def.rare ? ' ★' : ''}</div><div class="ds">${def.desc}</div></div>`);
+      const b = document.createElement('button');
+      b.className = 'buy';
+      b.textContent = it.sold ? 'Sold' : `$${it.price}`;
+      b.disabled = it.sold;
+      b.onclick = () => { G().buyThrift(i); U.openThrift(); };
+      el.appendChild(b);
+      list.appendChild(el);
+    });
+    openPanel('panel-shop');
   };
 
   /* ---- journal ---- */
@@ -286,8 +400,9 @@
           pc.style.cssText = 'width:36px;height:36px;border-radius:9px;float:left;margin-right:10px';
           CS.art.portrait(pc, npc.look);
           card.appendChild(pc);
+          const rel = S.npcs[id].romance === 'seeing' ? tier + ' · Seeing each other' : tier;
           card.insertAdjacentHTML('beforeend', `<div class="res-name">${npc.name}</div>
-            <div class="res-stage">${tier}</div>
+            <div class="res-stage">${rel}</div>
             <div class="res-note" style="clear:both">${npc.bio}</div>
             <div class="res-note" style="margin-top:4px;color:#8a7361">Right now: ${st.act}${st.spot ? '' : ' (not around)'}</div>`);
         }
@@ -407,7 +522,7 @@
   };
 
   /* ---- character creation ---- */
-  const cc = { slot: 0, gender: 'F', bseason: 0, bday: 1, look: { skin: 0, hair: 0, hairStyle: 'short', outfit: 0 } };
+  const cc = { slot: 0, gender: 'F', pref: 'discover', bseason: 0, bday: 1, look: { skin: 0, hair: 0, hairStyle: 'short', outfit: 0 } };
 
   function startCreation(slot) {
     cc.slot = slot;
@@ -426,6 +541,7 @@
     });
   }
   chipRow('cc-gender', v => cc.gender = v);
+  chipRow('cc-pref', v => cc.pref = v);
   chipRow('cc-bseason', v => { cc.bseason = parseInt(v); });
   chipRow('cc-hairstyle', v => { cc.look.hairStyle = v; updatePreview(); });
 
@@ -476,7 +592,7 @@
     const name = $('cc-name').value.trim();
     if (!name) { $('cc-name').style.borderColor = '#c74f6d'; $('cc-name').focus(); return; }
     const player = {
-      name, gender: cc.gender,
+      name, gender: cc.gender, pref: cc.pref,
       birthSeason: cc.bseason, birthDay: cc.bday,
       look: { ...cc.look },
     };
