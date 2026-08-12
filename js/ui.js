@@ -227,7 +227,7 @@
     setTimeout(() => input.focus(), 50);
   };
 
-  U.buyPrompt = function (itemId, price, desc) {
+  U.buyPrompt = function (itemId, price, desc, onBuy) {
     const def = CS.ITEMS[itemId];
     U.choose(`${def.name} — $${price}. ${desc}`, [
       { label: `Buy & enjoy ($${price})`, fn: () => {
@@ -237,6 +237,7 @@
         S.player.energy = Math.min(100, S.player.energy + (def.energy || 0));
         U.toast(`${def.name}: +${def.energy} energy`);
         U.refreshHUD();
+        if (onBuy) onBuy();
       }},
       { label: 'Just browsing', fn: () => {} },
     ]);

@@ -43,6 +43,9 @@
     S.pairMomentum = S.pairMomentum || {};
     S.recipes = S.recipes || ['meal_salad', 'meal_roast'];
     S.thrift = S.thrift || null;          // {day, items:[{id, price, sold}]}
+    S.arcs = S.arcs || {};                // arcId -> stages completed
+    S.coffeeJuniper = S.coffeeJuniper || 0;
+    S.coffeeGlasshouse = S.coffeeGlasshouse || 0;
     for (const id of Object.keys(CS.NPCS)) {
       S.npcs[id] = Object.assign(
         { met: false, fam: 0, friend: 0, talkedToday: false, attraction: 0, romance: null, giftedDay: -1 },
@@ -167,6 +170,18 @@
     // ---- NPC↔NPC life (weekly, Mondays) ----
     if (S.time.weekdayIndex === 0) simulatePairs();
 
+    // ---- Year 2–5 story arcs ----
+    if (S.flags.redevMeetingDay) S.flags.redevMeetingDay = false; // one-day window
+    tickArcs();
+
+    // ---- wedding day ----
+    if (S.weddingDay !== undefined && S.weddingDay !== null) {
+      if (S.weddingDay < G.totalDay()) S.weddingDay = G.totalDay(); // the ceremony waits for you
+      if (S.weddingDay === G.totalDay()) {
+        CS.ui.toast('Today is your wedding day. Lighthouse Park, mid-morning.');
+      }
+    }
+
     // ---- phone: morning texts ----
     generateTexts();
     // daily resets
@@ -214,13 +229,36 @@
   }
   G.isPlayerBirthday = isPlayerBirthday;
 
+  /* ---- Year 2–5 arc engine: stages fire once their date arrives ---- */
+  function tickArcs() {
+    const api = {
+      S,
+      addMsg: G.addMsg,
+      toast: (t) => CS.ui.toast(t),
+      discover,
+      setArc: (id, stage) => { S.npcs[id].arc = stage; },
+      tierOf: G.tierOf,
+    };
+    for (const arc of CS.ARCS) {
+      let done = S.arcs[arc.id] || 0;
+      while (done < arc.stages.length) {
+        const st = arc.stages[done];
+        if (G.totalDay() < CS.dayOf(st.at.y, st.at.s, st.at.d)) break;
+        S.arcs[arc.id] = ++done;
+        try { st.run(api); } catch (e) { console.error('arc error', arc.id, e); }
+      }
+    }
+  }
+  G.tickArcs = tickArcs;
+
   /* NPC↔NPC romance: momentum accrues weekly for compatible pairs, invisibly.
      The player only ever sees the resulting behavior. */
   function simulatePairs() {
     for (const [a, b, compat] of CS.NPC_PAIRS) {
       const inCoupleAlready = coupleOf(a) || coupleOf(b);
-      const datingPlayer = S.npcs[a].romance === 'seeing' || S.npcs[b].romance === 'seeing';
-      if (inCoupleAlready || datingPlayer) continue;
+      const datingPlayer = !!S.npcs[a].romance || !!S.npcs[b].romance;
+      const moved = S.npcs[a].arc === 'gone' || S.npcs[b].arc === 'gone';
+      if (inCoupleAlready || datingPlayer || moved) continue;
       const k = a + '+' + b;
       S.pairMomentum[k] = (S.pairMomentum[k] || 0) + (0.4 + Math.random() * 0.6) * compat * 10;
       if (S.pairMomentum[k] >= 30) {
@@ -257,6 +295,31 @@
           && S.npcs[h.from] && S.npcs[h.from].hasNumber) {
         S.flags['hint_' + key] = true;
         G.addMsg(h.from, h.text);
+      }
+    }
+    // congratulations pour in the morning after an engagement
+    if (S.flags.pendingCongrats) {
+      const fiance = S.flags.pendingCongrats;
+      S.flags.pendingCongrats = null;
+      const wellWishers = Object.keys(CS.NPCS)
+        .filter(id => id !== fiance && S.npcs[id].hasNumber && G.tierOf(id) >= 2).slice(0, 3);
+      const notes = [
+        'ENGAGED?? to the farmer?? this island is a romance novel and i live in it. congratulations!!',
+        'heard the news. genuinely so happy for you two. the lighthouse is a perfect call',
+        'congratulations! grace is already sketching cakes. this is not a drill',
+      ];
+      wellWishers.forEach((id, i) => G.addMsg(id, notes[i % notes.length]));
+    }
+    // texts from the ones who moved away
+    for (const id of Object.keys(CS.NPCS)) {
+      const r = S.npcs[id];
+      if (r.arc === 'gone' && r.hasNumber && Math.random() < .08) {
+        const aways = [
+          `${(r.awayCity || 'this city')} update: fine. good, even. but nobody here knows my order. miss that`,
+          'saw a community garden today and thought of the island. keep it loud for me',
+          'counting down to a visit. save me a seat wherever everyone sits now',
+        ];
+        G.addMsg(id, aways[Math.floor(Math.random() * aways.length)]);
       }
     }
     // gossip about a new couple, from whichever friend would absolutely text you this
@@ -383,9 +446,22 @@
     const p = S.playerRT;
     const map = CS.MAPS[p.scene];
     const ch = E().tileAt(p.scene, x, y);
-    // outdoor door → interior
+    // outdoor door → interior (a few doors have history)
     if (map.outdoor && map.doors[ch]) {
-      enterScene(map.doors[ch]);
+      const target = map.doors[ch];
+      if (target === 'glasshouse' && !S.flags.glasshouseOpen) {
+        CS.ui.narrate("A papered-over storefront. The 'For Lease' sign has been up so long it's basically a resident.");
+        return;
+      }
+      if (target === 'glasshouse' && S.flags.glasshouseClosed) {
+        CS.ui.narrate("Glasshouse, dark inside. Claire's farewell note is still taped to the glass: 'Tip your baristas. Love your neighborhood.'");
+        return;
+      }
+      if (target === 'cafe' && S.flags.juniperClosed) {
+        CS.ui.narrate("Juniper's windows are papered over. Someone taped a tomato-tin plant sketch to the door with 'THANK YOU JOAN' in six handwritings.");
+        return;
+      }
+      enterScene(target);
       return;
     }
     // interior exit
@@ -421,7 +497,8 @@
         : CS.ui.narrate("A sturdy shelf by the wall. An aquarium would look great here.");
     }
     if (ch === 'U') {
-      if (scene === 'cafe') return () => CS.ui.buyPrompt('coffee', 4, 'Juniper pour-over. +18 energy.');
+      if (scene === 'cafe') return () => CS.ui.buyPrompt('coffee', 4, 'Juniper pour-over. +18 energy.', () => { S.coffeeJuniper++; });
+      if (scene === 'glasshouse') return () => CS.ui.buyPrompt('coffee', 5, "Claire's cortado. +18 energy.", () => { S.coffeeGlasshouse++; });
       if (scene === 'bakery') return () => CS.ui.buyPrompt('bread', 6, "Grace's sesame roll. +25 energy.");
       if (scene === 'market') return () => CS.ui.openShop();
       if (scene === 'thrift') return () => CS.ui.openThrift();
@@ -785,14 +862,43 @@
   }
   G.coupleOf = coupleOf;
 
+  function remapSpot(spotName) {
+    if (S.flags.juniperClosed && CS.CAFE_FALLBACK && CS.CAFE_FALLBACK[spotName]) return CS.CAFE_FALLBACK[spotName];
+    if (S.flags.glasshouseClosed && CS.GLASS_FALLBACK && CS.GLASS_FALLBACK[spotName]) return CS.GLASS_FALLBACK[spotName];
+    return spotName;
+  }
+
   G.npcStatus = function (id) {
     const npc = CS.NPCS[id];
-    // an active date with the player trumps everything
+    const r = S.npcs[id];
+    const fest = G.currentFestival();
+    // moved away (fellowship, postdoc...) — but the holidays bring people home
+    if (r.arc === 'gone') {
+      if (fest && fest.key === 'holiday_market') {
+        const spots = FESTIVAL_SPOTS[fest.key];
+        const idx = Object.keys(CS.NPCS).indexOf(id) % spots.length;
+        return { spot: CS.SPOTS[spots[idx]], act: 'home for the holidays' };
+      }
+      return { spot: null, act: `living in ${r.awayCity || 'another city'} — you text sometimes` };
+    }
+    // your wedding day: everyone who matters is at Lighthouse Park
+    if (S.weddingDay === G.totalDay() && S.time.minutes >= 570 && S.time.minutes < 780
+        && !npc.decorative && (G.tierOf(id) >= 2 || r.romance === 'engaged')) {
+      const spots = ['lighthouse_park', 'lawn_a', 'lawn_d'];
+      return { spot: CS.SPOTS[spots[Object.keys(CS.NPCS).indexOf(id) % spots.length]],
+               act: r.romance === 'engaged' ? 'waiting for you under the lighthouse' : 'at your wedding' };
+    }
+    // an active date with the player trumps everything else
     if (S.date && S.date.npc === id && S.time.minutes < S.date.until) {
-      return { spot: CS.SPOTS[S.date.spot], act: 'spending time with you' };
+      return { spot: CS.SPOTS[remapSpot(S.date.spot)], act: 'spending time with you' };
+    }
+    // your spouse lives here now — mornings and evenings at home
+    if (r.romance === 'married') {
+      if (S.time.minutes < 480 || S.time.minutes >= 1200) {
+        return { spot: CS.SPOTS.apartment_home, act: 'home, with you' };
+      }
     }
     // festival override — some festivals only draw part of the neighborhood
-    const fest = G.currentFestival();
     if (fest && !npc.decorative && (!fest.attendees || fest.attendees.includes(id))) {
       const spots = FESTIVAL_SPOTS[fest.key];
       const idx = Object.keys(CS.NPCS).indexOf(id) % spots.length;
@@ -808,7 +914,7 @@
     if (partner && (S.time.weekdayIndex >= 5) && S.time.minutes >= 780 && S.time.minutes < 900) {
       return { spot: CS.SPOTS.lighthouse_park, act: `a slow afternoon with ${CS.NPCS[partner].name.split(' ')[0]}` };
     }
-    return { spot: b.at ? CS.SPOTS[b.at] : null, act: b.act };
+    return { spot: b.at ? CS.SPOTS[remapSpot(b.at)] : null, act: b.act };
   };
 
   /* ---- hidden seasonal economy: the price IS the tell ---- */
@@ -891,14 +997,62 @@
     if (p === 'W') return npcGender === 'F';
     return true; // 'MW' or 'discover'
   }
+  function committedTo() {
+    for (const id of Object.keys(S.npcs)) {
+      if (['partner', 'engaged', 'married'].includes(S.npcs[id].romance)) return id;
+    }
+    return null;
+  }
+  G.committedTo = committedTo;
   function canFlirt(id) {
     const npc = CS.NPCS[id], r = S.npcs[id];
     return !npc.decorative && npc.rom && npc.rom.includes(S.player.gender)
-      && prefAllows(npc.gender) && !coupleOf(id) && r.romance !== 'seeing' && G.tierOf(id) >= 2;
+      && prefAllows(npc.gender) && !coupleOf(id) && !r.romance && !committedTo()
+      && r.arc !== 'gone' && G.tierOf(id) >= 2;
   }
   function canAskOut(id) {
     const r = S.npcs[id];
     return canFlirt(id) && r.attraction >= 25 && r.friend >= 60;
+  }
+  function canOfficial(id) {
+    const r = S.npcs[id];
+    return r.romance === 'seeing' && r.friend >= 100 && r.attraction >= 50
+      && G.totalDay() - (r.romanceDay || 0) >= 14 && !committedTo();
+  }
+  function canPropose(id) {
+    const r = S.npcs[id];
+    return r.romance === 'partner' && r.friend >= 150 && (S.inv.ring || 0) > 0
+      && G.totalDay() - (r.romanceDay || 0) >= 20;
+  }
+  function makeOfficial(id) {
+    const npc = CS.NPCS[id], r = S.npcs[id];
+    // anyone else you were seeing hears about it — gently
+    for (const other of Object.keys(S.npcs)) {
+      if (other !== id && S.npcs[other].romance === 'seeing') {
+        S.npcs[other].romance = null;
+        S.npcs[other].friend = Math.max(0, S.npcs[other].friend - 15);
+        if (S.npcs[other].hasNumber) G.addMsg(other, "heard you two made it official. i get it. i'm happy for you — give me a minute on that, but i am.");
+      }
+    }
+    r.romance = 'partner';
+    r.romanceDay = G.totalDay();
+    discover('partner_' + id, `You and ${npc.name} made it official. Exclusive, spare-key-conversations, the whole thing.`);
+    CS.ui.dialogue(npc, [
+      `"So — this. Us." ${npc.name.split(' ')[0]} takes a breath like a diver. "I want it to be the real, boring, every-day version. Official." You say the easiest yes of your year.`,
+    ]);
+  }
+  function propose(id) {
+    const npc = CS.NPCS[id], r = S.npcs[id];
+    G.removeItem('ring', 1);
+    r.romance = 'engaged';
+    r.romanceDay = G.totalDay();
+    S.weddingDay = G.totalDay() + 10;
+    S.flags.pendingCongrats = id;
+    discover('engaged_' + id, `You proposed to ${npc.name} — and the box was barely open before the yes. Wedding at the lighthouse in ten days.`);
+    CS.ui.dialogue(npc, [
+      `You've rehearsed nothing. The box is heavier than physics allows. ${npc.name.split(' ')[0]} looks at it, then at you, and starts nodding before you finish the sentence.`,
+      `"Yes. Obviously yes. The lighthouse, in ten days — small, everyone we love, Grace does the cake. I've... maybe thought about this."`,
+    ]);
   }
 
   G.talkTo = function (id) {
@@ -920,15 +1074,18 @@
     if (!npc.decorative && r.giftedDay !== G.totalDay() && giftables.length) {
       opts.push({ label: 'Give a gift', fn: () => giftPicker(id) });
     }
-    if (canAskOut(id)) opts.push({ label: 'Ask them out', fn: () => askOut(id) });
+    if (canPropose(id)) opts.push({ label: 'Propose', fn: () => propose(id) });
+    else if (canOfficial(id)) opts.push({ label: 'Make it official', fn: () => makeOfficial(id) });
+    else if (canAskOut(id)) opts.push({ label: 'Ask them out', fn: () => askOut(id) });
     else if (canFlirt(id)) opts.push({ label: 'Flirt', fn: () => flirt(id) });
     if (!npc.decorative && !S.date && r.dateDay !== G.totalDay()) {
-      if (r.romance === 'seeing') opts.push({ label: 'Ask on a date', fn: () => askHangout(id, true) });
+      if (r.romance) opts.push({ label: 'Ask on a date', fn: () => askHangout(id, true) });
       else if (r.friend >= 60) opts.push({ label: 'Ask to hang out', fn: () => askHangout(id, false) });
     }
     if (id === 'joan' && canWorkShift()) opts.push({ label: 'Help with the morning rush ($45)', fn: () => workShift() });
     opts.push({ label: 'Never mind', fn: () => {} });
-    const status = r.romance === 'seeing' ? 'seeing each other' : G.npcStatus(id).act;
+    const ROM_LABEL = { seeing: 'seeing each other', partner: 'together', engaged: 'engaged', married: 'married' };
+    const status = ROM_LABEL[r.romance] || G.npcStatus(id).act;
     CS.ui.choose(`${npc.name} — ${status}`, opts);
   };
 
@@ -1043,6 +1200,10 @@
     const tier = G.tierOf(id);
     const m = S.time.minutes;
     const r = S.npcs[id];
+    // married small talk — half the time, the ordinary intimacy leads
+    if (r.romance === 'married' && Math.random() < .4) {
+      return CS.MARRIED_LINES[Math.floor(Math.random() * CS.MARRIED_LINES.length)];
+    }
     // on a date: date lines take the lead
     if (S.date && S.date.npc === id && m < S.date.until && Math.random() < .6) {
       const venue = CS.DATE_LINES[S.date.spot] || [];
@@ -1066,7 +1227,8 @@
       if (c.before !== undefined) { if (m < c.before) score += 3; else ok = false; }
       if (c.after !== undefined) { if (m >= c.after) score += 3; else ok = false; }
       if (c.birthday) { if (isPlayerBirthday()) score += 10; else ok = false; }
-      if (c.seeing) { if (r.romance === 'seeing') score += 8; else ok = false; }
+      if (c.seeing) { if (['seeing', 'partner', 'engaged', 'married'].includes(r.romance)) score += 8; else ok = false; }
+      if (c.arc) { if (r.arc === c.arc) score += 12; else ok = false; }
       if (!ok) continue;
       if (score > bestScore) { bestScore = score; best = [...pool.lines]; }
       else if (score === bestScore) best.push(...pool.lines);
@@ -1229,6 +1391,17 @@
         S.flags['fest_' + fest.key + '_' + S.time.year] = true;
         discover('fest_' + fest.key + '_' + S.time.year, FEST_TEXT[fest.key]);
         CS.ui.toast(`${fest.name} — everyone's here`);
+        // the holidays bring the departed home
+        if (fest.key === 'holiday_market') {
+          for (const id of Object.keys(S.npcs)) {
+            if (S.npcs[id].arc === 'gone' && !S.flags['return_' + id + '_' + S.time.year]) {
+              S.flags['return_' + id + '_' + S.time.year] = true;
+              discover('return_' + id + '_' + S.time.year,
+                `${CS.NPCS[id].name} came home for the Holiday Market, Year ${S.time.year}. For one evening, the neighborhood had its old shape back.`);
+              CS.ui.toast(`${CS.NPCS[id].name.split(' ')[0]} is home for the holidays`);
+            }
+          }
+        }
       }
     }
 
@@ -1242,6 +1415,44 @@
       CS.ui.narrate(`The first shell goes up and the whole waterfront inhales. Somewhere in the middle of the finale you realize ${first} isn't watching the sky anymore. Neither are you.`, () => {
         discover('lights_moment_' + S.time.year, `Harbor Lights, Year ${S.time.year} — the fireworks, and ${first} watching you watch them.`);
       });
+    }
+
+    // Your wedding — Lighthouse Park, mid-morning
+    if (trigger === 'enter' && S.weddingDay === G.totalDay()
+        && S.time.minutes >= 570 && S.time.minutes < 780
+        && p.scene === 'outdoor' && p.x <= 13 && p.y <= 11) {
+      const id = Object.keys(S.npcs).find(n => S.npcs[n].romance === 'engaged');
+      if (id) {
+        const npc = CS.NPCS[id];
+        S.npcs[id].romance = 'married';
+        S.npcs[id].romanceDay = G.totalDay();
+        S.spouse = id;
+        S.weddingDay = null;
+        CS.ui.narrateSeq([
+          `Grace's cake made it up the hill intact. Malik is wearing a tie that predates the tram. Everyone you've learned, one season at a time, is standing on the grass under the old lighthouse.`,
+          CS.WEDDING_LINES.vows,
+          `${npc.name.split(' ')[0]} squeezes your hand as the ferry horn — impeccable timing — blesses the whole thing. Married. Here. Home.`,
+        ], () => {
+          discover('wedding_' + id, `Married ${npc.name} under the lighthouse, Year ${S.time.year}, ${CS.SEASONS[S.time.seasonIndex]} ${S.time.day}. Grace made the cake. The ferry horn did the toast.`);
+          CS.ui.toast(`${npc.name.split(' ')[0]} moves in — the studio just became a home for two`);
+          refreshNPCs(true);
+        });
+      }
+      return;
+    }
+
+    // Redevelopment community meeting — Harbor House, that one evening
+    if (trigger === 'enter' && S.flags.redevMeetingDay && !S.flags.redevAttended
+        && p.scene === 'harbor_house' && S.time.minutes >= 1020 && S.time.minutes < 1320) {
+      S.flags.redevAttended = true;
+      CS.ui.narrateSeq([
+        `Folding chairs, a projector, and every strong opinion on the island in one room. Priya presents the study without notes. You can tell which slide she fought for.`,
+        `When they open the floor, you say the simple thing: the farm feeds people, the lawn holds them, keep both. Priya writes it down. So does the man from the city, which surprises everyone.`,
+      ], () => {
+        discover('redev_meeting', `Year 3: you spoke at the redevelopment meeting. Priya wrote your words down. "Showing up matters," Malik always says. You showed up.`);
+        S.npcs.priya.friend += 15;
+      });
+      return;
     }
 
     // Garden introduction — first time entering the farm area
@@ -1494,6 +1705,16 @@
         return 'done';
       }
       case 'TEXTME': { generateTexts(); return 'generated morning texts'; }
+      case 'SETYEAR': {
+        const y = parseInt(parts[1]);
+        if (!y || y < 1 || y > 99) return 'usage: SETYEAR 3';
+        S.time.year = y; S.time.weekdayIndex = G.weekdayIndex();
+        G.refreshNPCs(true); CS.ui.refreshHUD();
+        return 'year ' + y + ' (arcs fire on next wake — use NEXTDAY)';
+      }
+      case 'ARCS': {
+        return CS.ARCS.map(a => `${a.id}: ${S.arcs[a.id] || 0}/${a.stages.length}`).join(' · ');
+      }
       case 'ATTRACT': {
         const id = npcByName(parts[1] || '');
         if (!id) return 'unknown NPC';

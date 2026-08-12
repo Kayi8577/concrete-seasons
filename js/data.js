@@ -145,7 +145,7 @@ CS.NPC_PAIRS = [
           A/C/B/M/G door tiles (apartment/cafe/bakery/market/greenhouse)  E interior exit
           K kitchen  b bed  t table  W window  = shelf  O oven  d display  U counter  q aquarium spot
 */
-CS.WALKABLE = new Set(['.', '-', '_', 's', 'g', 'P', 'A', 'C', 'B', 'M', 'G', 'E', 'S', 'R', 'L', 'H', 'D']);
+CS.WALKABLE = new Set(['.', '-', '_', 's', 'g', 'P', 'A', 'C', 'B', 'M', 'G', 'E', 'S', 'R', 'L', 'H', 'D', 'Q']);
 
 function _grid(w, h, fill) {
   const g = [];
@@ -200,6 +200,7 @@ function buildOutdoor() {
   _rect(g, 22, 19, 6, 4, '#'); g[19][24] = 'B'; // Moonrise Bakery
   _rect(g, 30, 19, 7, 4, '#'); g[19][33] = 'M'; // Corner Market
   _rect(g, 39, 19, 8, 4, '#'); g[19][42] = 'R'; // The Anchor bar
+  _rect(g, 48, 19, 6, 4, '#'); g[19][51] = 'Q'; // Glasshouse Coffee (opens Year 2)
   // south point lawn: cherries at the fringe
   [[16,26],[22,25],[30,25],[38,26],[26,24]].forEach(([x,y]) => { g[y][x] = 'c'; });
   // paths to waterfront
@@ -290,14 +291,16 @@ CS.MAPS = {
       { x:22, y:20.4, text:'Moonrise' },
       { x:30, y:20.4, text:'Corner Market' },
       { x:39, y:20.4, text:'The Anchor' },
+      { x:48, y:20.4, text:'For Lease', ifNotFlag:'glasshouseOpen' },
+      { x:48, y:20.4, text:'Glasshouse', ifFlag:'glasshouseOpen' },
       { x:23, y:29,   text:'South Point' },
       { x:44, y:27.4, text:'Pier Labs' },
       { x:25, y:36.6, text:'East River' },
     ],
     doors: { A:'apartment', C:'cafe', B:'bakery', M:'market', G:'greenhouse',
-             S:'thrift', R:'bar', L:'labs', H:'harbor_house' },
+             S:'thrift', R:'bar', L:'labs', H:'harbor_house', Q:'glasshouse' },
     doorSpawns: { A:[19,7], C:[15,18], B:[24,18], M:[33,18], G:[49,7],
-                  S:[6,18], R:[42,18], L:[48,25], H:[30,8] },
+                  S:[6,18], R:[42,18], L:[48,25], H:[30,8], Q:[51,18] },
   },
   apartment: {
     name: 'Your Studio', outdoor: false, exitTo: 'outdoor', exitKey: 'A',

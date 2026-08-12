@@ -78,6 +78,23 @@
     ctx.closePath(); ctx.fill();
   };
 
+  A.barrier = function (ctx, sx, sy, T) {
+    sh(ctx, sx + T / 2, sy + T - 4, T * .4, 3);
+    ctx.fillStyle = '#c9a24b';
+    ctx.beginPath(); ctx.roundRect(sx + 2, sy + T * .3, T - 4, T * .22, 2); ctx.fill();
+    ctx.fillStyle = '#8a5a2a';
+    for (let i = 0; i < 3; i++) {
+      ctx.save();
+      ctx.translate(sx + 6 + i * (T - 12) / 2.5, sy + T * .3);
+      ctx.transform(1, 0, -.5, 1, 0, 0);
+      ctx.fillRect(0, 0, 4, T * .22);
+      ctx.restore();
+    }
+    ctx.fillStyle = '#6b5b4c';
+    ctx.fillRect(sx + 5, sy + T * .5, 3, T * .38);
+    ctx.fillRect(sx + T - 8, sy + T * .5, 3, T * .38);
+  };
+
   A.lantern = function (ctx, sx, sy, T, t) {
     const cx = sx + T / 2;
     sh(ctx, cx, sy + T - 3, T * .2, 2.5);

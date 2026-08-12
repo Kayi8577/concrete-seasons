@@ -126,6 +126,7 @@
     'A': '#6e5741', 'C': '#6e5741', 'B': '#6e5741', 'M': '#6e5741', 'G': '#88a89b',
     'S': '#6e5741', 'R': '#6e5741', 'L': '#88a89b', 'H': '#6e5741', 'E': '#b09a7d',
     'c': '#7fae6d', 'i': '#7fae6d', 'k': '#7fae6d', '_': '#b3aa9c', 'D': '#b3aa9c', 'l': '#b3aa9c',
+    'Q': '#6e5741',
     'K': '#d8cfc0', 'b': '#d8cfc0', 't': '#d8cfc0', 'W': '#d8cfc0', '=': '#d8cfc0',
     'O': '#d8cfc0', 'd': '#d8cfc0', 'U': '#d8cfc0', 'q': '#d8cfc0',
   };
@@ -133,7 +134,7 @@
   const INTERIOR_FLOOR = '#e6d9bf';
   // exterior door accent per building
   const DOOR_ACCENT = { A:'#8a5a3b', C:'#5c8a6f', B:'#b07a2a', M:'#4a6fa5', G:'#88a89b',
-                        S:'#7d5ba6', R:'#8a3b4a', L:'#5b8aa6', H:'#c9553e', D:'#b0653a' };
+                        S:'#7d5ba6', R:'#8a3b4a', L:'#5b8aa6', H:'#c9553e', D:'#b0653a', Q:'#37535e' };
 
   /* ---------------- render ---------------- */
   E.render = function (state) {
@@ -222,7 +223,7 @@
             break;
           }
         }
-        if ('ACBMGSRLHD'.includes(ch) && isOut) A.doorOut(ctx, sx, sy, TILE, DOOR_ACCENT[ch]);
+        if ('ACBMGSRLHDQ'.includes(ch) && isOut) A.doorOut(ctx, sx, sy, TILE, DOOR_ACCENT[ch]);
         if (ch === '_' && ((x * 13 + y * 7) % 9 === 0)) { // pavement seams
           ctx.fillStyle = 'rgba(0,0,0,.05)';
           ctx.fillRect(sx, sy, TILE, 1.5);
@@ -230,11 +231,21 @@
       }
     }
 
+    // world-state decorations: construction fencing / the new waterfront
+    if (scene === 'outdoor' && state.flags.construction) {
+      for (let bx = 16; bx <= 40; bx += 3) CS.art.barrier(ctx, bx * TILE - E.camX, 24 * TILE - E.camY, TILE);
+    }
+    if (scene === 'outdoor' && state.flags.newWaterfront) {
+      for (let bx = 18; bx <= 38; bx += 5) CS.art.planter(ctx, bx * TILE - E.camX, 33 * TILE - E.camY, TILE);
+    }
+
     // labels
     if (map.labels) {
       ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
       for (const L of map.labels) {
+        if (L.ifFlag && !state.flags[L.ifFlag]) continue;
+        if (L.ifNotFlag && state.flags[L.ifNotFlag]) continue;
         const sx = L.x * TILE - E.camX, sy = L.y * TILE - E.camY + TILE / 2;
         ctx.fillStyle = 'rgba(20,26,32,.55)';
         const w = ctx.measureText(L.text).width;

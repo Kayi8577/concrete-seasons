@@ -65,7 +65,20 @@ Everything from the v0.1 slice, plus:
 - **Hidden seasonal economy**: flowers spike during wedding season and Lunar New Year, basil/tomato run hot all summer — never explained, only visible in the shipping-bin prices ("in demand") and the occasional tip from a friend who'd know
 - **Fall crops** (kale, carrot, squash, chrysanthemum) and **winter snow** with drifting-flake weather, a First Snow journal moment, and per-season weather tables
 
+### v0.4 (Phase 3) additions — the years start mattering
+
+- **Story-arc engine**: data-driven Year 2–5 life arcs fire on schedule, change NPC schedules/dialogue, and text you as they unfold
+  - **Daniel**: layoff rumors → laid off (his whole week visibly changes) → lands at a startup, back at big tech, or freelance
+  - **Maya**: fellowship applications → she stays in the city (always, if you're together) or leaves for Boston
+  - **Lena**: defends the PhD → industry in NYC or a Chicago postdoc
+  - **Nico**: the succession talk — if you've become a real friend, he finds his way to a partnership; otherwise the coin lands harder
+  - **Glasshouse vs Juniper**: Glasshouse opens in Year 2; by Year 4 the market decides — and your own coffee purchases tip the scale. A café can genuinely close, its regulars migrating across the street
+  - **Redevelopment**: notice (Y2) → community meeting you can attend and speak at (Y3) → construction fencing on South Point (Y4) → the new waterfront (Y5), shaped by whether the neighborhood showed up
+- **Departures & returns**: NPCs who leave stay gone — journal shows where they landed, they text occasionally, and they come home for the Holiday Market
+- **Marriage**: seeing → "make it official" (exclusive) → propose with a ring from the market → a wedding under the lighthouse with everyone you know → married life where your spouse keeps their career but wakes up and comes home to your apartment, with its own everyday-intimacy dialogue
+- New cheats: `SETYEAR n`, `ARCS` (arc progress readout)
+
 ## Roadmap
 
-- **Phase 3**: Years 2–5 arcs — careers, layoffs, relocations, marriage, children, redevelopment, business turnover, aging; more pets & pet events; Pride and the remaining festival calendar
+- **Next**: children & family arcs, NPC marriages/weddings you attend, Ava & Nia (the aging kids), Year 6+ evergreen simulation, New Game+, Then & Now journal, more pets & pet events, Pride and the remaining festivals
 - See the design document for the complete five-year vision.
