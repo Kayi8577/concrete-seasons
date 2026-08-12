@@ -95,6 +95,12 @@
 
   function advanceMinute() {
     S.time.minutes += 1;
+    if (S.date && S.time.minutes >= S.date.until) {
+      const first = CS.NPCS[S.date.npc].name.split(' ')[0];
+      S.date = null;
+      refreshNPCs(true);
+      CS.ui.toast(`${first} heads home, smiling`);
+    }
     if (S.time.minutes % 10 === 0) { refreshNPCs(); CS.ui.refreshHUD(); }
     if (S.time.minutes >= CS.DAY_END) {
       CS.ui.narrate("You can barely keep your eyes open... You stumble home and collapse into bed.", () => {
@@ -164,8 +170,14 @@
     // ---- phone: morning texts ----
     generateTexts();
     // daily resets
+    S.date = null;
     for (const id of Object.keys(S.npcs)) S.npcs[id].talkedToday = false;
     if (S.pet) { S.pet.fedToday = false; S.pet.walkedToday = false; }
+    if (S.weather.today === 'snow' && !S.flags.firstSnow) {
+      S.flags.firstSnow = true;
+      CS.ui.toast('First snow. Harbor Point goes quiet.');
+      discover('first_snow', 'First snow of the year. The tram cables wore white, the river turned pewter, and everyone walked slower on purpose.');
+    }
 
     // rent on Mondays (from week 2)
     if (S.time.weekdayIndex === 0 && G.totalDay() >= 7) {
@@ -224,6 +236,29 @@
   }
 
   function generateTexts() {
+    // travel unlocks — invitations arrive when the friendship is real
+    if (!S.flags.travelAstoria && S.npcs.nico && S.npcs.nico.hasNumber && G.tierOf('nico') >= 2) {
+      S.flags.travelAstoria = true;
+      G.addMsg('nico', "ok it's time. come to bellini's. take the tram toward astoria — ditmars stop. tell rosa you're my farmer. she already knows");
+    }
+    if (!S.flags.travelChinatown && S.npcs.mei_lin && S.npcs.mei_lin.hasNumber && G.tierOf('mei_lin') >= 2) {
+      S.flags.travelChinatown = true;
+      G.addMsg('mei_lin', "There's a tea shop on Mott Street you should know about. Jade Pavilion — tell Mrs. Woo I sent you. The subway gets you there.");
+    }
+    if (!S.flags.travelChinatown && S.time.seasonIndex === 3 && S.time.day >= 18) {
+      S.flags.travelChinatown = true;
+      G.addMsg('hp', 'Holiday service: the tram now connects to Chinatown for the Lunar New Year season. Lion dances on Mott Street on the 25th.');
+    }
+    // hidden-economy hints, once each
+    for (const key of Object.keys(CS.ECON_HINTS)) {
+      const h = CS.ECON_HINTS[key];
+      if (S.flags['hint_' + key]) continue;
+      if (S.time.seasonIndex === h.season && S.time.day >= h.day
+          && S.npcs[h.from] && S.npcs[h.from].hasNumber) {
+        S.flags['hint_' + key] = true;
+        G.addMsg(h.from, h.text);
+      }
+    }
     // gossip about a new couple, from whichever friend would absolutely text you this
     if (S.flags.pendingGossip) {
       const [a, b] = S.flags.pendingGossip;
@@ -396,15 +431,92 @@
     if (ch === 'N') return () => noticeboard(scene);
     if (ch === 'k') return () => {
       const fest = G.currentFestival();
-      if (fest && fest.key === 'night_market') CS.ui.openSell(1.5, 'Night Market Stall');
-      else CS.ui.narrate("An empty market stall. On festival nights, Main Street lights up and these come alive.");
+      const stallFests = ['night_market', 'street_food', 'holiday_market', 'lunar_new_year'];
+      const rightPlace = fest && ((fest.where || 'outdoor') === scene);
+      if (fest && stallFests.includes(fest.key) && rightPlace) CS.ui.openSell(1.5, fest.name + ' Stall');
+      else CS.ui.narrate("An empty market stall. On festival days these come alive.");
     };
     if (ch === 'i') return () => CS.ui.narrate("The old lighthouse. Decommissioned for decades, still the most reliable thing on the island. Locals say if you're here at the right moment, you'll understand why people stay.");
-    if (ch === 'P') return () => CS.ui.narrate("The tram sways off toward Manhattan. Trips into the city open up once you know more people. For now, Harbor Point is plenty.");
+    if (ch === 'P') return () => travelMenu();
+    if (ch === 'U' && scene === 'teahouse') return () => CS.ui.buyPrompt('tea', 5, "Mrs. Woo's oolong. +20 energy.");
+    if (ch === 'U' && scene === 'bellinis') return () => bellinisMenu();
     if (ch === 'h') return () => CS.ui.narrate("You sit for a moment. The river doesn't care about anyone's schedule. It's the most relaxing thing in New York.");
     if (ch === 's' || ch === 'g') return () => farmAction(scene, x, y);
     return null;
   }
+
+  /* ---- travel ---- */
+  function travelMenu() {
+    const here = S.playerRT.scene;
+    const opts = [];
+    if (here === 'outdoor') {
+      for (const dest of Object.keys(CS.TRAVEL)) {
+        const d = CS.TRAVEL[dest];
+        if (S.flags[d.unlockFlag]) {
+          opts.push({ label: `${d.name} — $${d.cost}`, fn: () => travelTo(dest) });
+        }
+      }
+      if (!opts.length) {
+        CS.ui.narrate("The tram sways off toward Manhattan. Trips into the city open up once you know people who'd want you to visit. For now, Harbor Point is plenty.");
+        return;
+      }
+    } else {
+      opts.push({ label: 'Back to Harbor Point — $3', fn: () => travelTo('harbor') });
+    }
+    opts.push({ label: 'Stay put', fn: () => {} });
+    CS.ui.choose(here === 'outdoor' ? 'Where to?' : 'The subway rattles in.', opts);
+  }
+  function travelTo(dest) {
+    const cost = 3;
+    if (S.player.money < cost) { CS.ui.toast('Not enough for the fare.'); return; }
+    S.player.money -= cost;
+    S.time.minutes += 45;
+    if (dest === 'harbor') {
+      enterScene('outdoor', 4, 14);
+    } else {
+      const d = CS.TRAVEL[dest];
+      enterScene(dest, d.spawn[0], d.spawn[1]);
+    }
+    refreshNPCs(true);
+    CS.ui.refreshHUD();
+  }
+
+  function bellinisMenu() {
+    CS.ui.choose("Bellini's. Red sauce in the air, Rosa at her table, Queens outside the window.", [
+      { label: 'Plate of the day — $14 (+45 energy)', fn: () => buyEnergy(14, 45, "Whatever Nico's cooking, it's right. You eat every bite and consider the bread situation carefully.") },
+      { label: 'Espresso — $3 (+10 energy)', fn: () => buyEnergy(3, 10, 'Short, dark, non-negotiable.') },
+      { label: 'Just visiting', fn: () => {} },
+    ]);
+  }
+
+  /* ---- dates & hangouts ---- */
+  const DATE_VENUES = [
+    { spot: 'cafe_table_b',    label: 'Coffee at Juniper ($8, you treat)', cost: 8 },
+    { spot: 'bar_table',       label: 'Drinks at The Anchor ($10)', cost: 10 },
+    { spot: 'waterfront_b',    label: 'Walk along the waterfront', cost: 0 },
+    { spot: 'lighthouse_park', label: 'Lighthouse Park', cost: 0 },
+  ];
+  function askHangout(id, isDate) {
+    const npc = CS.NPCS[id];
+    CS.ui.choose(`Where to take ${npc.name.split(' ')[0]}?`, DATE_VENUES.map(v => ({
+      label: v.label,
+      fn: () => {
+        if (S.player.money < v.cost) { CS.ui.toast('Not enough money.'); return; }
+        if (!spendEnergy(8)) return;
+        S.player.money -= v.cost;
+        const r = S.npcs[id];
+        r.dateDay = G.totalDay();
+        r.friend += 10;
+        if (isDate) r.attraction += 8;
+        S.date = { npc: id, spot: v.spot, until: S.time.minutes + 150, kind: isDate ? 'date' : 'hangout' };
+        refreshNPCs(true);
+        CS.ui.refreshHUD();
+        const where = CS.SPOTS[v.spot];
+        CS.ui.narrate(`You two head off together. (${npc.name.split(' ')[0]} will be at ${CS.MAPS[where.scene].name} for the next couple of hours — go find them.)`);
+      },
+    })).concat([{ label: 'Actually, never mind', fn: () => {} }]));
+  }
+  G.clearDate = function () { S.date = null; };
 
   function barMenu() {
     CS.ui.choose("The Anchor. Wood polished by decades of elbows.", [
@@ -660,6 +772,10 @@
   const FESTIVAL_SPOTS = {
     cherry: ['lawn_a', 'lawn_b', 'lawn_c', 'lawn_d', 'lawn_e', 'lighthouse_park'],
     night_market: ['stall_a', 'stall_b', 'mainstreet', 'mainstreet_b'],
+    harbor_lights: ['waterfront_a', 'waterfront_b', 'waterfront_c', 'lawn_b', 'lawn_d'],
+    street_food: ['stall_a', 'stall_b', 'mainstreet', 'mainstreet_b'],
+    holiday_market: ['stall_a', 'stall_b', 'mainstreet', 'mainstreet_b'],
+    lunar_new_year: ['ct_street_a', 'ct_street_b', 'ct_street_c', 'ct_stall'],
   };
   const COUPLE_SPOTS = ['cafe_table_b', 'waterfront_b', 'bar_table']; // rotates by weekday
 
@@ -671,9 +787,13 @@
 
   G.npcStatus = function (id) {
     const npc = CS.NPCS[id];
-    // festival override: everyone (except staff who ARE the festival backdrop) attends
+    // an active date with the player trumps everything
+    if (S.date && S.date.npc === id && S.time.minutes < S.date.until) {
+      return { spot: CS.SPOTS[S.date.spot], act: 'spending time with you' };
+    }
+    // festival override — some festivals only draw part of the neighborhood
     const fest = G.currentFestival();
-    if (fest && !npc.decorative) {
+    if (fest && !npc.decorative && (!fest.attendees || fest.attendees.includes(id))) {
       const spots = FESTIVAL_SPOTS[fest.key];
       const idx = Object.keys(CS.NPCS).indexOf(id) % spots.length;
       return { spot: CS.SPOTS[spots[idx]], act: `at the ${fest.name}` };
@@ -689,6 +809,18 @@
       return { spot: CS.SPOTS.lighthouse_park, act: `a slow afternoon with ${CS.NPCS[partner].name.split(' ')[0]}` };
     }
     return { spot: b.at ? CS.SPOTS[b.at] : null, act: b.act };
+  };
+
+  /* ---- hidden seasonal economy: the price IS the tell ---- */
+  G.priceMult = function (itemId) {
+    const t = S.time;
+    let m = 1;
+    const flower = ['tulip', 'sunflower', 'chrysanthemum'].includes(itemId);
+    if (flower && t.seasonIndex === 0 && t.day >= 20) m *= 1.3;            // wedding season
+    if (flower && t.seasonIndex === 3 && t.day >= 20) m *= 1.35;           // Lunar New Year
+    if (['basil', 'tomato'].includes(itemId) && t.seasonIndex === 1) m *= 1.25; // restaurant summer demand
+    if (['cucumber'].includes(itemId) && t.seasonIndex === 1 && S.weather.today === 'sunny') m *= 1.2;
+    return m;
   };
 
   function refreshNPCs(force) {
@@ -790,6 +922,10 @@
     }
     if (canAskOut(id)) opts.push({ label: 'Ask them out', fn: () => askOut(id) });
     else if (canFlirt(id)) opts.push({ label: 'Flirt', fn: () => flirt(id) });
+    if (!npc.decorative && !S.date && r.dateDay !== G.totalDay()) {
+      if (r.romance === 'seeing') opts.push({ label: 'Ask on a date', fn: () => askHangout(id, true) });
+      else if (r.friend >= 60) opts.push({ label: 'Ask to hang out', fn: () => askHangout(id, false) });
+    }
     if (id === 'joan' && canWorkShift()) opts.push({ label: 'Help with the morning rush ($45)', fn: () => workShift() });
     opts.push({ label: 'Never mind', fn: () => {} });
     const status = r.romance === 'seeing' ? 'seeing each other' : G.npcStatus(id).act;
@@ -907,6 +1043,12 @@
     const tier = G.tierOf(id);
     const m = S.time.minutes;
     const r = S.npcs[id];
+    // on a date: date lines take the lead
+    if (S.date && S.date.npc === id && m < S.date.until && Math.random() < .6) {
+      const venue = CS.DATE_LINES[S.date.spot] || [];
+      const pool = [...CS.DATE_LINES.generic, ...venue];
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
     // festivals color everyone's small talk
     const fest = G.currentFestival();
     if (fest && CS.FESTIVAL_LINES && CS.FESTIVAL_LINES[fest.key] && Math.random() < .5) {
@@ -1071,16 +1213,35 @@
     // Festival attendance — first time each year
     const fest = G.currentFestival();
     if (fest && !S.flags['fest_' + fest.key + '_' + S.time.year]) {
+      const FEST_TEXT = {
+        cherry: `Cherry Blossom Picnic, Year ${S.time.year}. The whole neighborhood on one lawn, petals in everyone's coffee.`,
+        night_market: `Night Market, Year ${S.time.year}. Main Street under string lights, your produce selling at festival prices.`,
+        harbor_lights: `Harbor Lights, Year ${S.time.year}. Fireworks over the East River, the whole island looking up at once.`,
+        street_food: `Street Food Festival, Year ${S.time.year}. You followed the smoke. The smoke knew.`,
+        holiday_market: `Holiday Market, Year ${S.time.year}. String lights, cold hands, warm cider, Main Street at its kindest.`,
+        lunar_new_year: `Lunar New Year on Mott Street, Year ${S.time.year}. Drums, lions, lanterns — and Mrs. Woo's line around the block.`,
+      };
       const onSite = (fest.key === 'cherry' && p.scene === 'outdoor' && p.y >= 23)
-                  || (fest.key === 'night_market' && p.scene === 'outdoor' && p.y >= 14 && p.y <= 20);
+                  || (['night_market', 'street_food', 'holiday_market'].includes(fest.key) && p.scene === 'outdoor' && p.y >= 14 && p.y <= 20)
+                  || (fest.key === 'harbor_lights' && p.scene === 'outdoor' && p.y >= 32)
+                  || (fest.key === 'lunar_new_year' && p.scene === 'chinatown');
       if (onSite) {
         S.flags['fest_' + fest.key + '_' + S.time.year] = true;
-        discover('fest_' + fest.key + '_' + S.time.year,
-          fest.key === 'cherry'
-            ? `Cherry Blossom Picnic, Year ${S.time.year}. The whole neighborhood on one lawn, petals in everyone's coffee.`
-            : `Night Market, Year ${S.time.year}. Main Street under string lights, your produce selling at festival prices.`);
+        discover('fest_' + fest.key + '_' + S.time.year, FEST_TEXT[fest.key]);
         CS.ui.toast(`${fest.name} — everyone's here`);
       }
+    }
+
+    // Harbor Lights + a date = the scene the whole year quietly builds toward
+    if (fest && fest.key === 'harbor_lights' && S.date && p.scene === 'outdoor' && p.y >= 32
+        && !S.flags['lights_moment_' + S.time.year]) {
+      S.flags['lights_moment_' + S.time.year] = true;
+      const first = CS.NPCS[S.date.npc].name.split(' ')[0];
+      S.npcs[S.date.npc].attraction += 12;
+      S.npcs[S.date.npc].friend += 10;
+      CS.ui.narrate(`The first shell goes up and the whole waterfront inhales. Somewhere in the middle of the finale you realize ${first} isn't watching the sky anymore. Neither are you.`, () => {
+        discover('lights_moment_' + S.time.year, `Harbor Lights, Year ${S.time.year} — the fireworks, and ${first} watching you watch them.`);
+      });
     }
 
     // Garden introduction — first time entering the farm area
@@ -1315,6 +1476,7 @@
         S.time.seasonIndex = best.f.season; S.time.day = best.f.day;
         S.time.minutes = Math.max(390, best.f.start);
         S.time.weekdayIndex = G.weekdayIndex();
+        if (best.f.where === 'chinatown') S.flags.travelChinatown = true;
         G.refreshNPCs(true); CS.ui.refreshHUD();
         return `jumped to ${best.f.name}`;
       }

@@ -572,6 +572,46 @@ Object.assign(CS.DIALOGUE, {
   },
 });
 
+/* ---------------- Decorative city NPCs ---------------- */
+Object.assign(CS.SCHEDULES, {
+  rosa() {
+    return [
+      { until:420, at:null, act:'' },
+      { until:1320, at:'bellinis_table', act:'supervising Bellini\'s from her table' },
+      { until:9999, at:null, act:'' },
+    ];
+  },
+  mrs_woo() {
+    return [
+      { until:540, at:null, act:'' },
+      { until:1200, at:'tea_table', act:'holding court at the Jade Pavilion' },
+      { until:9999, at:null, act:'' },
+    ];
+  },
+});
+Object.assign(CS.DIALOGUE, {
+  rosa: {
+    intro: "The old woman at the corner table looks you over exactly once. \"You're the farmer. Nico talks.\" She points at a chair. \"Sit. Eat something. You're too thin for farming.\"",
+    pools: [
+      { cond:{}, lines:[
+        "\"Fifty-one years, this restaurant. The stove knows more than any of us.\"",
+        "\"Nico thinks I don't see him worrying. I saw his father do the same worrying. Eat.\"",
+        "\"You grow the basil? Good. Store basil is an insult to the tomato.\"",
+      ]},
+    ],
+  },
+  mrs_woo: {
+    intro: "\"Sit anywhere,\" the owner says, already pouring you tea you didn't order. \"First visit, first pot. After that you pay like everyone.\" She smiles like it's a dare.",
+    pools: [
+      { cond:{}, lines:[
+        "\"Mei-Lin sends people here when she likes them. Or when they look tired. Sometimes both.\"",
+        "\"Forty years on Mott Street. The street changes, the tea doesn't.\"",
+        "\"New Year is coming, or it just left. On this street those are the only two seasons.\"",
+      ]},
+    ],
+  },
+});
+
 /* ---------------- Festival dialogue (any NPC, picked during festivals) ---------------- */
 CS.FESTIVAL_LINES = {
   cherry: [
@@ -584,6 +624,47 @@ CS.FESTIVAL_LINES = {
     "Everything tastes better from a stall under string lights. That's just science.",
     "Half the island's here. The other half is on their way.",
   ],
+  harbor_lights: [
+    "They say the fireworks are for the harbor's anniversary. Nobody checks. Nobody cares. Look up.",
+    "Best view in the city and it's free. Don't tell Manhattan.",
+    "Every year I say I won't gasp at the finale. Every year.",
+  ],
+  street_food: [
+    "I've had four lunches. It's a festival. The rules are different.",
+    "Follow the smoke. The smoke knows.",
+  ],
+  holiday_market: [
+    "Hot cider in one hand, regret about not wearing gloves in the other. Tradition.",
+    "The string lights make everyone look like their best photo.",
+  ],
+  lunar_new_year: [
+    "The lion dance scared three toddlers and delighted forty. Net win.",
+    "Mrs. Woo's tea line is around the block. She's thrilled and pretending not to be.",
+    "Red everywhere, drums in your chest, oranges in every hand. Best day on Mott Street.",
+  ],
+};
+
+/* ---------------- Date / hangout lines ---------------- */
+CS.DATE_LINES = {
+  generic: [
+    "Time does that thing where it goes too fast because you're not watching it.",
+    "The conversation wanders somewhere neither of you planned, and stays there a while. The good kind of lost.",
+    "You catch yourself memorizing this — the light, the noise, the company.",
+  ],
+  cafe_table_b: ["Two drinks, one table, and Joan pretending not to eavesdrop. The neighborhood's smallest stage."],
+  bar_table: ["The Anchor hums around you. Avery slides over water you didn't order with a look that says 'hydrate, lovebirds.'"],
+  waterfront_b: ["The river traffic scrolls by like it's doing it for your benefit. A tug horn punctuates a joke perfectly."],
+  lighthouse_park: ["Under the old lighthouse the city feels far away — which is absurd, it's right there, glittering."],
+};
+
+/* ---------------- Hidden-economy hint texts (one-time) ---------------- */
+CS.ECON_HINTS = {
+  weddings: { from:'malik', season:0, day:20,
+    text:'Wedding season on the island. Folks pay silly money for flowers the next week or so. Just saying.' },
+  basil:    { from:'nico', season:1, day:1,
+    text:'BASIL SZN. official notice. anything green and fragrant sells hot all summer. bring me everything' },
+  lny:      { from:'mei_lin', season:3, day:20,
+    text:'Lunar New Year soon. Flowers and anything beautiful sell very well right now — on Mott Street especially.' },
 };
 
 /* ---------------- Phone message pools ---------------- */

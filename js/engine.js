@@ -125,7 +125,7 @@
     'X': '#7fae6d', 'N': '#7fae6d', 'o': '#7fae6d',
     'A': '#6e5741', 'C': '#6e5741', 'B': '#6e5741', 'M': '#6e5741', 'G': '#88a89b',
     'S': '#6e5741', 'R': '#6e5741', 'L': '#88a89b', 'H': '#6e5741', 'E': '#b09a7d',
-    'c': '#7fae6d', 'i': '#7fae6d', 'k': '#7fae6d',
+    'c': '#7fae6d', 'i': '#7fae6d', 'k': '#7fae6d', '_': '#b3aa9c', 'D': '#b3aa9c', 'l': '#b3aa9c',
     'K': '#d8cfc0', 'b': '#d8cfc0', 't': '#d8cfc0', 'W': '#d8cfc0', '=': '#d8cfc0',
     'O': '#d8cfc0', 'd': '#d8cfc0', 'U': '#d8cfc0', 'q': '#d8cfc0',
   };
@@ -133,7 +133,7 @@
   const INTERIOR_FLOOR = '#e6d9bf';
   // exterior door accent per building
   const DOOR_ACCENT = { A:'#8a5a3b', C:'#5c8a6f', B:'#b07a2a', M:'#4a6fa5', G:'#88a89b',
-                        S:'#7d5ba6', R:'#8a3b4a', L:'#5b8aa6', H:'#c9553e' };
+                        S:'#7d5ba6', R:'#8a3b4a', L:'#5b8aa6', H:'#c9553e', D:'#b0653a' };
 
   /* ---------------- render ---------------- */
   E.render = function (state) {
@@ -201,6 +201,7 @@
           case 'T': A.tree(ctx, sx, sy, TILE, x * 31 + y * 17); break;
           case 'c': A.cherryTree(ctx, sx, sy, TILE, x * 31 + y * 17); break;
           case 'i': A.lighthouse(ctx, sx, sy, TILE); break;
+          case 'l': A.lantern(ctx, sx, sy, TILE, state.animT); break;
           case 'k': A.stall(ctx, sx, sy, TILE, !!(CS.game.currentFestival && CS.game.currentFestival()) ); break;
           case 'h': A.bench(ctx, sx, sy, TILE); break;
           case 'X': A.bin(ctx, sx, sy, TILE); break;
@@ -221,7 +222,11 @@
             break;
           }
         }
-        if ('ACBMGSRLH'.includes(ch) && isOut) A.doorOut(ctx, sx, sy, TILE, DOOR_ACCENT[ch]);
+        if ('ACBMGSRLHD'.includes(ch) && isOut) A.doorOut(ctx, sx, sy, TILE, DOOR_ACCENT[ch]);
+        if (ch === '_' && ((x * 13 + y * 7) % 9 === 0)) { // pavement seams
+          ctx.fillStyle = 'rgba(0,0,0,.05)';
+          ctx.fillRect(sx, sy, TILE, 1.5);
+        }
       }
     }
 
@@ -273,6 +278,7 @@
 
     // weather overlay
     if (isOut && state.weather.today === 'rain') drawRain(state.animT);
+    if (isOut && state.weather.today === 'snow') drawSnow(state.animT);
     if (isOut && state.weather.today === 'cloudy') {
       ctx.fillStyle = 'rgba(90,100,115,.10)'; ctx.fillRect(0, 0, E.viewW, E.viewH);
     }
@@ -286,6 +292,21 @@
       ctx.fillRect(0, 0, E.viewW, E.viewH);
     }
   };
+
+  let snowFlakes = null;
+  function drawSnow(t) {
+    if (!snowFlakes) {
+      snowFlakes = [];
+      for (let i = 0; i < 70; i++) snowFlakes.push([Math.random(), Math.random(), .4 + Math.random(), Math.random() * 6]);
+    }
+    ctx.fillStyle = 'rgba(245,248,252,.85)';
+    for (const f of snowFlakes) {
+      const x = ((f[0] * E.viewW) + Math.sin(t / 900 + f[3]) * 24) % E.viewW;
+      const y = ((f[1] * E.viewH) + t * 0.035 * f[2]) % E.viewH;
+      ctx.beginPath(); ctx.arc((x + E.viewW) % E.viewW, y, 1.2 + f[2], 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(210,225,240,.10)'; ctx.fillRect(0, 0, E.viewW, E.viewH);
+  }
 
   let rainDrops = null;
   function drawRain(t) {

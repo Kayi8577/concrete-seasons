@@ -28,6 +28,10 @@ CS.CROPS = {
   basil:      { name:'Basil',      days:5, sell:34, seedCost:20, regrow:2, season:1 },
   cucumber:   { name:'Cucumber',   days:6, sell:36, seedCost:22, regrow:4, season:1 },
   sunflower:  { name:'Sunflower',  days:8, sell:52, seedCost:30, regrow:0, season:1 },
+  kale:       { name:'Kale',       days:5, sell:30, seedCost:14, regrow:2, season:2 },
+  carrot:     { name:'Carrot',     days:6, sell:34, seedCost:16, regrow:0, season:2 },
+  squash:     { name:'Squash',     days:9, sell:62, seedCost:36, regrow:4, season:2 },
+  chrysanthemum: { name:'Chrysanthemum', days:7, sell:44, seedCost:22, regrow:0, season:2 },
 };
 
 CS.ITEMS = {
@@ -47,6 +51,15 @@ CS.ITEMS = {
   basil:      { name:'Basil',     type:'crop', sell:34, energy:5,  desc:'Half of Queens wants this.' },
   cucumber:   { name:'Cucumber',  type:'crop', sell:36, energy:10, desc:'Crisp. Hydrating. Smug.' },
   sunflower:  { name:'Sunflower', type:'crop', sell:52, energy:0,  desc:'Instant good mood, bouquet-sized.' },
+  kale_seed:      { name:'Kale Seeds',      type:'seed', crop:'kale',      desc:'Thrives when everything else quits. 5 days.' },
+  carrot_seed:    { name:'Carrot Seeds',    type:'seed', crop:'carrot',    desc:'Worth the wait underground. 6 days.' },
+  squash_seed:    { name:'Squash Seeds',    type:'seed', crop:'squash',    desc:'Autumn royalty. 9 days.' },
+  chrysanthemum_seed: { name:'Chrysanthemum Bulbs', type:'seed', crop:'chrysanthemum', desc:'Fall\'s answer to the tulip. 7 days.' },
+  kale:       { name:'Kale',      type:'crop', sell:30, energy:10, desc:'Sturdy, honest, a little smug about frost.' },
+  carrot:     { name:'Carrot',    type:'crop', sell:34, energy:10, desc:'Pulled from the dark, bright as anything.' },
+  squash:     { name:'Squash',    type:'crop', sell:62, energy:18, desc:'Heavy enough to count as exercise.' },
+  chrysanthemum: { name:'Chrysanthemum', type:'crop', sell:44, energy:0, desc:'Late bloomer. Aren\'t we all.' },
+  tea:        { name:'Oolong Tea', type:'food', energy:20, desc:'Mrs. Woo\'s good pot. Chinatown in a cup.' },
   bread:      { name:'Sesame Roll',type:'food', energy:25, desc:'Moonrise Bakery. Still warm.' },
   coffee:     { name:'Coffee',     type:'food', energy:18, desc:'Juniper Café pour-over.' },
   pet_food:   { name:'Pet Food',   type:'misc', desc:'For a hungry roommate.' },
@@ -79,6 +92,10 @@ CS.SHOP_MARKET = [
   { item:'basil_seed',      price:20, season:1 },
   { item:'cucumber_seed',   price:22, season:1 },
   { item:'sunflower_seed',  price:30, season:1 },
+  { item:'kale_seed',       price:14, season:2 },
+  { item:'carrot_seed',     price:16, season:2 },
+  { item:'squash_seed',     price:36, season:2 },
+  { item:'chrysanthemum_seed', price:22, season:2 },
   { item:'pet_food',        price:10 },
   { item:'bread',           price:6 },
 ];
@@ -98,12 +115,21 @@ CS.RECIPES = {
   meal_pasta:   { needs:{ basil:2, tomato:1 },     teacher:'nico' },
 };
 
-/* Festivals */
+/* Festivals — optional `attendees` restricts who shows up; `where` is the map it happens on */
 CS.FESTIVALS = {
   cherry: { name:'Cherry Blossom Picnic', season:0, day:15, start:600, end:960,
             blurb:'South Point lawn, blankets, everyone you know.' },
   night_market: { name:'Night Market', season:1, day:8, start:1080, end:1440,
             blurb:'Main Street stalls after dark. Sell what you grew — prices run hot.' },
+  harbor_lights: { name:'Harbor Lights', season:1, day:24, start:1140, end:1440,
+            blurb:'Fireworks over the East River. Bring someone, or just bring yourself.' },
+  street_food: { name:'Street Food Festival', season:2, day:12, start:600, end:1080,
+            blurb:'Main Street smells incredible. Stall prices run hot all day.' },
+  holiday_market: { name:'Holiday Market', season:3, day:12, start:960, end:1380,
+            blurb:'String lights, hot drinks, and stalls on Main Street.' },
+  lunar_new_year: { name:'Lunar New Year', season:3, day:25, start:600, end:1380, where:'chinatown',
+            attendees:['mei_lin','maya','daniel','lena','sofia','mateo','avery','naomi'],
+            blurb:'Lion dances and lanterns on Mott Street. Take the tram in — flowers and pastries sell like crazy.' },
 };
 
 /* NPC↔NPC chemistry pairs: [a, b, compatibility 0..1] */
@@ -119,7 +145,7 @@ CS.NPC_PAIRS = [
           A/C/B/M/G door tiles (apartment/cafe/bakery/market/greenhouse)  E interior exit
           K kitchen  b bed  t table  W window  = shelf  O oven  d display  U counter  q aquarium spot
 */
-CS.WALKABLE = new Set(['.', '-', 's', 'g', 'P', 'A', 'C', 'B', 'M', 'G', 'E', 'S', 'R', 'L', 'H']);
+CS.WALKABLE = new Set(['.', '-', '_', 's', 'g', 'P', 'A', 'C', 'B', 'M', 'G', 'E', 'S', 'R', 'L', 'H', 'D']);
 
 function _grid(w, h, fill) {
   const g = [];
@@ -191,7 +217,63 @@ function buildOutdoor() {
   return g;
 }
 
+/* City hub maps: paved ground '_' instead of grass, buildings for walls.
+   'D' is the generic enterable-door tile; 'l' is a lantern post. */
+function buildAstoria() {
+  const W = 26, H = 16;
+  const g = _grid(W, H, '_');
+  _rect(g, 0, 0, W, 2, '#');
+  _rect(g, 0, H - 2, W, 2, '#');
+  for (let y = 0; y < H; y++) { g[y][0] = '#'; g[y][W - 1] = '#'; }
+  _rect(g, 6, 2, 12, 3, '#');   // Bellini's building
+  g[4][12] = 'D';
+  _rect(g, 2, 6, 3, 2, 'P');    // subway back home
+  [7, 17, 21].forEach(x => { g[6][x] = 'o'; });
+  [5, 19].forEach(x => { g[10][x] = 'o'; });
+  g[9][22] = 'h'; g[9][3] = 'h';
+  return g;
+}
+function buildChinatown() {
+  const W = 26, H = 16;
+  const g = _grid(W, H, '_');
+  _rect(g, 0, 0, W, 2, '#');
+  _rect(g, 0, H - 2, W, 2, '#');
+  for (let y = 0; y < H; y++) { g[y][0] = '#'; g[y][W - 1] = '#'; }
+  _rect(g, 4, 2, 9, 3, '#');    // teahouse block
+  g[4][8] = 'D';
+  _rect(g, 16, 2, 8, 3, '#');   // flavor storefronts
+  _rect(g, 2, 6, 3, 2, 'P');    // subway back home
+  [6, 11, 15, 20].forEach(x => { g[6][x] = 'l'; });
+  [8, 13, 18].forEach(x => { g[10][x] = 'l'; });
+  g[8][11] = 'k'; g[8][16] = 'k'; // festival stalls
+  g[11][21] = 'h';
+  return g;
+}
+
 CS.MAPS = {
+  astoria: {
+    name: 'Astoria — Ditmars', outdoor: true, city: true,
+    grid: buildAstoria(),
+    labels: [
+      { x:8,  y:3.4, text:"Bellini's" },
+      { x:2,  y:5,   text:'Subway' },
+      { x:17, y:9,   text:'Ditmars Blvd' },
+    ],
+    doors: { D:'bellinis' },
+    doorSpawns: { D:[12,5] },
+  },
+  chinatown: {
+    name: 'Chinatown — Mott St', outdoor: true, city: true,
+    grid: buildChinatown(),
+    labels: [
+      { x:5,  y:3.4, text:'Jade Pavilion Tea' },
+      { x:2,  y:5,   text:'Subway' },
+      { x:16, y:3.4, text:'Golden Bowl · herbs · gifts' },
+      { x:12, y:12.5, text:'Mott Street' },
+    ],
+    doors: { D:'teahouse' },
+    doorSpawns: { D:[8,5] },
+  },
   outdoor: {
     name: 'Harbor Point',
     outdoor: true,
@@ -334,10 +416,43 @@ CS.MAPS = {
     ]),
     labels: [],
   },
+  bellinis: {
+    name: "Bellini's", outdoor: false, exitTo: 'astoria', exitKey: 'D',
+    grid: _fromAscii([
+      '##############',
+      '#OO.UU.......#',
+      '#............#',
+      '#.tt..tt..tt.#',
+      '#............#',
+      '#.tt..tt..tt.#',
+      '#............#',
+      '######E#######',
+    ]),
+    labels: [],
+  },
+  teahouse: {
+    name: 'Jade Pavilion Tea', outdoor: false, exitTo: 'chinatown', exitKey: 'D',
+    grid: _fromAscii([
+      '##########',
+      '#UU..=...#',
+      '#........#',
+      '#.tt.tt..#',
+      '#........#',
+      '####E#####',
+    ]),
+    labels: [],
+  },
 };
 // interior spawn points (stepping through an outdoor door lands here)
 CS.INTERIOR_SPAWNS = { apartment:[5,6], cafe:[6,6], bakery:[4,5], market:[5,5], greenhouse:[4,4],
-                       thrift:[5,5], bar:[6,5], labs:[5,4], harbor_house:[6,5] };
+                       thrift:[5,5], bar:[6,5], labs:[5,4], harbor_house:[6,5],
+                       bellinis:[6,6], teahouse:[4,4] };
+
+/* Tram/subway destinations. `unlockFlag` is set by story/text triggers. */
+CS.TRAVEL = {
+  astoria:   { name:"Astoria — Bellini's", cost:3, unlockFlag:'travelAstoria',  spawn:[5,7] },
+  chinatown: { name:'Chinatown — Mott St', cost:3, unlockFlag:'travelChinatown', spawn:[5,7] },
+};
 
 /* ---------------- Named spots for NPC schedules ---------------- */
 CS.SPOTS = {
@@ -376,6 +491,13 @@ CS.SPOTS = {
   lab_c:           { scene:'labs', x:9, y:2 },
   hh_a:            { scene:'harbor_house', x:3, y:2 },
   hh_b:            { scene:'harbor_house', x:9, y:3 },
+  bellinis_host:   { scene:'bellinis', x:6, y:2 },
+  bellinis_table:  { scene:'bellinis', x:9, y:4 },
+  ct_street_a:     { scene:'chinatown', x:9,  y:7 },
+  ct_street_b:     { scene:'chinatown', x:14, y:9 },
+  ct_street_c:     { scene:'chinatown', x:19, y:7 },
+  ct_stall:        { scene:'chinatown', x:12, y:8 },
+  tea_table:       { scene:'teahouse', x:5, y:3 },
 };
 
 /* ---------------- NPCs ---------------- */
@@ -422,6 +544,16 @@ CS.NPCS = {
     name:'Joan', color:'#8a7361', gender:'F', rom:[],
     look:{ skin:'#f6d7b8', hair:'#8a8a8a', style:'short', outfit:'#8a7361' },
     bio:'Juniper Café barista.', decorative:true,
+  },
+  rosa: {
+    name:'Nonna Rosa', color:'#7a4a3a', gender:'F', rom:[],
+    look:{ skin:'#e0aa78', hair:'#c9c4bc', style:'bun', outfit:'#7a4a3a' },
+    bio:"Nico's grandmother. Bellini's true head of state.", decorative:true,
+  },
+  mrs_woo: {
+    name:'Mrs. Woo', color:'#5f6e4e', gender:'F', rom:[],
+    look:{ skin:'#f0c795', hair:'#8a8a8a', style:'bun', outfit:'#5f6e4e' },
+    bio:'Runs the Jade Pavilion tea shop on Mott Street.', decorative:true,
   },
 };
 
@@ -512,7 +644,7 @@ CS.SCHEDULES = {
         { until:395,  at:null, act:'up early for the restaurant' },
         { until:450,  at:'bakery_front', act:'picking up bread for Bellini\'s' },
         { until:480,  at:'tram', act:'hauling bread to Queens' },
-        { until:1260, at:null, act:'running Bellini\'s in Astoria' },
+        { until:1260, at:'bellinis_host', act:'running Bellini\'s in Astoria' },
         fri ? { until:1400, at:'cafe_table_b', act:'Friday night decompress' }
             : { until:9999, at:null, act:'closing up, family dinner' },
         { until:9999, at:null, act:'late night at home' },
@@ -523,7 +655,7 @@ CS.SCHEDULES = {
         { until:600,  at:null, act:'rare slow morning' },
         { until:720,  at:'market_aisle', act:'arguing amiably with the market guy' },
         { until:840,  at:'waterfront_b', act:'calls with his cousins' },
-        { until:9999, at:null, act:'dinner rush at Bellini\'s' },
+        { until:9999, at:'bellinis_host', act:'dinner rush at Bellini\'s' },
       ];
     }
     return [
@@ -791,8 +923,13 @@ CS.PET_TYPES = {
 CS.CAT_SPOTS = [ {x:9,y:1,why:'in the window, judging pigeons'}, {x:2,y:3,why:'on your bed, obviously'},
                  {x:6,y:3,why:'on the table, where cats are not allowed'}, {x:8,y:5,why:'in the pet bed you bought (a miracle)'} ];
 
-/* ---------------- Weather ---------------- */
-CS.WEATHER_TABLE = { 0:[['sunny',.55],['cloudy',.25],['rain',.20]] }; // spring; other seasons later
+/* ---------------- Weather (per season) ---------------- */
+CS.WEATHER_TABLE = {
+  0: [['sunny', .50], ['cloudy', .25], ['rain', .25]],   // spring
+  1: [['sunny', .65], ['cloudy', .20], ['rain', .15]],   // summer
+  2: [['sunny', .45], ['cloudy', .30], ['rain', .25]],   // fall
+  3: [['sunny', .35], ['cloudy', .30], ['snow', .35]],   // winter
+};
 
 /* ---------------- Energy costs ---------------- */
 CS.COSTS = { till:4, plant:1, water:1, harvest:2 };

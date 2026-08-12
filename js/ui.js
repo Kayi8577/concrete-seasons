@@ -329,16 +329,19 @@
     }
     for (const k of sellables) {
       const def = CS.ITEMS[k];
-      const unit = Math.round(def.sell * mult);
+      // seasonal demand quietly folds into the listed price — the price is the tell
+      const em = mult * (G().priceMult ? G().priceMult(k) : 1);
+      const unit = Math.round(def.sell * em);
+      const hot = unit > Math.round(def.sell * mult);
       const el = document.createElement('div');
       el.className = 'shop-row';
       el.appendChild(CS.art.iconCanvas(k, 30));
       el.insertAdjacentHTML('beforeend',
-        `<div class="info"><div class="nm">${def.name} ×${S.inv[k]}</div><div class="ds">$${unit} each${mult > 1 ? ' (festival!)' : ''}</div></div>`);
+        `<div class="info"><div class="nm">${def.name} ×${S.inv[k]}</div><div class="ds">$${unit} each${mult > 1 ? ' (festival!)' : hot ? ' (in demand)' : ''}</div></div>`);
       const b = document.createElement('button');
       b.className = 'buy sell';
       b.textContent = `Sell all ($${unit * S.inv[k]})`;
-      b.onclick = () => { G().sellItem(k, S.inv[k], mult); U.openSell(mult, title); };
+      b.onclick = () => { G().sellItem(k, S.inv[k], em); U.openSell(mult, title); };
       el.appendChild(b);
       list.appendChild(el);
     }

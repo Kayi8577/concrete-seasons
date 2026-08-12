@@ -57,8 +57,15 @@ Everything from the v0.1 slice, plus:
 - Save migration: v1 saves load cleanly onto the new map (`saveVersion` 2)
 - New cheats: `SETSEASON, NEXTFESTIVAL, NPCDATE A B, NPCBREAKUP A B, ATTRACT <name>, TEXTME`
 
+### v0.3 (Phase 2.5) additions
+
+- **The city opens up**: tram/subway travel to Astoria (Bellini's — Nico's actual restaurant, with Nonna Rosa holding court) and Chinatown (Mrs. Woo's Jade Pavilion tea shop). Destinations unlock through friendship — Nico and Mei-Lin invite you when you're close enough; Chinatown also opens for everyone in late Winter
+- **Dates & hangouts**: take a friend (60+ friendship) or partner to Juniper, The Anchor, the waterfront, or Lighthouse Park — they relocate and wait for you, with venue-specific date dialogue
+- **Four more festivals**: Harbor Lights fireworks (Summer 24 — bring a date to the waterfront for the scene of the year), Street Food Festival (Fall 12), Holiday Market (Winter 12), and Lunar New Year on Mott Street (Winter 25, lion dances and lanterns)
+- **Hidden seasonal economy**: flowers spike during wedding season and Lunar New Year, basil/tomato run hot all summer — never explained, only visible in the shipping-bin prices ("in demand") and the occasional tip from a friend who'd know
+- **Fall crops** (kale, carrot, squash, chrysanthemum) and **winter snow** with drifting-flake weather, a First Snow journal moment, and per-season weather tables
+
 ## Roadmap
 
-- **Phase 2.5**: outer-NYC hubs via the tram, dates/hangouts, more pets & pet events, more festivals (Pride, Harbor Lights, Lunar New Year), hidden-economy price waves
-- **Phase 3**: Years 2–5 arcs — careers, layoffs, relocations, marriage, children, redevelopment, business turnover, aging
+- **Phase 3**: Years 2–5 arcs — careers, layoffs, relocations, marriage, children, redevelopment, business turnover, aging; more pets & pet events; Pride and the remaining festival calendar
 - See the design document for the complete five-year vision.

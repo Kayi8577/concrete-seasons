@@ -78,6 +78,22 @@
     ctx.closePath(); ctx.fill();
   };
 
+  A.lantern = function (ctx, sx, sy, T, t) {
+    const cx = sx + T / 2;
+    sh(ctx, cx, sy + T - 3, T * .2, 2.5);
+    ctx.fillStyle = '#4a4642';
+    ctx.fillRect(cx - 1.5, sy + T * .3, 3, T * .66);
+    const sway = Math.sin((t || 0) / 1200 + sx) * 1.2;
+    // red lantern
+    ctx.fillStyle = P.red;
+    ctx.beginPath(); ctx.ellipse(cx + sway, sy + T * .26, 5.5, 6.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,220,150,.55)';
+    ctx.beginPath(); ctx.ellipse(cx + sway - 1.5, sy + T * .24, 2, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = P.yellow;
+    ctx.fillRect(cx + sway - 2, sy + T * .12, 4, 3);
+    ctx.fillRect(cx + sway - 1.5, sy + T * .43, 3, 4);
+  };
+
   A.stall = function (ctx, sx, sy, T, active) {
     sh(ctx, sx + T / 2, sy + T - 3, T * .4, 3);
     // table
@@ -371,6 +387,62 @@
         circle(ctx, cx, gy - 18, 3.6, '#6b4a2a');
         break;
       }
+      case 'kale':
+        circle(ctx, cx, gy - 5, 8.5, '#3f5a33');
+        circle(ctx, cx - 5, gy - 8, 5, '#4f7d3a');
+        circle(ctx, cx + 5, gy - 8, 5, '#4f7d3a');
+        circle(ctx, cx, gy - 10, 4.5, P.leaf);
+        ctx.strokeStyle = 'rgba(255,255,255,.15)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(cx - 4, gy - 8, 3, 0, Math.PI); ctx.stroke();
+        break;
+      case 'carrot': {
+        ctx.strokeStyle = P.leaf; ctx.lineWidth = 1.6;
+        for (const dx of [-3, 0, 3]) {
+          ctx.beginPath(); ctx.moveTo(cx + dx * .5, gy - 8); ctx.lineTo(cx + dx, gy - 15); ctx.stroke();
+        }
+        ctx.fillStyle = P.leafLight;
+        ctx.beginPath(); ctx.ellipse(cx, gy - 14, 5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+        // orange shoulder poking out of the soil
+        ctx.fillStyle = P.orange;
+        ctx.beginPath();
+        ctx.moveTo(cx - 4.5, gy - 7);
+        ctx.quadraticCurveTo(cx, gy - 10, cx + 4.5, gy - 7);
+        ctx.lineTo(cx + 3, gy - 1); ctx.lineTo(cx - 3, gy - 1);
+        ctx.closePath(); ctx.fill();
+        circle(ctx, cx - 1.5, gy - 6, 1, 'rgba(255,255,255,.35)');
+        break;
+      }
+      case 'squash':
+        // vine
+        ctx.strokeStyle = P.leafDark; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(cx - 8, gy - 2); ctx.quadraticCurveTo(cx, gy - 10, cx + 7, gy - 6); ctx.stroke();
+        ctx.fillStyle = P.leaf;
+        ctx.beginPath(); ctx.ellipse(cx - 6, gy - 7, 4.5, 2.6, -.4, 0, Math.PI * 2); ctx.fill();
+        // gourd
+        ctx.fillStyle = '#c97a2e';
+        ctx.beginPath(); ctx.ellipse(cx + 3, gy - 3, 7, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,.15)'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(cx + 3, gy - 8); ctx.quadraticCurveTo(cx + 1, gy - 3, cx + 3, gy + 2); ctx.stroke();
+        ctx.fillStyle = P.leafDark;
+        ctx.fillRect(cx + 1.5, gy - 10, 3, 3);
+        circle(ctx, cx, gy - 5, 1.4, 'rgba(255,255,255,.3)');
+        break;
+      case 'chrysanthemum': {
+        ctx.strokeStyle = P.leaf; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(cx, gy); ctx.lineTo(cx, gy - 11); ctx.stroke();
+        ctx.fillStyle = P.leaf;
+        ctx.beginPath(); ctx.ellipse(cx - 4, gy - 5, 4.5, 2, -.6, 0, Math.PI * 2); ctx.fill();
+        for (let i = 0; i < 10; i++) {
+          const a = i / 10 * Math.PI * 2;
+          ctx.fillStyle = '#e0a832';
+          ctx.beginPath();
+          ctx.ellipse(cx + Math.cos(a) * 4.5, gy - 14 + Math.sin(a) * 4.5, 2.8, 1.4, a, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        circle(ctx, cx, gy - 14, 2.6, '#c98a1e');
+        circle(ctx, cx - 1, gy - 15, 1, 'rgba(255,255,255,.4)');
+        break;
+      }
     }
     // ready glint
     ctx.fillStyle = 'rgba(255,250,210,.95)';
@@ -542,7 +614,8 @@
     if (item && item.type === 'seed') {
       // seed packet with crop color band
       const bandCols = { lettuce: P.leafLight, radish: P.berry, strawberry: P.red, tulip: P.pink,
-                         tomato: P.red, basil: P.leaf, cucumber: '#4f7d3a', sunflower: P.yellow };
+                         tomato: P.red, basil: P.leaf, cucumber: '#4f7d3a', sunflower: P.yellow,
+                         kale: '#3f5a33', carrot: P.orange, squash: '#c97a2e', chrysanthemum: '#e0a832' };
       rr(ctx, S * .2, S * .12, S * .6, S * .74, S * .08, P.cream);
       rr(ctx, S * .2, S * .12, S * .6, S * .2, S * .08, bandCols[item.crop] || P.leaf);
       ctx.strokeStyle = P.paper; ctx.lineWidth = 1;
@@ -558,7 +631,15 @@
     switch (id) {
       case 'lettuce': case 'radish': case 'strawberry': case 'tulip':
       case 'tomato': case 'basil': case 'cucumber': case 'sunflower':
+      case 'kale': case 'carrot': case 'squash': case 'chrysanthemum':
         A.crop(ctx, id, 1, 0, S * .05, S);
+        break;
+      case 'tea':
+        rr(ctx, S * .28, S * .4, S * .38, S * .32, S * .06, '#7a8a6e');
+        ctx.strokeStyle = '#7a8a6e'; ctx.lineWidth = S * .05;
+        ctx.beginPath(); ctx.arc(S * .68, S * .55, S * .1, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(150,140,120,.6)'; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.moveTo(S * .44, S * .34); ctx.quadraticCurveTo(S * .5, S * .26, S * .44, S * .18); ctx.stroke();
         break;
       case 'meal_salad': case 'meal_roast': case 'meal_galette': case 'meal_pasta': {
         // plate + food mound
@@ -707,6 +788,7 @@
 
   /* ================= weather glyphs (inline SVG for HUD) ================= */
   A.weatherSVG = function (w) {
+    if (w === 'snow') return `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="5.6" cy="5.4" r="3" fill="#aeb8c0"/><circle cx="9.8" cy="4.8" r="3.4" fill="#c2ccd4"/><rect x="3.6" y="5" width="9" height="3" rx="1.5" fill="#c2ccd4"/><g fill="#e8f0f8"><circle cx="5" cy="11" r="1.1"/><circle cx="8.4" cy="12.6" r="1.1"/><circle cx="11.6" cy="10.8" r="1.1"/></g></svg>`;
     if (w === 'sunny') return `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="3.4" fill="#e8a53c"/><g stroke="#e8a53c" stroke-width="1.4" stroke-linecap="round"><line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/><line x1="3.2" y1="3.2" x2="4.6" y2="4.6"/><line x1="11.4" y1="11.4" x2="12.8" y2="12.8"/><line x1="3.2" y1="12.8" x2="4.6" y2="11.4"/><line x1="11.4" y1="4.6" x2="12.8" y2="3.2"/></g></svg>`;
     if (w === 'cloudy') return `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="6" cy="9" r="3.4" fill="#9aa7b0"/><circle cx="10" cy="8" r="4" fill="#b3bec6"/><rect x="4" y="9" width="9" height="3.4" rx="1.7" fill="#b3bec6"/></svg>`;
     return `<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="6" cy="6" r="3" fill="#8b98a3"/><circle cx="10" cy="5.4" r="3.4" fill="#a2aeb8"/><rect x="4" y="5.6" width="9" height="3" rx="1.5" fill="#a2aeb8"/><g stroke="#5b87a8" stroke-width="1.4" stroke-linecap="round"><line x1="5.5" y1="10.5" x2="4.6" y2="13"/><line x1="8.5" y1="10.5" x2="7.6" y2="13"/><line x1="11.5" y1="10.5" x2="10.6" y2="13"/></g></svg>`;
