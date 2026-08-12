@@ -375,12 +375,25 @@
   };
 
   /* ---- journal ---- */
-  $('btn-journal').onclick = () => { renderJournal('residents'); openPanel('panel-journal'); };
-  document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+  $('btn-journal').onclick = () => {
+    // Then & Now earns its place after five years
+    const S = G().state();
+    const row = document.querySelector('#panel-journal .tab-row');
+    if (S.flags.thenNow && !row.querySelector('[data-tab="thennow"]')) {
+      const b = document.createElement('button');
+      b.className = 'tab'; b.dataset.tab = 'thennow'; b.textContent = 'Then & Now';
+      b.onclick = tabClick;
+      row.appendChild(b);
+    }
+    renderJournal('residents');
+    openPanel('panel-journal');
+  };
+  function tabClick() {
     document.querySelectorAll('.tab').forEach(x => x.classList.remove('selected'));
-    t.classList.add('selected');
-    renderJournal(t.dataset.tab);
-  });
+    this.classList.add('selected');
+    renderJournal(this.dataset.tab);
+  }
+  document.querySelectorAll('.tab').forEach(t => t.onclick = tabClick);
 
   function renderJournal(tab) {
     const S = G().state();
@@ -419,6 +432,35 @@
       for (const d of [...S.discoveries].reverse()) {
         body.insertAdjacentHTML('beforeend', `<div class="disc-item">${d.text}<div class="disc-date">${d.when}</div></div>`);
       }
+    }
+    if (tab === 'thennow') {
+      const pairs = [];
+      pairs.push(['A neglected plot behind a sagging fence. Malik watering it alone.',
+        `Harbor Point Community Farm — $${S.totalEarned} earned, ${Object.values(S.shipped).reduce((a, b) => a + b, 0)} harvests shipped. People call it a landmark now.`]);
+      if (S.flags.juniperClosed) pairs.push(['Juniper Café: plants in tomato tins, Joan behind the counter.',
+        'The papered-over windows, and the THANK YOU JOAN sign in six handwritings. Glasshouse keeps a photo of the old counter by its register.']);
+      else if (S.flags.glasshouseClosed) pairs.push(["The 'For Lease' corner unit everyone had stopped seeing.",
+        "Glasshouse opened, burned bright for two years, closed. Claire's note is still taped to the glass."]);
+      else if (S.flags.glasshouseOpen) pairs.push(["One café. One coffee order. Simple times.",
+        'Two cafés, one truce, and a neighborhood that learned it could hold both.']);
+      if (S.flags.newWaterfront) pairs.push(['South Point: a lawn, some benches, room to breathe.',
+        S.flags.redevAttended
+          ? 'The new waterfront — with the farm protected and the benches Priya fought for. The neighborhood showed up, and it shows.'
+          : 'The new waterfront — wider, taller, busier. The picnic moved fifty feet north and carried on.']);
+      for (const id of Object.keys(S.npcs)) {
+        if (S.npcs[id].arc === 'gone') pairs.push([`${CS.NPCS[id].name}, a fixture of the island's daily rhythm.`,
+          `${CS.NPCS[id].name.split(' ')[0]} lives in ${S.npcs[id].awayCity || 'another city'} now — and still comes home for the Holiday Market.`]);
+      }
+      if (S.spouse) pairs.push(['A stranger with boxes and a lease, learning which tram car is quietest.',
+        `Married to ${CS.NPCS[S.spouse].name}, under the lighthouse${S.family && S.family.name ? `, raising ${S.family.name}` : ''}. The studio became a home.`]);
+      if (S.pet) pairs.push(['An apartment that echoed a little.',
+        `${S.pet.name} runs the place now. Affection: ${S.pet.affection}. Worth every can of pet food.`]);
+      body.innerHTML = pairs.map(([then, now]) => `
+        <div class="res-card">
+          <div class="res-stage">THEN</div><div class="res-note">${then}</div>
+          <div class="res-stage" style="margin-top:8px">NOW</div><div class="res-note">${now}</div>
+        </div>`).join('');
+      return;
     }
     if (tab === 'farm') {
       const shippedRows = Object.keys(S.shipped).map(k => `<div class="disc-item">${CS.ITEMS[k].name} — shipped ×${S.shipped[k]}</div>`).join('');
@@ -601,9 +643,17 @@
       look: { ...cc.look },
     };
     const state = CS.game.newState(player, cc.slot);
-    CS.game.saveToSlotRaw && CS.game.saveToSlotRaw(state);
+    // New Game+: a finished life leaves its recipes behind
+    try {
+      const ng = JSON.parse(localStorage.getItem('concreteSeasons_ngplus') || 'null');
+      if (ng && ng.recipes) {
+        state.recipes = [...new Set([...(state.recipes || []), ...ng.recipes])];
+        state.ngplus = true;
+      }
+    } catch (e) {}
     showScreen('screen-game');
     CS.game.start(state);
+    if (state.ngplus) U.toast('New Game+ — the recipes you learned in another life came with you');
     CS.game.saveToSlot(cc.slot);
   };
 })();

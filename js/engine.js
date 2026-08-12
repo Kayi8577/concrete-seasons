@@ -255,8 +255,17 @@
       }
     }
 
-    // pet (drawn under characters)
+    // pet & family (drawn under characters)
     CS.game.drawPet(ctx, scene, E.camX, E.camY, TILE, state.animT);
+    CS.game.drawFamily(ctx, scene, E.camX, E.camY, TILE, state.animT);
+
+    // Pride bunting across Main Street
+    const fest = CS.game.currentFestival && CS.game.currentFestival();
+    if (fest && fest.key === 'pride' && scene === 'outdoor') {
+      for (let bx = 2; bx <= 52; bx += 4) {
+        CS.art.bunting(ctx, bx * TILE - E.camX, 15 * TILE - E.camY, TILE, bx);
+      }
+    }
 
     // NPCs
     for (const id of Object.keys(state.npcRT)) {

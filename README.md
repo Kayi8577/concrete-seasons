@@ -78,7 +78,17 @@ Everything from the v0.1 slice, plus:
 - **Marriage**: seeing → "make it official" (exclusive) → propose with a ring from the market → a wedding under the lighthouse with everyone you know → married life where your spouse keeps their career but wakes up and comes home to your apartment, with its own everyday-intimacy dialogue
 - New cheats: `SETYEAR n`, `ARCS` (arc progress readout)
 
+### v0.5 (Phase 4) additions — the world keeps its own calendar
+
+- **NPC weddings**: couples formed by the simulation get engaged after a couple of seasons together, you get the invitation text, everyone gathers under the lighthouse — attend and it enters your journal; miss it and there's cake waiting at the bakery with your name on it. Married NPC couples sometimes start families of their own
+- **Children**: married players can talk about the future — try for a baby or adopt. Forty days later a very small resident arrives (you name them); a year after that they're a toddler wobbling around the studio. Spouse dialogue grows baby/toddler lines
+- **Ava & Nia**: the island's kids, who actually age — Ava (16) does college apps in Year 2, leaves in Year 3, comes home for Holiday Markets; Nia (12) grows into Ava's old Harbor House shift by Year 5
+- **Harbor Pride** (Summer 15): bunting across Main Street, Avery on the megaphone
+- **Pet moments**: cats claim laundry, dogs deliver soggy waterfront treasures (actual items), fish patrol their small nation
+- **Then & Now** (Year 5): a journal wall of before/after pairs built from *your* world's history — which café survived, what the waterfront became, who left and who came home
+- **New Game+** (Year 6): the recipes you learned carry into new saves; everything else is a new timeline
+
 ## Roadmap
 
-- **Next**: children & family arcs, NPC marriages/weddings you attend, Ava & Nia (the aging kids), Year 6+ evergreen simulation, New Game+, Then & Now journal, more pets & pet events, Pride and the remaining festivals
+- Remaining from the master design: player housing upgrades & cohabitation options, more player jobs, hydroponics/late-game farm automation, remaining festivals, sound & music, more of the condensed-NYC hubs, difficulty modes.
 - See the design document for the complete five-year vision.

@@ -78,6 +78,53 @@
     ctx.closePath(); ctx.fill();
   };
 
+  A.crib = function (ctx, sx, sy, T, t) {
+    sh(ctx, sx + T / 2, sy + T - 3, T * .36, 3);
+    rr(ctx, sx + 3, sy + 8, T - 6, T - 14, 3, '#c9ad85');
+    rr(ctx, sx + 5, sy + 10, T - 10, T - 18, 2, P.cream);
+    // rails
+    ctx.strokeStyle = '#a98a60'; ctx.lineWidth = 1.6;
+    for (let i = 1; i < 5; i++) {
+      ctx.beginPath(); ctx.moveTo(sx + 3 + i * (T - 6) / 5, sy + 8); ctx.lineTo(sx + 3 + i * (T - 6) / 5, sy + T - 6); ctx.stroke();
+    }
+    // the bundle, breathing
+    const br = Math.sin((t || 0) / 800) * .6;
+    circle(ctx, sx + T / 2, sy + T / 2 + 1, 5 + br, '#e8c4a8');
+    circle(ctx, sx + T / 2 - 1.5, sy + T / 2, .8, P.dark);
+    circle(ctx, sx + T / 2 + 1.5, sy + T / 2, .8, P.dark);
+    // mobile star
+    circle(ctx, sx + T - 8, sy + 6 + Math.sin((t || 0) / 1100) * 1.5, 2, P.yellow);
+  };
+
+  A.toddler = function (ctx, sx, sy, T, t) {
+    const cx = sx + T / 2, cy = sy + T / 2;
+    sh(ctx, cx, sy + T - 4, 6, 2.4);
+    const bob = Math.sin((t || 0) / 300) * 1;
+    rr(ctx, cx - 5, cy + 2 + bob, 10, 9, 4, '#d98e4a');
+    circle(ctx, cx, cy - 2 + bob, 5.5, '#e8c4a8');
+    ctx.fillStyle = P.dark;
+    ctx.beginPath(); ctx.arc(cx, cy - 6 + bob, 5.5, Math.PI * 1.1, Math.PI * 1.9); ctx.fill();
+    circle(ctx, cx - 2, cy - 2 + bob, .9, P.dark);
+    circle(ctx, cx + 2, cy - 2 + bob, .9, P.dark);
+  };
+
+  A.bunting = function (ctx, sx, sy, T, seed) {
+    const cols = ['#c9553e', '#d98e4a', '#e8c96b', '#729043', '#5b87a8', '#7d5ba6'];
+    ctx.strokeStyle = 'rgba(61,50,41,.5)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(sx - T, sy + 4);
+    ctx.quadraticCurveTo(sx + T, sy + 12, sx + T * 3, sy + 4);
+    ctx.stroke();
+    for (let i = 0; i < 6; i++) {
+      const fx = sx - T + (i + .5) * (T * 4 / 6);
+      const fy = sy + 5 + Math.sin((i / 6) * Math.PI) * 6;
+      ctx.fillStyle = cols[(i + (seed || 0)) % 6];
+      ctx.beginPath();
+      ctx.moveTo(fx - 4, fy); ctx.lineTo(fx + 4, fy); ctx.lineTo(fx, fy + 8);
+      ctx.closePath(); ctx.fill();
+    }
+  };
+
   A.barrier = function (ctx, sx, sy, T) {
     sh(ctx, sx + T / 2, sy + T - 4, T * .4, 3);
     ctx.fillStyle = '#c9a24b';

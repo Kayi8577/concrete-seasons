@@ -46,6 +46,8 @@
     S.arcs = S.arcs || {};                // arcId -> stages completed
     S.coffeeJuniper = S.coffeeJuniper || 0;
     S.coffeeGlasshouse = S.coffeeGlasshouse || 0;
+    S.coupleMeta = S.coupleMeta || {};    // 'a+b' -> {since, stage, weddingDay}
+    S.family = S.family || null;          // {stage, mode, due, name, arrivedDay}
     for (const id of Object.keys(CS.NPCS)) {
       S.npcs[id] = Object.assign(
         { met: false, fam: 0, friend: 0, talkedToday: false, attraction: 0, romance: null, giftedDay: -1 },
@@ -174,12 +176,74 @@
     if (S.flags.redevMeetingDay) S.flags.redevMeetingDay = false; // one-day window
     tickArcs();
 
-    // ---- wedding day ----
+    // ---- wedding day (only meaningful while someone is actually engaged) ----
     if (S.weddingDay !== undefined && S.weddingDay !== null) {
-      if (S.weddingDay < G.totalDay()) S.weddingDay = G.totalDay(); // the ceremony waits for you
-      if (S.weddingDay === G.totalDay()) {
-        CS.ui.toast('Today is your wedding day. Lighthouse Park, mid-morning.');
+      const engagedTo = Object.keys(S.npcs).find(n => S.npcs[n].romance === 'engaged');
+      if (!engagedTo) {
+        S.weddingDay = null; // stale — married already or called off
+      } else {
+        if (S.weddingDay < G.totalDay()) S.weddingDay = G.totalDay(); // the ceremony waits for you
+        if (S.weddingDay === G.totalDay()) {
+          CS.ui.toast('Today is your wedding day. Lighthouse Park, mid-morning.');
+        }
       }
+    }
+
+    // ---- an NPC wedding resolves at day's end whether or not you made it ----
+    if (S.npcWedding && S.npcWedding.day < G.totalDay()) {
+      const { a, b } = S.npcWedding;
+      const meta = S.coupleMeta[a + '+' + b];
+      if (meta) meta.stage = 'married';
+      const attended = S.flags['attended_' + a + b];
+      const teller = G.tierOf(a) >= G.tierOf(b) ? a : b;
+      if (S.npcs[teller].hasNumber) {
+        G.addMsg(teller, attended
+          ? 'still floating. thank you for being there yesterday. the photos are 90% people laughing'
+          : "married!! you were missed — grace saved you cake, it's at the bakery with your name on it");
+      }
+      if (!attended) { G.addItem('bread', 1); }
+      S.npcWedding = null;
+    }
+    if (S.npcWedding && S.npcWedding.day === G.totalDay()) {
+      CS.ui.toast(`${CS.NPCS[S.npcWedding.a].name.split(' ')[0]} & ${CS.NPCS[S.npcWedding.b].name.split(' ')[0]} marry today — Lighthouse Park, mid-morning`);
+    }
+
+    // ---- family: the wait, then the arrival ----
+    if (S.family && S.family.stage === 'expecting' && G.totalDay() >= S.family.due) {
+      S.family.stage = 'arriving'; // handled with a scene on wake, below
+    }
+    if (S.family && S.family.stage === 'baby' && G.totalDay() - S.family.arrivedDay >= 120) {
+      S.family.stage = 'toddler';
+      CS.ui.toast(`${S.family.name} is a toddler now — the studio has opinions about baby gates`);
+      discover('toddler_' + S.family.name, `${S.family.name} started walking. The cat${S.pet && S.pet.type === 'cat' ? ' (' + S.pet.name + ')' : ''} filed a formal complaint, then made peace.`);
+    }
+
+    // ---- pet moments ----
+    if (S.pet && Math.random() < .08) {
+      const pool = CS.PET_MOMENTS[S.pet.type];
+      if (S.pet.type === 'dog' && Math.random() < .3) {
+        const finds = ['old_poster', 'paperback', 'wool_scarf'];
+        const found = finds[Math.floor(Math.random() * finds.length)];
+        G.addItem(found, 1);
+        CS.ui.narrate(CS.PET_MOMENTS.dogFind.replace('{name}', S.pet.name) + CS.ITEMS[found].name + '.');
+      } else if (pool) {
+        CS.ui.narrate(pool[Math.floor(Math.random() * pool.length)].replace(/\{name\}/g, S.pet.name));
+      }
+      S.pet.affection += 2;
+    }
+
+    // ---- the long game: Then & Now at Year 5, New Game+ at Year 6 ----
+    if (S.time.year >= 5 && !S.flags.thenNow) {
+      S.flags.thenNow = true;
+      CS.ui.toast('Journal unlocked: Then & Now');
+      G.addMsg('hp', 'Five years of Harbor Point. The community board is collecting photos for a "Then & Now" wall. Yours are already on it — check your journal.');
+    }
+    if (S.time.year >= 6 && !S.flags.ngplusWritten) {
+      S.flags.ngplusWritten = true;
+      try {
+        localStorage.setItem('concreteSeasons_ngplus', JSON.stringify({ recipes: S.recipes }));
+      } catch (e) {}
+      CS.ui.toast('Year 6. Harbor Point keeps going — and new saves now start with your recipes (New Game+)');
     }
 
     // ---- phone: morning texts ----
@@ -266,11 +330,45 @@
         S.flags.pendingGossip = [a, b];
       }
     }
-    // rare breakups; history keeps momentum from instantly re-forming
+    // rare breakups — but only while still just dating
     S.couples = S.couples.filter(([a, b]) => {
-      if (Math.random() < 0.03) { S.pairMomentum[a + '+' + b] = 5; return false; }
+      const meta = S.coupleMeta[a + '+' + b];
+      const stage = meta ? meta.stage : 'dating';
+      if (stage === 'dating' && Math.random() < 0.03) {
+        S.pairMomentum[a + '+' + b] = 5;
+        delete S.coupleMeta[a + '+' + b];
+        return false;
+      }
       return true;
     });
+    // long-standing couples get engaged; weddings follow
+    for (const [a, b] of S.couples) {
+      const k = a + '+' + b;
+      const meta = S.coupleMeta[k] = S.coupleMeta[k] || { since: G.totalDay(), stage: 'dating' };
+      if (meta.stage === 'dating' && G.totalDay() - meta.since >= 60 && Math.random() < .25 && !S.npcWedding) {
+        meta.stage = 'engaged';
+        meta.weddingDay = G.totalDay() + 12;
+        S.npcWedding = { a, b, day: meta.weddingDay };
+        const closer = G.tierOf(a) >= G.tierOf(b) ? a : b;
+        if (S.npcs[closer].hasNumber && G.tierOf(closer) >= 2) {
+          G.addMsg(closer, `so. ${CS.NPCS[a].name.split(' ')[0]} and ${CS.NPCS[b].name.split(' ')[0]} news: WE'RE GETTING MARRIED. lighthouse park, twelve days, mid-morning. be there or be discussed`);
+        } else {
+          G.addMsg('hp', `Heard around the island: ${CS.NPCS[a].name.split(' ')[0]} and ${CS.NPCS[b].name.split(' ')[0]} are engaged. Lighthouse Park, twelve days from now.`);
+        }
+        discover('engaged_' + k, `${CS.NPCS[a].name} and ${CS.NPCS[b].name} got engaged. The island approves loudly.`);
+      }
+    }
+    // married NPC couples sometimes grow
+    if (S.time.day <= 7) { // once a year-ish window check happens on first Monday of spring
+      for (const [a, b] of S.couples) {
+        const meta = S.coupleMeta[a + '+' + b];
+        if (meta && meta.stage === 'married' && !meta.kid && S.time.seasonIndex === 0 && Math.random() < .15) {
+          meta.kid = true;
+          G.addMsg('hp', `${CS.NPCS[a].name.split(' ')[0]} and ${CS.NPCS[b].name.split(' ')[0]} are expecting. The Harbor House knitting circle has already mobilized.`);
+          discover('npckid_' + a + b, `${CS.NPCS[a].name} and ${CS.NPCS[b].name} are starting a family. The neighborhood's next generation keeps arriving.`);
+        }
+      }
+    }
   }
 
   function generateTexts() {
@@ -853,6 +951,7 @@
     street_food: ['stall_a', 'stall_b', 'mainstreet', 'mainstreet_b'],
     holiday_market: ['stall_a', 'stall_b', 'mainstreet', 'mainstreet_b'],
     lunar_new_year: ['ct_street_a', 'ct_street_b', 'ct_street_c', 'ct_stall'],
+    pride: ['mainstreet', 'mainstreet_b', 'stall_a', 'stall_b'],
   };
   const COUPLE_SPOTS = ['cafe_table_b', 'waterfront_b', 'bar_table']; // rotates by weekday
 
@@ -887,6 +986,17 @@
       const spots = ['lighthouse_park', 'lawn_a', 'lawn_d'];
       return { spot: CS.SPOTS[spots[Object.keys(CS.NPCS).indexOf(id) % spots.length]],
                act: r.romance === 'engaged' ? 'waiting for you under the lighthouse' : 'at your wedding' };
+    }
+    // an NPC wedding: the couple and their people gather the same way
+    if (S.npcWedding && S.npcWedding.day === G.totalDay()
+        && S.time.minutes >= 570 && S.time.minutes < 780 && !npc.decorative) {
+      const { a, b } = S.npcWedding;
+      if (id === a || id === b) return { spot: CS.SPOTS.lighthouse_park, act: 'getting married' };
+      if (G.tierOf(id) >= 1 && r.arc !== 'gone') {
+        const spots = ['lawn_a', 'lawn_d', 'lighthouse_park'];
+        return { spot: CS.SPOTS[spots[Object.keys(CS.NPCS).indexOf(id) % spots.length]],
+                 act: `at ${CS.NPCS[a].name.split(' ')[0]} & ${CS.NPCS[b].name.split(' ')[0]}'s wedding` };
+      }
     }
     // an active date with the player trumps everything else
     if (S.date && S.date.npc === id && S.time.minutes < S.date.until) {
@@ -1083,6 +1193,10 @@
       else if (r.friend >= 60) opts.push({ label: 'Ask to hang out', fn: () => askHangout(id, false) });
     }
     if (id === 'joan' && canWorkShift()) opts.push({ label: 'Help with the morning rush ($45)', fn: () => workShift() });
+    if (id === S.spouse && r.romance === 'married' && !S.family
+        && G.totalDay() - (r.romanceDay || 0) >= 30) {
+      opts.push({ label: 'Talk about the future', fn: () => familyTalk(id) });
+    }
     opts.push({ label: 'Never mind', fn: () => {} });
     const ROM_LABEL = { seeing: 'seeing each other', partner: 'together', engaged: 'engaged', married: 'married' };
     const status = ROM_LABEL[r.romance] || G.npcStatus(id).act;
@@ -1161,6 +1275,25 @@
     ]);
   }
 
+  function familyTalk(id) {
+    const first = CS.NPCS[id].name.split(' ')[0];
+    CS.ui.choose(`One quiet evening, ${first} asks the big soft question: "So... do we want to be three?"`, [
+      { label: 'Try for a baby', fn: () => {
+        S.family = { stage: 'expecting', mode: 'bio', due: G.totalDay() + 40 };
+        CS.ui.narrate(`${first} exhales like they've been holding that breath for a season. "Okay. Okay! We're doing this." The studio suddenly looks smaller and better.`);
+        discover('family_trying', `You and ${first} decided to grow the family. The spare corner by the window started collecting small soft things.`);
+      }},
+      { label: 'Look into adoption', fn: () => {
+        S.family = { stage: 'expecting', mode: 'adopt', due: G.totalDay() + 40 };
+        CS.ui.narrate(`${first} nods slowly, then faster. "Yes. There's a kid out there who needs exactly this ridiculous island." Paperwork begins. So does the hoping.`);
+        discover('family_adopting', `You and ${first} started the adoption process. The folder of forms lives on the kitchen counter like a promise.`);
+      }},
+      { label: 'Not yet — and that\'s okay', fn: () => {
+        CS.ui.narrate(`"Not yet," you say, and ${first} squeezes your hand. "Then not yet. We're already a whole thing, you and me." The tram hums past. Enough, for now, is enough.`);
+      }},
+    ]);
+  }
+
   function canWorkShift() {
     const wd = S.time.weekdayIndex;
     return wd <= 4 && S.time.minutes >= 420 && S.time.minutes < 600 && !S.flags['shift' + G.totalDay()];
@@ -1202,7 +1335,10 @@
     const r = S.npcs[id];
     // married small talk — half the time, the ordinary intimacy leads
     if (r.romance === 'married' && Math.random() < .4) {
-      return CS.MARRIED_LINES[Math.floor(Math.random() * CS.MARRIED_LINES.length)];
+      let pool = CS.MARRIED_LINES;
+      if (S.family && S.family.stage === 'baby') pool = pool.concat(CS.BABY_LINES);
+      if (S.family && S.family.stage === 'toddler') pool = pool.concat(CS.TODDLER_LINES);
+      return pool[Math.floor(Math.random() * pool.length)].replace(/\{name\}/g, S.family ? S.family.name : '');
     }
     // on a date: date lines take the lead
     if (S.date && S.date.npc === id && m < S.date.until && Math.random() < .6) {
@@ -1296,6 +1432,17 @@
       }
     }
   }
+
+  /* ---- family rendering: crib or toddler in the apartment ---- */
+  G.drawFamily = function (ctx, scene, camX, camY, T, t) {
+    if (!S || !S.family || scene !== 'apartment') return;
+    if (S.family.stage === 'baby') {
+      CS.art.crib(ctx, 7 * T - camX, 1 * T - camY, T, t);
+    } else if (S.family.stage === 'toddler') {
+      const wob = Math.sin(t / 700) * 2;
+      CS.art.toddler(ctx, 7 * T - camX + wob, 5 * T - camY, T, t);
+    }
+  };
 
   G.drawPet = function (ctx, scene, camX, camY, T, t) {
     if (!S || !S.pet || !S.petRT || S.petRT.scene !== scene) return;
@@ -1415,6 +1562,38 @@
       CS.ui.narrate(`The first shell goes up and the whole waterfront inhales. Somewhere in the middle of the finale you realize ${first} isn't watching the sky anymore. Neither are you.`, () => {
         discover('lights_moment_' + S.time.year, `Harbor Lights, Year ${S.time.year} — the fireworks, and ${first} watching you watch them.`);
       });
+    }
+
+    // The newest resident arrives
+    if (trigger === 'wake' && S.family && S.family.stage === 'arriving') {
+      const first = S.spouse ? CS.NPCS[S.spouse].name.split(' ')[0] : 'Your partner';
+      CS.ui.narrate(CS.FAMILY.arrival[S.family.mode], () => {
+        CS.ui.textInput('A name. No pressure. Only forever.', (name) => {
+          if (!name) name = CS.FAMILY.babyNames[Math.floor(Math.random() * CS.FAMILY.babyNames.length)];
+          S.family.stage = 'baby';
+          S.family.name = name;
+          S.family.arrivedDay = G.totalDay();
+          CS.ui.toast(`${name} is home.`);
+          discover('baby_' + name, `${name} arrived, Year ${S.time.year}, ${CS.SEASONS[S.time.seasonIndex]} ${S.time.day}. ${first} cried. You cried. The cat supervised.`);
+          G.addMsg('hp', `The island's newest resident: ${name}. Grace is baking. Malik is carving something. Resistance is futile.`);
+        });
+      });
+      return;
+    }
+
+    // NPC wedding attendance — show up and it becomes part of your story too
+    if (trigger === 'enter' && S.npcWedding && S.npcWedding.day === G.totalDay()
+        && S.time.minutes >= 570 && S.time.minutes < 780
+        && p.scene === 'outdoor' && p.x <= 13 && p.y <= 11
+        && !S.flags['attended_' + S.npcWedding.a + S.npcWedding.b]) {
+      const { a, b } = S.npcWedding;
+      S.flags['attended_' + a + b] = true;
+      S.npcs[a].friend += 10; S.npcs[b].friend += 10;
+      const an = CS.NPCS[a].name.split(' ')[0], bn = CS.NPCS[b].name.split(' ')[0];
+      CS.ui.narrate(`${an} and ${bn}, under the lighthouse, saying the simple version out loud while the whole island stands on the grass. You were seated with the people who knew them when. You're one of those people now.`, () => {
+        discover('wedding_' + a + b, `${CS.NPCS[a].name} & ${CS.NPCS[b].name} married under the lighthouse, Year ${S.time.year}. You were there — invited, expected, missed if absent.`);
+      });
+      return;
     }
 
     // Your wedding — Lighthouse Park, mid-morning
