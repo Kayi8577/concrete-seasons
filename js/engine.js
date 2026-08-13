@@ -172,6 +172,7 @@
     const isCity = !!map.city;
     const groundBase = isCity ? '#b3aa9c' : '#7fae6d';
     const doorTiles = [];
+    const entities = []; // y-sorted drawables: {b: baseline px, d: draw fn}
 
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
@@ -285,18 +286,18 @@
           ctx.fillRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
           CS.game.drawPlot(ctx, scene, x, y, sx, sy, TILE);
         }
-        // drawn decorations (all vector, see art.js)
+        // flat interior fittings & entities (tall props go into the y-sorted pass)
         const A = CS.art;
         const night = state.time.minutes >= 1140 || state.time.minutes < 390;
         switch (ch) {
-          case 'T': A.tree(ctx, sx, sy, TILE, x * 31 + y * 17); break;
-          case 'c': A.cherryTree(ctx, sx, sy, TILE, x * 31 + y * 17); break;
-          case 'i': A.lighthouse(ctx, sx, sy, TILE); break;
-          case 'l': A.lantern(ctx, sx, sy, TILE, state.animT); break;
-          case 'k': A.stall(ctx, sx, sy, TILE, !!(CS.game.currentFestival && CS.game.currentFestival()) ); break;
-          case 'h': A.bench(ctx, sx, sy, TILE); break;
-          case 'X': A.bin(ctx, sx, sy, TILE); break;
-          case 'N': A.board(ctx, sx, sy, TILE); break;
+          case 'T': entities.push({ b: (y + 1) * TILE, d: () => A.tree(ctx, sx, sy, TILE, x * 31 + y * 17) }); break;
+          case 'c': entities.push({ b: (y + 1) * TILE, d: () => A.cherryTree(ctx, sx, sy, TILE, x * 31 + y * 17) }); break;
+          case 'i': entities.push({ b: (y + 1) * TILE, d: () => A.lighthouse(ctx, sx, sy, TILE) }); break;
+          case 'l': entities.push({ b: (y + 1) * TILE, d: () => A.lantern(ctx, sx, sy, TILE, state.animT) }); break;
+          case 'k': entities.push({ b: (y + 1) * TILE, d: () => A.stall(ctx, sx, sy, TILE, !!(CS.game.currentFestival && CS.game.currentFestival())) }); break;
+          case 'h': entities.push({ b: (y + 1) * TILE, d: () => A.bench(ctx, sx, sy, TILE) }); break;
+          case 'X': entities.push({ b: (y + 1) * TILE, d: () => A.bin(ctx, sx, sy, TILE) }); break;
+          case 'N': entities.push({ b: (y + 1) * TILE, d: () => A.board(ctx, sx, sy, TILE) }); break;
           case 'o': A.planter(ctx, sx, sy, TILE); break;
           case 'E': A.doorMat(ctx, sx, sy, TILE); break;
           case 'K': A.stove(ctx, sx, sy, TILE); break;
@@ -313,28 +314,26 @@
             break;
           }
         }
-        if ('ACBMGSRLHDQ'.includes(ch) && isOut) doorTiles.push([sx, sy, ch, x, y]);
+        if ('ACBMGSRLHDQ'.includes(ch) && isOut) doorTiles.push([x, y, ch]);
       }
     }
 
-    // buildings (whole structures drawn over their footprint), then their doors
+    // buildings join the y-sorted pass (baseline = their footprint's bottom
+    // edge), each drawing its own doors on the ground floor
     const specs = CS.BUILDINGS && CS.BUILDINGS[scene];
     if (specs) {
       for (const b of specs) {
         const bx = b.x * TILE - E.camX, by = b.y * TILE - E.camY;
-        if (bx > E.viewW || by > E.viewH || bx + b.w * TILE < 0 || by + b.h * TILE < 0) continue;
-        A0.building(ctx, bx, by, b.w * TILE, b.h * TILE, b, TILE, nightWin);
+        if (bx > E.viewW || by > E.viewH + TILE * 2 || bx + b.w * TILE < 0 || by + b.h * TILE < -TILE * 2) continue;
+        const myDoors = doorTiles.filter(([tx2, ty2]) =>
+          tx2 >= b.x && tx2 < b.x + b.w && ty2 >= b.y && ty2 < b.y + b.h);
+        entities.push({ b: (b.y + b.h) * TILE, d: () => {
+          A0.building(ctx, bx, by, b.w * TILE, b.h * TILE, b, TILE, nightWin);
+          for (const [tx2, , ch2] of myDoors) {
+            A0.doorOut(ctx, tx2 * TILE - E.camX, (b.y + b.h - 1) * TILE - E.camY, TILE, DOOR_ACCENT[ch2]);
+          }
+        }});
       }
-    }
-    for (const [sx, sy, ch, tx2, ty2] of doorTiles) {
-      // if the walk-in tile sits under a drawn roof, show the door on the
-      // facade's ground floor instead
-      let dy = sy;
-      if (specs && covered.has(tx2 + ',' + ty2)) {
-        const b = specs.find(b2 => tx2 >= b2.x && tx2 < b2.x + b2.w && ty2 >= b2.y && ty2 < b2.y + b2.h);
-        if (b) dy = (b.y + b.h - 1) * TILE - E.camY;
-      }
-      A0.doorOut(ctx, sx, dy, TILE, DOOR_ACCENT[ch]);
     }
 
     // world-state decorations: construction fencing / the new waterfront
@@ -344,6 +343,27 @@
     if (scene === 'outdoor' && state.flags.newWaterfront) {
       for (let bx = 18; bx <= 38; bx += 5) CS.art.planter(ctx, bx * TILE - E.camX, 33 * TILE - E.camY, TILE);
     }
+
+    // pet, family, NPCs, and the player all join the y-sorted pass —
+    // walking behind a tree or a building now hides you, like it should
+    if (state.petRT && state.petRT.scene === scene) {
+      entities.push({ b: state.petRT.py + TILE, d: () => CS.game.drawPet(ctx, scene, E.camX, E.camY, TILE, state.animT) });
+    }
+    if (state.family && scene === 'apartment') {
+      const fy = state.family.stage === 'baby' ? 2 : 6;
+      entities.push({ b: fy * TILE, d: () => CS.game.drawFamily(ctx, scene, E.camX, E.camY, TILE, state.animT) });
+    }
+    for (const id of Object.keys(state.npcRT)) {
+      const rt = state.npcRT[id];
+      if (rt.scene !== scene) continue;
+      entities.push({ b: rt.py + TILE, d: () =>
+        CS.art.character(ctx, rt.px - E.camX, rt.py - E.camY, TILE, CS.NPCS[id].look, state.animT, rt.moving) });
+    }
+    entities.push({ b: p.py + TILE, pl: true, d: () =>
+      CS.art.character(ctx, p.px - E.camX, p.py - E.camY, TILE, E.resolveLook(state.player.look), state.animT, p.path.length > 0) });
+
+    entities.sort((a, b2) => a.b - b2.b || (a.pl ? 1 : 0) - (b2.pl ? 1 : 0));
+    for (const e of entities) e.d();
 
     // labels
     if (map.labels) {
@@ -361,11 +381,7 @@
       }
     }
 
-    // pet & family (drawn under characters)
-    CS.game.drawPet(ctx, scene, E.camX, E.camY, TILE, state.animT);
-    CS.game.drawFamily(ctx, scene, E.camX, E.camY, TILE, state.animT);
-
-    // Pride bunting across Main Street
+    // Pride bunting hangs over everything on Main Street
     const fest = CS.game.currentFestival && CS.game.currentFestival();
     if (fest && fest.key === 'pride' && scene === 'outdoor') {
       for (let bx = 2; bx <= 52; bx += 4) {
@@ -373,16 +389,14 @@
       }
     }
 
-    // NPCs
+    // NPC name tags float above the sorted world
     for (const id of Object.keys(state.npcRT)) {
       const rt = state.npcRT[id];
       if (rt.scene !== scene) continue;
-      CS.art.character(ctx, rt.px - E.camX, rt.py - E.camY, TILE, CS.NPCS[id].look, state.animT, rt.moving);
-      // name tag if player nearby
       const dx = Math.abs(rt.x - p.x), dy = Math.abs(rt.y - p.y);
       if (dx + dy <= 3) {
         ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-        const nx = rt.px - E.camX + TILE / 2, ny = rt.py - E.camY - 8;
+        const nx = rt.px - E.camX + TILE / 2, ny = rt.py - E.camY - 14;
         ctx.fillStyle = 'rgba(20,26,32,.6)';
         const w = ctx.measureText(CS.NPCS[id].name).width;
         ctx.beginPath(); ctx.roundRect(nx - w / 2 - 5, ny - 9, w + 10, 16, 7); ctx.fill();
@@ -390,9 +404,6 @@
         ctx.fillText(CS.NPCS[id].name, nx, ny);
       }
     }
-
-    // player
-    CS.art.character(ctx, p.px - E.camX, p.py - E.camY, TILE, E.resolveLook(state.player.look), state.animT, p.path.length > 0);
 
     // target marker
     if (p.marker && p.markerT > 0) {

@@ -58,13 +58,15 @@ function buildOutdoor() {
   // street furniture: planters + market stalls
   [10, 37, 49].forEach(x => { g[18][x] = 'o'; });
   g[18][20] = 'k'; g[18][28] = 'k';
-  // storefronts south of street
-  _rect(g, 3, 19, 7, 4, '#');  g[19][6]  = 'S'; // Second Life thrift
-  _rect(g, 12, 19, 8, 4, '#'); g[19][15] = 'C'; // Juniper Café
-  _rect(g, 22, 19, 6, 4, '#'); g[19][24] = 'B'; // Moonrise Bakery
-  _rect(g, 30, 19, 7, 4, '#'); g[19][33] = 'M'; // Corner Market
-  _rect(g, 39, 19, 8, 4, '#'); g[19][42] = 'R'; // The Anchor bar
-  _rect(g, 48, 19, 6, 4, '#'); g[19][51] = 'Q'; // Glasshouse Coffee (opens Year 2)
+  // storefronts south of street — doors face the shopfront promenade below
+  // (SoS/Stardew convention: entrances at the facade's bottom edge)
+  _rect(g, 3, 19, 7, 4, '#');  g[22][6]  = 'S'; // Second Life thrift
+  _rect(g, 12, 19, 8, 4, '#'); g[22][15] = 'C'; // Juniper Café
+  _rect(g, 22, 19, 6, 4, '#'); g[22][24] = 'B'; // Moonrise Bakery
+  _rect(g, 30, 19, 7, 4, '#'); g[22][33] = 'M'; // Corner Market
+  _rect(g, 39, 19, 8, 4, '#'); g[22][42] = 'R'; // The Anchor bar
+  _rect(g, 48, 19, 6, 4, '#'); g[22][51] = 'Q'; // Glasshouse Coffee (opens Year 2)
+  _rect(g, 2, 23, 52, 1, '-'); // shopfront promenade
   // south point lawn: cherries at the fringe
   [[16,26],[22,25],[30,25],[38,26],[26,24]].forEach(([x,y]) => { g[y][x] = 'c'; });
   // paths to waterfront
@@ -163,8 +165,8 @@ CS.MAPS = {
     ],
     doors: { A:'apartment', C:'cafe', B:'bakery', M:'market', G:'greenhouse',
              S:'thrift', R:'bar', L:'labs', H:'harbor_house', Q:'glasshouse' },
-    doorSpawns: { A:[19,7], C:[15,18], B:[24,18], M:[33,18], G:[49,7],
-                  S:[6,18], R:[42,18], L:[48,25], H:[30,8], Q:[51,18] },
+    doorSpawns: { A:[19,7], C:[15,23], B:[24,23], M:[33,23], G:[49,7],
+                  S:[6,23], R:[42,23], L:[48,25], H:[30,8], Q:[51,23] },
   },
   apartment: {
     name: 'Your Studio', outdoor: false, exitTo: 'outdoor', exitKey: 'A',

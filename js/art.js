@@ -60,8 +60,10 @@
       ctx.closePath(); ctx.fill();
       return;
     }
-    const roofH = spec.style === 'block' ? T * .5 : Math.min(h * .45, T * 1.5);
-    const wallY = py + roofH;
+    // the roof rises ABOVE the footprint (tall facade, oblique-view style);
+    // the wall occupies the full footprint so the door row sits at ground level
+    const roofRise = spec.style === 'block' ? T * .55 : T * 1.05;
+    const wallY = py + (spec.style === 'block' ? 0 : 4);
     // wall + siding
     ctx.fillStyle = wall;
     ctx.fillRect(px, wallY, w, py + h - wallY);
@@ -80,51 +82,55 @@
     ctx.fillRect(px, wallY, 3, py + h - wallY);
     ctx.fillRect(px + w - 3, wallY, 3, py + h - wallY);
     // roof
-    if (spec.style === 'block') { // flat parapet
-      ctx.fillStyle = shade(roof, -10);
-      ctx.fillRect(px - 2, py + roofH - 7, w + 4, 7);
+    if (spec.style === 'block') { // flat parapet rising above the footprint
       ctx.fillStyle = roof;
-      ctx.fillRect(px - 2, py, w + 4, roofH - 5);
-      ctx.fillStyle = 'rgba(255,255,255,.08)';
-      ctx.fillRect(px - 2, py, w + 4, 4);
-      // rooftop clutter: water tank + vent
-      ctx.fillStyle = shade(roof, -26);
-      rr(ctx, px + w * .68, py + 3, T * .5, roofH - 12, 3, shade(roof, -26));
-      ctx.fillStyle = shade(roof, 18);
-      ctx.fillRect(px + w * .2, py + 5, T * .3, 3);
-    } else { // shop: front-facing shingle roof with overhang
+      ctx.fillRect(px - 2, py - roofRise, w + 4, roofRise + 3);
+      ctx.fillStyle = shade(roof, -14);
+      ctx.fillRect(px - 2, py - 2, w + 4, 5);
+      ctx.fillStyle = 'rgba(255,255,255,.1)';
+      ctx.fillRect(px - 2, py - roofRise, w + 4, 4);
+      // rooftop clutter: water tank + vents
+      ctx.fillStyle = shade(roof, -30);
+      rr(ctx, px + w * .68, py - roofRise + 4, T * .5, roofRise - 8, 3, shade(roof, -30));
+      ctx.fillStyle = shade(roof, 22);
+      ctx.fillRect(px + w * .18, py - roofRise + 6, T * .32, 3.5);
+      ctx.fillRect(px + w * .42, py - roofRise + 6, T * .2, 3.5);
+    } else { // shop: shingle roof above the facade, wide eaves
+      ctx.fillStyle = shade(roof, -22); // eave underside
+      ctx.fillRect(px - 5, py + 1, w + 10, 4);
       ctx.fillStyle = roof;
       ctx.beginPath();
-      ctx.moveTo(px - 4, wallY);
-      ctx.lineTo(px + T * .35, py + 2);
-      ctx.lineTo(px + w - T * .35, py + 2);
-      ctx.lineTo(px + w + 4, wallY);
+      ctx.moveTo(px - 5, py + 2);
+      ctx.lineTo(px + T * .3, py - roofRise);
+      ctx.lineTo(px + w - T * .3, py - roofRise);
+      ctx.lineTo(px + w + 5, py + 2);
       ctx.closePath(); ctx.fill();
-      // shingle lines
-      ctx.strokeStyle = 'rgba(0,0,0,.13)'; ctx.lineWidth = 1.2;
+      // shingle courses
+      ctx.strokeStyle = 'rgba(0,0,0,.15)'; ctx.lineWidth = 1.2;
       for (let i = 1; i <= 2; i++) {
-        const yy = py + 2 + (roofH - 2) * i / 3;
+        const f = i / 3;
+        const yy = py - roofRise + (roofRise + 2) * f;
         ctx.beginPath();
-        ctx.moveTo(px - 4 + (T * .35 + 8) * (1 - i / 3), yy);
-        ctx.lineTo(px + w + 4 - (T * .35 + 8) * (1 - i / 3), yy);
+        ctx.moveTo(px + T * .3 - (T * .3 + 5) * f, yy);
+        ctx.lineTo(px + w - T * .3 + (T * .3 + 5) * f, yy);
         ctx.stroke();
       }
       // ridge highlight
-      ctx.fillStyle = 'rgba(255,255,255,.16)';
-      ctx.fillRect(px + T * .35, py + 1, w - T * .7, 3);
+      ctx.fillStyle = 'rgba(255,255,255,.18)';
+      ctx.fillRect(px + T * .3, py - roofRise, w - T * .6, 3);
       // eave shadow on the wall
-      ctx.fillStyle = 'rgba(0,0,0,.14)';
-      ctx.fillRect(px, wallY, w, 4);
+      ctx.fillStyle = 'rgba(0,0,0,.15)';
+      ctx.fillRect(px, py + 4, w, 5);
     }
     // windows (never on the bottom/door row)
     const glassDay = '#b8d4de', glassNight = '#f0d489';
-    const rows = spec.style === 'block' ? Math.max(1, Math.floor((py + h - wallY) / T) - 1) : 1;
-    const cols = Math.max(1, Math.round(w / T) - (spec.style === 'block' ? 2 : 2));
+    const rows = Math.max(1, Math.round(h / T) - 2);
+    const cols = Math.max(1, Math.round(w / T) - 2);
     for (let ry = 0; ry < rows; ry++) {
       for (let cxI = 0; cxI < cols; cxI++) {
         const wx = px + (w / (cols + 1)) * (cxI + 1) - 5;
-        const wy = wallY + 8 + ry * T * .92;
-        if (wy + 12 > py + h - T * .55) continue;
+        const wy = wallY + 12 + ry * T * .95;
+        if (wy + 14 > py + h - T * .9) continue;
         // deterministic "someone's home" flicker
         const lit = night && ((cxI * 7 + ry * 13 + Math.round(px)) % 3 !== 0);
         rr(ctx, wx - 1.5, wy - 1.5, 13, 14, 2, '#e8e0d0');
@@ -149,26 +155,51 @@
   };
 
   /* ================= outdoor tiles ================= */
+  // Trees are drawn 1.8 tiles tall (canopy rises above their footprint),
+  // Stardew/SoS-style, and rely on y-sorting for occlusion.
+  function bigTree(ctx, sx, sy, T, seed, dark, mid, light, outline) {
+    const cx = sx + T / 2, base = sy + T - 3;
+    const v = (seed % 3) - 1;
+    sh(ctx, cx, base, T * .38, 4);
+    // trunk
+    ctx.fillStyle = '#6b4f37';
+    ctx.beginPath();
+    ctx.moveTo(cx - 4, base);
+    ctx.quadraticCurveTo(cx - 3, base - T * .5, cx - 2.5, base - T * .62);
+    ctx.lineTo(cx + 2.5, base - T * .62);
+    ctx.quadraticCurveTo(cx + 3, base - T * .5, cx + 4, base);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.fillRect(cx + .5, base - T * .55, 2.5, T * .5);
+    // canopy: outline blob first, then layered tones
+    const cy1 = base - T * .95 + v;
+    ctx.fillStyle = outline;
+    circle(ctx, cx, cy1, T * .5 + 1.5, outline);
+    circle(ctx, cx - T * .3, cy1 + T * .18, T * .34 + 1.5, outline);
+    circle(ctx, cx + T * .3, cy1 + T * .18, T * .34 + 1.5, outline);
+    circle(ctx, cx, cy1 - T * .28, T * .34 + 1.5, outline);
+    // body
+    circle(ctx, cx - T * .28, cy1 + T * .18, T * .33, dark);
+    circle(ctx, cx + T * .28, cy1 + T * .18, T * .33, dark);
+    circle(ctx, cx, cy1, T * .48, mid);
+    circle(ctx, cx, cy1 - T * .26, T * .32, mid);
+    // light clusters (upper-left sun)
+    circle(ctx, cx - T * .16, cy1 - T * .26, T * .2, light);
+    circle(ctx, cx - T * .3, cy1 - T * .02, T * .14, light);
+    circle(ctx, cx + T * .1, cy1 - T * .38, T * .12, light);
+    // leaf specks
+    ctx.fillStyle = 'rgba(0,0,0,.12)';
+    ctx.fillRect(cx + T * .18, cy1 + T * .12, 3, 3);
+    ctx.fillRect(cx - T * .05, cy1 + T * .3, 3, 3);
+  }
   A.tree = function (ctx, sx, sy, T, seed) {
-    const cx = sx + T / 2;
-    sh(ctx, cx, sy + T - 4, T * .32, 3.5);
-    rr(ctx, cx - 2.5, sy + T * .55, 5, T * .38, 2, P.wood);
-    const v = (seed % 3);
-    circle(ctx, cx, sy + T * .42, T * .34, P.leafDark);
-    circle(ctx, cx - T * .14, sy + T * .34, T * .26, P.leaf);
-    circle(ctx, cx + T * .13, sy + T * .30 + v, T * .24, P.leaf);
-    circle(ctx, cx - T * .08, sy + T * .24, T * .17, P.leafLight); // top-left light
+    bigTree(ctx, sx, sy, T, seed, P.leafDark, P.leaf, P.leafLight, '#41582f');
   };
-
   A.cherryTree = function (ctx, sx, sy, T, seed) {
-    const cx = sx + T / 2;
-    sh(ctx, cx, sy + T - 4, T * .32, 3.5);
-    rr(ctx, cx - 2.5, sy + T * .55, 5, T * .38, 2, P.wood);
-    const v = (seed % 3);
-    circle(ctx, cx, sy + T * .42, T * .34, '#c98ba0');
-    circle(ctx, cx - T * .14, sy + T * .34, T * .26, '#dba7b8');
-    circle(ctx, cx + T * .13, sy + T * .30 + v, T * .24, '#dba7b8');
-    circle(ctx, cx - T * .08, sy + T * .24, T * .17, '#eec6d2');
+    bigTree(ctx, sx, sy, T, seed, '#c07f95', '#dba7b8', '#f0d0da', '#9c6478');
+    // drifting petal
+    ctx.fillStyle = 'rgba(240,208,218,.8)';
+    ctx.fillRect(sx + T * .2 + (seed % 5) * 2, sy + T * .5, 2.5, 2.5);
   };
 
   A.lighthouse = function (ctx, sx, sy, T) {
@@ -804,8 +835,9 @@
     ctx.fillStyle = '#4a3b2d';
     rr(ctx, cx - 5.4, feetY - 2.4 + Math.max(0, -walk * 2), 5, 2.6, 1.2, '#4a3b2d');
     rr(ctx, cx + 0.4, feetY - 2.4 + Math.max(0, walk * 2), 5, 2.6, 1.2, '#4a3b2d');
-    // torso
+    // torso (with a soft dark rim so sprites pop from the ground)
     const bodyY = feetY - 16 + bob;
+    rr(ctx, cx - 8, bodyY - 1, 16, 13, 6, 'rgba(45,35,28,.35)');
     rr(ctx, cx - 7, bodyY, 14, 11, 5, opts.outfit);
     rr(ctx, cx - 7, bodyY, 14, 4, 5, 'rgba(255,255,255,.16)'); // collar light
     // arms with swing
@@ -816,6 +848,7 @@
     circle(ctx, cx + 7.9, bodyY + 9.6 - walk * 1.6, 1.7, opts.skin);
     // head
     const hr = 9, hy = bodyY - hr + 2.5;
+    circle(ctx, cx, hy - 1, hr + 1.2, 'rgba(45,35,28,.3)'); // rim
     A.head(ctx, cx, hy, hr, opts.skin, opts.hair, opts.style);
     face(ctx, cx, hy, hr);
   };
