@@ -21,12 +21,132 @@
     ctx.fillStyle = P.shadow;
     ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
   }
+  // darken/lighten a hex color: shade('#80a060', -30) → darker
+  function shade(hex, amt) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.max(0, Math.min(255, (n >> 16) + amt));
+    const g = Math.max(0, Math.min(255, ((n >> 8) & 255) + amt));
+    const b = Math.max(0, Math.min(255, (n & 255) + amt));
+    return `rgb(${r},${g},${b})`;
+  }
+  A.shade = shade;
   function circle(ctx, x, y, r, col) {
     ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
   }
   function rr(ctx, x, y, w, h, r, col) {
     ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill();
   }
+
+  /* ================= buildings (drawn whole, over their '#' tiles) ================= */
+  // spec: {x,y,w,h in tiles, style:'shop'|'block'|'glass', wall, roof}
+  A.building = function (ctx, px, py, w, h, spec, T, night) {
+    const wall = spec.wall || '#d8cbb2', roof = spec.roof || '#8a5a3b';
+    if (spec.style === 'glass') { // greenhouse
+      ctx.fillStyle = 'rgba(150,195,180,.85)';
+      ctx.beginPath();
+      ctx.moveTo(px - 2, py + T * .9); ctx.lineTo(px + w / 2, py + T * .1);
+      ctx.lineTo(px + w + 2, py + T * .9); ctx.lineTo(px + w + 2, py + h);
+      ctx.lineTo(px - 2, py + h); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#e8e0d0'; ctx.lineWidth = 2;
+      ctx.stroke();
+      for (let gx = px + T * .5; gx < px + w; gx += T * .55) {
+        ctx.beginPath(); ctx.moveTo(gx, py + h); ctx.lineTo(gx, py + T * .55 + Math.abs(gx - px - w / 2) * .6); ctx.stroke();
+      }
+      ctx.beginPath(); ctx.moveTo(px - 2, py + T * .9); ctx.lineTo(px + w + 2, py + T * .9); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.25)';
+      ctx.beginPath();
+      ctx.moveTo(px + w * .18, py + h); ctx.lineTo(px + w * .38, py + T * .5);
+      ctx.lineTo(px + w * .5, py + T * .5); ctx.lineTo(px + w * .3, py + h);
+      ctx.closePath(); ctx.fill();
+      return;
+    }
+    const roofH = spec.style === 'block' ? T * .5 : Math.min(h * .45, T * 1.5);
+    const wallY = py + roofH;
+    // wall + siding
+    ctx.fillStyle = wall;
+    ctx.fillRect(px, wallY, w, py + h - wallY);
+    ctx.strokeStyle = 'rgba(0,0,0,.06)'; ctx.lineWidth = 1;
+    if (spec.style === 'block') { // brick courses
+      for (let yy = wallY + 5; yy < py + h; yy += 6) {
+        ctx.beginPath(); ctx.moveTo(px, yy); ctx.lineTo(px + w, yy); ctx.stroke();
+      }
+    } else {
+      for (let yy = wallY + 6; yy < py + h; yy += 7) {
+        ctx.beginPath(); ctx.moveTo(px, yy); ctx.lineTo(px + w, yy); ctx.stroke();
+      }
+    }
+    // corner trim
+    ctx.fillStyle = shade(wall, 22);
+    ctx.fillRect(px, wallY, 3, py + h - wallY);
+    ctx.fillRect(px + w - 3, wallY, 3, py + h - wallY);
+    // roof
+    if (spec.style === 'block') { // flat parapet
+      ctx.fillStyle = shade(roof, -10);
+      ctx.fillRect(px - 2, py + roofH - 7, w + 4, 7);
+      ctx.fillStyle = roof;
+      ctx.fillRect(px - 2, py, w + 4, roofH - 5);
+      ctx.fillStyle = 'rgba(255,255,255,.08)';
+      ctx.fillRect(px - 2, py, w + 4, 4);
+      // rooftop clutter: water tank + vent
+      ctx.fillStyle = shade(roof, -26);
+      rr(ctx, px + w * .68, py + 3, T * .5, roofH - 12, 3, shade(roof, -26));
+      ctx.fillStyle = shade(roof, 18);
+      ctx.fillRect(px + w * .2, py + 5, T * .3, 3);
+    } else { // shop: front-facing shingle roof with overhang
+      ctx.fillStyle = roof;
+      ctx.beginPath();
+      ctx.moveTo(px - 4, wallY);
+      ctx.lineTo(px + T * .35, py + 2);
+      ctx.lineTo(px + w - T * .35, py + 2);
+      ctx.lineTo(px + w + 4, wallY);
+      ctx.closePath(); ctx.fill();
+      // shingle lines
+      ctx.strokeStyle = 'rgba(0,0,0,.13)'; ctx.lineWidth = 1.2;
+      for (let i = 1; i <= 2; i++) {
+        const yy = py + 2 + (roofH - 2) * i / 3;
+        ctx.beginPath();
+        ctx.moveTo(px - 4 + (T * .35 + 8) * (1 - i / 3), yy);
+        ctx.lineTo(px + w + 4 - (T * .35 + 8) * (1 - i / 3), yy);
+        ctx.stroke();
+      }
+      // ridge highlight
+      ctx.fillStyle = 'rgba(255,255,255,.16)';
+      ctx.fillRect(px + T * .35, py + 1, w - T * .7, 3);
+      // eave shadow on the wall
+      ctx.fillStyle = 'rgba(0,0,0,.14)';
+      ctx.fillRect(px, wallY, w, 4);
+    }
+    // windows (never on the bottom/door row)
+    const glassDay = '#b8d4de', glassNight = '#f0d489';
+    const rows = spec.style === 'block' ? Math.max(1, Math.floor((py + h - wallY) / T) - 1) : 1;
+    const cols = Math.max(1, Math.round(w / T) - (spec.style === 'block' ? 2 : 2));
+    for (let ry = 0; ry < rows; ry++) {
+      for (let cxI = 0; cxI < cols; cxI++) {
+        const wx = px + (w / (cols + 1)) * (cxI + 1) - 5;
+        const wy = wallY + 8 + ry * T * .92;
+        if (wy + 12 > py + h - T * .55) continue;
+        // deterministic "someone's home" flicker
+        const lit = night && ((cxI * 7 + ry * 13 + Math.round(px)) % 3 !== 0);
+        rr(ctx, wx - 1.5, wy - 1.5, 13, 14, 2, '#e8e0d0');
+        rr(ctx, wx, wy, 10, 11, 1.5, night ? (lit ? glassNight : '#3a4456') : glassDay);
+        if (!night) { ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fillRect(wx + 1.5, wy + 1.5, 3, 4); }
+        ctx.strokeStyle = 'rgba(90,75,60,.4)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(wx + 5, wy); ctx.lineTo(wx + 5, wy + 11); ctx.stroke();
+        rr(ctx, wx - 2, wy + 11.5, 14, 2.4, 1, shade(wall, -24)); // sill
+      }
+    }
+    // shops get an awning stripe over the door row
+    if (spec.style === 'shop') {
+      const ay = py + h - T * .95;
+      ctx.fillStyle = shade(roof, 14);
+      ctx.beginPath();
+      ctx.moveTo(px + 3, ay); ctx.lineTo(px + w - 3, ay);
+      ctx.lineTo(px + w - 6, ay + 7); ctx.lineTo(px + 6, ay + 7);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.35)';
+      for (let fx = px + 8; fx < px + w - 10; fx += 12) ctx.fillRect(fx, ay + 1, 6, 6);
+    }
+  };
 
   /* ================= outdoor tiles ================= */
   A.tree = function (ctx, sx, sy, T, seed) {
@@ -595,65 +715,128 @@
     }
   };
 
-  /* ================= characters ================= */
+  /* ================= characters (chibi, SoS-inspired proportions) ================= */
   // hairstyles: short, long, bun, cap, wrap, curly
   A.head = function (ctx, cx, cy, r, skin, hair, style) {
+    // face
     circle(ctx, cx, cy, r, skin);
+    circle(ctx, cx - r * .3, cy - r * .35, r * .3, 'rgba(255,255,255,.18)'); // soft light
+    const hl = shade(typeof hair === 'string' && hair[0] === '#' ? hair : '#2d2a26', 34);
     ctx.fillStyle = hair;
     if (style === 'short') {
-      ctx.beginPath(); ctx.arc(cx, cy - r * .25, r, Math.PI, 0); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy - r * .18, r * 1.02, Math.PI * .95, Math.PI * 2.05); ctx.fill();
+      // fringe notches
+      ctx.beginPath();
+      ctx.moveTo(cx - r, cy - r * .18);
+      ctx.quadraticCurveTo(cx - r * .5, cy + r * .1, cx - r * .3, cy - r * .3);
+      ctx.quadraticCurveTo(cx, cy + r * .05, cx + r * .3, cy - r * .3);
+      ctx.quadraticCurveTo(cx + r * .6, cy + r * .1, cx + r, cy - r * .18);
+      ctx.closePath(); ctx.fill();
     } else if (style === 'long') {
-      ctx.beginPath(); ctx.arc(cx, cy - r * .25, r, Math.PI, 0); ctx.fill();
-      ctx.fillRect(cx - r, cy - r * .25, r * .42, r * 1.6);
-      ctx.fillRect(cx + r * .58, cy - r * .25, r * .42, r * 1.6);
+      ctx.beginPath(); ctx.arc(cx, cy - r * .18, r * 1.04, Math.PI * .9, Math.PI * 2.1); ctx.fill();
+      // side curtains to the shoulders
+      rr(ctx, cx - r * 1.08, cy - r * .3, r * .5, r * 1.9, r * .22, hair);
+      rr(ctx, cx + r * .58, cy - r * .3, r * .5, r * 1.9, r * .22, hair);
+      ctx.beginPath();
+      ctx.moveTo(cx - r * .6, cy - r * .5);
+      ctx.quadraticCurveTo(cx, cy + r * .02, cx + r * .6, cy - r * .5);
+      ctx.lineTo(cx + r * .6, cy - r * .9); ctx.lineTo(cx - r * .6, cy - r * .9);
+      ctx.closePath(); ctx.fill();
     } else if (style === 'bun') {
-      ctx.beginPath(); ctx.arc(cx, cy - r * .25, r, Math.PI, 0); ctx.fill();
-      circle(ctx, cx, cy - r * 1.35, r * .45, hair);
+      ctx.beginPath(); ctx.arc(cx, cy - r * .18, r * 1.02, Math.PI * .95, Math.PI * 2.05); ctx.fill();
+      circle(ctx, cx, cy - r * 1.3, r * .48, hair);
+      circle(ctx, cx - r * .14, cy - r * 1.42, r * .16, hl);
     } else if (style === 'curly') {
-      circle(ctx, cx - r * .55, cy - r * .75, r * .5, hair);
-      circle(ctx, cx, cy - r * .95, r * .55, hair);
-      circle(ctx, cx + r * .55, cy - r * .75, r * .5, hair);
+      for (const [dx, dy, rr2] of [[-.62, -.6, .48], [-.25, -.92, .5], [.25, -.92, .5], [.62, -.6, .48], [0, -.65, .55]]) {
+        circle(ctx, cx + dx * r, cy + dy * r, r * rr2, hair);
+      }
+      circle(ctx, cx - r * .3, cy - r * .95, r * .18, hl);
     } else if (style === 'cap') {
-      ctx.beginPath(); ctx.arc(cx, cy - r * .3, r * 1.02, Math.PI, 0); ctx.fill();
-      rr(ctx, cx - r * 1.05, cy - r * .38, r * 2.1, r * .32, r * .15, hair);
-      rr(ctx, cx + r * .3, cy - r * .30, r * .95, r * .24, r * .12, hair); // brim
+      ctx.beginPath(); ctx.arc(cx, cy - r * .22, r * 1.05, Math.PI, 0); ctx.fill();
+      rr(ctx, cx - r * 1.08, cy - r * .34, r * 2.16, r * .34, r * .16, hair);
+      rr(ctx, cx + r * .28, cy - r * .26, r * 1.0, r * .26, r * .13, hair); // brim
+      circle(ctx, cx, cy - r * 1.1, r * .14, hl); // button
     } else if (style === 'wrap') {
-      ctx.beginPath(); ctx.arc(cx, cy - r * .22, r * 1.04, Math.PI * .92, Math.PI * 2.08); ctx.fill();
-      circle(ctx, cx + r * .75, cy - r * .95, r * .3, hair);
+      ctx.beginPath(); ctx.arc(cx, cy - r * .14, r * 1.06, Math.PI * .9, Math.PI * 2.1); ctx.fill();
+      circle(ctx, cx + r * .8, cy - r * .9, r * .32, hair);
+      circle(ctx, cx + r * 1.02, cy - r * .68, r * .2, hair);
+      ctx.strokeStyle = hl; ctx.lineWidth = Math.max(1, r * .12);
+      ctx.beginPath(); ctx.arc(cx, cy - r * .2, r * .88, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+    }
+    // hair shine
+    if (style !== 'wrap' && style !== 'cap') {
+      ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = Math.max(1, r * .14); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(cx - r * .1, cy - r * .35, r * .62, Math.PI * 1.15, Math.PI * 1.6); ctx.stroke();
     }
   };
 
+  function face(ctx, cx, cy, r) {
+    // eyes: white + pupil + glint
+    for (const s of [-1, 1]) {
+      const ex = cx + s * r * .38, ey = cy + r * .12;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.ellipse(ex, ey, r * .17, r * .21, 0, 0, Math.PI * 2); ctx.fill();
+      circle(ctx, ex, ey + r * .03, r * .11, '#3a2e24');
+      circle(ctx, ex - r * .04, ey - r * .04, r * .045, '#fff');
+    }
+    // blush
+    ctx.fillStyle = 'rgba(220,120,110,.28)';
+    ctx.beginPath(); ctx.ellipse(cx - r * .58, cy + r * .34, r * .16, r * .09, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + r * .58, cy + r * .34, r * .16, r * .09, 0, 0, Math.PI * 2); ctx.fill();
+    // small mouth
+    ctx.strokeStyle = 'rgba(90,60,50,.65)'; ctx.lineWidth = Math.max(1, r * .07); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(cx, cy + r * .42, r * .16, Math.PI * .15, Math.PI * .85); ctx.stroke();
+  }
+
   A.character = function (ctx, sx, sy, T, opts, t, moving) {
-    // opts: {skin, hair, style, outfit}
-    const cx = sx + T / 2, cy = sy + T / 2;
-    const bob = moving ? Math.sin(t / 60) * 1.5 : 0;
-    sh(ctx, cx, sy + T - 3, 9, 3.4);
-    rr(ctx, cx - 8, cy - 4 + bob, 16, 16, 6, opts.outfit);
-    rr(ctx, cx - 8, cy - 4 + bob, 16, 5, 6, 'rgba(255,255,255,.14)');
-    A.head(ctx, cx, cy - 9 + bob, 8, opts.skin, opts.hair, opts.style);
-    ctx.fillStyle = P.dark;
-    circle(ctx, cx - 3, cy - 8 + bob, 1.1, P.dark);
-    circle(ctx, cx + 3, cy - 8 + bob, 1.1, P.dark);
+    // opts: {skin, hair, style, outfit} — chibi: big head, small body, real legs
+    const cx = sx + T / 2;
+    const feetY = sy + T - 3;
+    const walk = moving ? Math.sin(t / 85) : 0;
+    const bob = moving ? Math.abs(Math.sin(t / 85)) * -1.2 : 0;
+    sh(ctx, cx, feetY, 8.5, 3);
+    const dark = shade(opts.outfit, -36);
+    // legs (alternating step)
+    ctx.fillStyle = dark;
+    rr(ctx, cx - 5, feetY - 7 + Math.max(0, -walk * 2.4), 4.2, 7 - Math.max(0, -walk * 2.4), 2, dark);
+    rr(ctx, cx + 0.8, feetY - 7 + Math.max(0, walk * 2.4), 4.2, 7 - Math.max(0, walk * 2.4), 2, dark);
+    // shoes
+    ctx.fillStyle = '#4a3b2d';
+    rr(ctx, cx - 5.4, feetY - 2.4 + Math.max(0, -walk * 2), 5, 2.6, 1.2, '#4a3b2d');
+    rr(ctx, cx + 0.4, feetY - 2.4 + Math.max(0, walk * 2), 5, 2.6, 1.2, '#4a3b2d');
+    // torso
+    const bodyY = feetY - 16 + bob;
+    rr(ctx, cx - 7, bodyY, 14, 11, 5, opts.outfit);
+    rr(ctx, cx - 7, bodyY, 14, 4, 5, 'rgba(255,255,255,.16)'); // collar light
+    // arms with swing
+    ctx.fillStyle = opts.outfit;
+    rr(ctx, cx - 9.6, bodyY + 1.5 + walk * 1.6, 3.4, 7.5, 1.7, opts.outfit);
+    rr(ctx, cx + 6.2, bodyY + 1.5 - walk * 1.6, 3.4, 7.5, 1.7, opts.outfit);
+    circle(ctx, cx - 7.9, bodyY + 9.6 + walk * 1.6, 1.7, opts.skin); // hands
+    circle(ctx, cx + 7.9, bodyY + 9.6 - walk * 1.6, 1.7, opts.skin);
+    // head
+    const hr = 9, hy = bodyY - hr + 2.5;
+    A.head(ctx, cx, hy, hr, opts.skin, opts.hair, opts.style);
+    face(ctx, cx, hy, hr);
   };
 
   A.portrait = function (canvas, opts) {
     const c = canvas.getContext('2d');
     const S = canvas.width;
     c.clearRect(0, 0, S, S);
-    // backdrop
+    // warm vignette backdrop
     c.fillStyle = '#efe6d2';
     c.beginPath(); c.roundRect(0, 0, S, S, S * .24); c.fill();
-    const cx = S / 2, hy = S * .46, r = S * .27;
+    c.fillStyle = 'rgba(92,138,111,.12)';
+    c.beginPath(); c.roundRect(0, S * .55, S, S * .45, S * .24); c.fill();
+    const cx = S / 2, hy = S * .44, r = S * .28;
     // shoulders
     c.fillStyle = opts.outfit;
-    c.beginPath(); c.roundRect(S * .16, S * .68, S * .68, S * .4, S * .14); c.fill();
+    c.beginPath(); c.roundRect(S * .14, S * .7, S * .72, S * .4, S * .15); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.15)';
+    c.beginPath(); c.roundRect(S * .14, S * .7, S * .72, S * .09, S * .15); c.fill();
     A.head(c, cx, hy, r, opts.skin, opts.hair, opts.style);
-    c.fillStyle = P.dark;
-    c.beginPath(); c.arc(cx - r * .38, hy + r * .08, S * .026, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.arc(cx + r * .38, hy + r * .08, S * .026, 0, Math.PI * 2); c.fill();
-    // smile
-    c.strokeStyle = P.dark; c.lineWidth = Math.max(1.2, S * .02); c.lineCap = 'round';
-    c.beginPath(); c.arc(cx, hy + r * .38, r * .3, Math.PI * .2, Math.PI * .8); c.stroke();
+    face(c, cx, hy, r);
   };
 
   A.narratorPortrait = function (canvas) {

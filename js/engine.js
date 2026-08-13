@@ -132,6 +132,16 @@
   };
 
   const INTERIOR_FLOOR = '#e6d9bf';
+  // which tiles are covered by a drawn building (cached per scene)
+  const _coverage = {};
+  function buildingCoverage(scene) {
+    if (_coverage[scene]) return _coverage[scene];
+    const set = new Set();
+    for (const b of (CS.BUILDINGS && CS.BUILDINGS[scene]) || []) {
+      for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) set.add(x + ',' + y);
+    }
+    return (_coverage[scene] = set);
+  }
   // exterior door accent per building
   const DOOR_ACCENT = { A:'#8a5a3b', C:'#5c8a6f', B:'#b07a2a', M:'#4a6fa5', G:'#88a89b',
                         S:'#7d5ba6', R:'#8a3b4a', L:'#5b8aa6', H:'#c9553e', D:'#b0653a', Q:'#37535e' };
@@ -156,33 +166,113 @@
     const x1 = Math.min(g[0].length - 1, Math.ceil((E.camX + E.viewW) / TILE));
     const y1 = Math.min(g.length - 1, Math.ceil((E.camY + E.viewH) / TILE));
 
+    const A0 = CS.art;
+    const nightWin = state.time.minutes >= 1110 || state.time.minutes < 390;
+    const covered = buildingCoverage(scene);
+    const isCity = !!map.city;
+    const groundBase = isCity ? '#b3aa9c' : '#7fae6d';
+    const doorTiles = [];
+
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
         const ch = g[y][x];
         const sx = x * TILE - E.camX, sy = y * TILE - E.camY;
-        let base = isOut ? (TC[ch] || '#7fae6d') : (ch === '#' ? '#8d7a68' : INTERIOR_FLOOR);
-        if (!isOut && TC[ch] && ch !== '.' && ch !== '#') base = INTERIOR_FLOOR;
+        const hash = (x * 73 + y * 151) % 97;
+
+        if (ch === '#') {
+          if (!isOut) { // interior wall: warm paneling
+            ctx.fillStyle = '#a08a74';
+            ctx.fillRect(sx, sy, TILE, TILE);
+            ctx.fillStyle = 'rgba(0,0,0,.08)';
+            ctx.fillRect(sx, sy + TILE - 5, TILE, 5);
+            ctx.fillStyle = 'rgba(255,255,255,.07)';
+            ctx.fillRect(sx, sy, TILE, 3);
+          } else if (covered.has(x + ',' + y)) {
+            ctx.fillStyle = groundBase; // a real building will be drawn over this
+            ctx.fillRect(sx, sy, TILE, TILE);
+          } else { // city street facade (borders of hub maps)
+            ctx.fillStyle = '#9a8874';
+            ctx.fillRect(sx, sy, TILE, TILE);
+            ctx.strokeStyle = 'rgba(0,0,0,.08)'; ctx.lineWidth = 1;
+            for (let yy = 6; yy < TILE; yy += 7) {
+              ctx.beginPath(); ctx.moveTo(sx, sy + yy); ctx.lineTo(sx + TILE, sy + yy); ctx.stroke();
+            }
+            if (hash % 5 === 0 && g[y - 1] && g[y - 1][x] === '#') {
+              ctx.fillStyle = nightWin ? '#f0d489' : '#8fa4ae';
+              ctx.fillRect(sx + 9, sy + 8, 9, 11);
+              ctx.strokeStyle = '#e8e0d0'; ctx.strokeRect(sx + 8, sy + 7, 11, 13);
+            }
+            if (g[y + 1] && g[y + 1][x] !== '#') { // roofline meets street
+              ctx.fillStyle = 'rgba(0,0,0,.16)';
+              ctx.fillRect(sx, sy + TILE - 5, TILE, 5);
+            }
+          }
+          continue;
+        }
+
+        let base = isOut ? (TC[ch] || groundBase) : INTERIOR_FLOOR;
+        if (!isOut && TC[ch] && ch !== '.') base = INTERIOR_FLOOR;
         ctx.fillStyle = base;
         ctx.fillRect(sx, sy, TILE, TILE);
 
-        // subtle grass texture
-        if (ch === '.' && isOut && ((x * 7 + y * 13) % 11 === 0)) {
-          ctx.fillStyle = 'rgba(255,255,255,.06)';
-          ctx.fillRect(sx + 6, sy + 6, 3, 3);
+        if (!isOut) { // interior: plank floor
+          ctx.strokeStyle = 'rgba(120,95,70,.13)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(sx, sy + TILE / 2); ctx.lineTo(sx + TILE, sy + TILE / 2); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(sx, sy + TILE); ctx.lineTo(sx + TILE, sy + TILE); ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(sx + ((hash % 2) ? TILE * .3 : TILE * .7), sy + TILE / 2);
+          ctx.lineTo(sx + ((hash % 2) ? TILE * .3 : TILE * .7), sy + TILE);
+          ctx.stroke();
         }
+
+        if (ch === '.' && isOut && !isCity) { // grass with life in it
+          if (hash < 26) { // mottled darker patch
+            ctx.fillStyle = 'rgba(70,110,60,.18)';
+            ctx.fillRect(sx + (hash % 4) * 6, sy + (hash % 3) * 8, 14, 12);
+          }
+          if (hash % 9 === 0) { // grass tuft
+            ctx.strokeStyle = 'rgba(60,100,50,.5)'; ctx.lineWidth = 1.3; ctx.lineCap = 'round';
+            const tx = sx + 8 + (hash % 5) * 3, ty = sy + 12 + (hash % 4) * 4;
+            ctx.beginPath(); ctx.moveTo(tx, ty + 5); ctx.lineTo(tx - 2, ty); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(tx + 2, ty + 5); ctx.lineTo(tx + 3, ty - 1); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(tx + 1, ty + 5); ctx.lineTo(tx + 1, ty + 1); ctx.stroke();
+          }
+          if (hash === 43 || hash === 77) { // wildflower
+            const fx = sx + 10 + (hash % 7) * 2, fy = sy + 10 + (hash % 5) * 3;
+            ctx.fillStyle = hash === 43 ? '#e8e0d0' : '#e8c96b';
+            for (let p = 0; p < 4; p++) {
+              const a = p / 4 * Math.PI * 2;
+              ctx.beginPath(); ctx.arc(fx + Math.cos(a) * 2.2, fy + Math.sin(a) * 2.2, 1.5, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.fillStyle = '#c9861e';
+            ctx.beginPath(); ctx.arc(fx, fy, 1.3, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+
         if (ch === '~') {
+          const depth = (g[y - 1] && g[y - 1][x] !== '~') ? 0 : 1;
+          ctx.fillStyle = depth ? 'rgba(20,40,70,.14)' : 'rgba(255,255,255,.05)';
+          ctx.fillRect(sx, sy, TILE, TILE);
+          if (depth === 0) { // shoreline foam
+            ctx.fillStyle = 'rgba(235,245,250,.7)';
+            const ph = Math.sin(state.animT / 700 + x) * 2;
+            ctx.fillRect(sx, sy + 1 + ph * .4, TILE, 2);
+            ctx.fillStyle = 'rgba(235,245,250,.25)';
+            ctx.fillRect(sx, sy + 4 + ph, TILE, 1.5);
+          }
           ctx.fillStyle = 'rgba(255,255,255,.10)';
           if ((x + y + Math.floor(state.animT / 40)) % 5 === 0) ctx.fillRect(sx + 4, sy + TILE / 2, TILE - 8, 2);
         }
-        if (ch === '-' ) {
-          ctx.fillStyle = 'rgba(0,0,0,.05)';
-          ctx.fillRect(sx, sy, TILE, 2);
-        }
-        if (ch === '#') { // building block shading
-          ctx.fillStyle = 'rgba(0,0,0,.12)';
-          ctx.fillRect(sx, sy + TILE - 6, TILE, 6);
-          ctx.fillStyle = 'rgba(255,255,255,.08)';
-          ctx.fillRect(sx, sy, TILE, 4);
+
+        if (ch === '-' || ch === '_') { // paths: soft edges where they meet other ground
+          ctx.fillStyle = 'rgba(255,255,255,.05)';
+          if (hash % 7 === 0) ctx.fillRect(sx + (hash % 5) * 5, sy + (hash % 3) * 9, 6, 5);
+          const edge = 'rgba(90,70,50,.22)';
+          ctx.fillStyle = edge;
+          if (g[y - 1] && g[y - 1][x] !== ch && g[y - 1][x] !== '#') ctx.fillRect(sx, sy, TILE, 2);
+          if (g[y + 1] && g[y + 1][x] !== ch && g[y + 1][x] !== '#') ctx.fillRect(sx, sy + TILE - 2, TILE, 2);
+          if (g[y][x - 1] !== ch && g[y][x - 1] !== '#') ctx.fillRect(sx, sy, 2, TILE);
+          if (g[y][x + 1] !== ch && g[y][x + 1] !== '#') ctx.fillRect(sx + TILE - 2, sy, 2, TILE);
         }
         if (ch === 'F') {
           ctx.fillStyle = '#6e5741';
@@ -223,12 +313,28 @@
             break;
           }
         }
-        if ('ACBMGSRLHDQ'.includes(ch) && isOut) A.doorOut(ctx, sx, sy, TILE, DOOR_ACCENT[ch]);
-        if (ch === '_' && ((x * 13 + y * 7) % 9 === 0)) { // pavement seams
-          ctx.fillStyle = 'rgba(0,0,0,.05)';
-          ctx.fillRect(sx, sy, TILE, 1.5);
-        }
+        if ('ACBMGSRLHDQ'.includes(ch) && isOut) doorTiles.push([sx, sy, ch, x, y]);
       }
+    }
+
+    // buildings (whole structures drawn over their footprint), then their doors
+    const specs = CS.BUILDINGS && CS.BUILDINGS[scene];
+    if (specs) {
+      for (const b of specs) {
+        const bx = b.x * TILE - E.camX, by = b.y * TILE - E.camY;
+        if (bx > E.viewW || by > E.viewH || bx + b.w * TILE < 0 || by + b.h * TILE < 0) continue;
+        A0.building(ctx, bx, by, b.w * TILE, b.h * TILE, b, TILE, nightWin);
+      }
+    }
+    for (const [sx, sy, ch, tx2, ty2] of doorTiles) {
+      // if the walk-in tile sits under a drawn roof, show the door on the
+      // facade's ground floor instead
+      let dy = sy;
+      if (specs && covered.has(tx2 + ',' + ty2)) {
+        const b = specs.find(b2 => tx2 >= b2.x && tx2 < b2.x + b2.w && ty2 >= b2.y && ty2 < b2.y + b2.h);
+        if (b) dy = (b.y + b.h - 1) * TILE - E.camY;
+      }
+      A0.doorOut(ctx, sx, dy, TILE, DOOR_ACCENT[ch]);
     }
 
     // world-state decorations: construction fencing / the new waterfront

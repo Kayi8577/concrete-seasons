@@ -1977,7 +1977,10 @@
       clean[k] = S[k];
     }
     try {
-      localStorage.setItem(SLOT_KEY(slot), JSON.stringify(clean));
+      const key = SLOT_KEY(slot);
+      const prev = localStorage.getItem(key);
+      if (prev) localStorage.setItem(key + '_bak', prev); // rolling backup
+      localStorage.setItem(key, JSON.stringify(clean));
       return true;
     } catch (e) {
       CS.ui.toast('Save failed: ' + e.message);
@@ -1985,15 +1988,53 @@
     }
   };
 
-  G.loadSlot = function (slot) {
-    const raw = localStorage.getItem(SLOT_KEY(slot));
+  function parseSave(raw) {
     if (!raw) return null;
     try {
       const data = JSON.parse(raw);
-      if (typeof data.saveVersion !== 'number') return null;
-      // future: migrations by version here
+      if (typeof data.saveVersion !== 'number' || !data.player || !data.time) return null;
       return data;
     } catch (e) { return null; }
+  }
+
+  G.loadSlot = function (slot) {
+    const key = SLOT_KEY(slot);
+    let data = parseSave(localStorage.getItem(key));
+    if (!data) {
+      // corrupt or missing main save — try the rolling backup
+      data = parseSave(localStorage.getItem(key + '_bak'));
+      if (data) {
+        localStorage.setItem(key, JSON.stringify(data)); // heal the main copy
+        console.warn('Save slot', slot, 'recovered from backup');
+      }
+    }
+    return data;
+  };
+
+  G.exportSave = function () {
+    if (!S) return;
+    G.saveToSlot(S.slot);
+    const raw = localStorage.getItem(SLOT_KEY(S.slot));
+    const blob = new Blob([raw], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `concrete-seasons-${(S.player.name || 'save').replace(/[^\w一-鿿-]/g, '_')}-y${S.time.year}.json`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    CS.ui.toast('Save exported as a file — keep it somewhere safe');
+  };
+
+  G.importSave = function (text) {
+    const data = parseSave(text);
+    if (!data) return 'That file is not a valid Concrete Seasons save.';
+    // first empty slot, else refuse (never silently overwrite)
+    let slot = -1;
+    for (let i = 0; i < 3; i++) if (!localStorage.getItem(SLOT_KEY(i))) { slot = i; break; }
+    if (slot === -1) return 'All three slots are full — delete one first, then import again.';
+    data.slot = slot;
+    localStorage.setItem(SLOT_KEY(slot), JSON.stringify(data));
+    return null; // success
   };
 
   G.slotSummary = function (slot) {

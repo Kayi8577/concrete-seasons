@@ -544,6 +544,21 @@
     G().saveToSlot(S.slot);
     location.reload();
   };
+  $('menu-export').onclick = () => { G().exportSave(); };
+  // import lives on the main menu (writes to the first empty slot)
+  $('menu-import').onclick = () => $('import-file').click();
+  $('import-file').addEventListener('change', (ev) => {
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const err = CS.game.importSave(reader.result);
+      if (err) alert(err);
+      else U.renderMenu();
+    };
+    reader.readAsText(file);
+  });
   $('menu-speed').querySelectorAll('.chip').forEach(c => c.onclick = () => {
     $('menu-speed').querySelectorAll('.chip').forEach(x => x.classList.remove('selected'));
     c.classList.add('selected');

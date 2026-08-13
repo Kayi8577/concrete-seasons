@@ -35,6 +35,10 @@ h1 span { color:#5c8a6f; }
 .slot-card.empty .slot-title { color:#5c8a6f; }
 .slot-del { background:none; border:none; font-size:12px; font-weight:700; color:#c78f8f; cursor:pointer; padding:8px; text-transform:uppercase; letter-spacing:.5px; }
 .menu-footnote { text-align:center; font-size:12px; color:#9a8674; margin-top:24px; }
+.link-btn {
+  background:none; border:none; color:#5c8a6f; font-size:12px; font-weight:700;
+  text-decoration:underline; cursor:pointer; padding:4px;
+}
 
 /* ---------- Character creation ---------- */
 #screen-create { background:#f7efe2; overflow-y:auto; }

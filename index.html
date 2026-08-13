@@ -8,7 +8,7 @@
 <title>Concrete Seasons</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/style.css?v=8">
+<link rel="stylesheet" href="css/style.css?v=9">
 </head>
 <body>
 
@@ -38,6 +38,8 @@
     </div>
     <div id="slot-list" class="slot-list"></div>
     <p class="menu-footnote">Saves are stored on this device. No account, no internet needed.</p>
+    <p class="menu-footnote"><button id="menu-import" class="link-btn">Import a save file…</button></p>
+    <input type="file" id="import-file" accept=".json,application/json" style="display:none">
   </div>
 </div>
 
@@ -194,6 +196,7 @@
     <div class="panel-head"><h3>Menu</h3><button class="panel-close">✕</button></div>
     <div class="menu-list">
       <button id="menu-save" class="btn wide">Save Game</button>
+      <button id="menu-export" class="btn wide ghost">Export Save to File</button>
       <button id="menu-mainmenu" class="btn wide ghost">Save &amp; Quit to Menu</button>
       <div class="menu-sub">
         <label>Time speed</label>
@@ -233,20 +236,20 @@
 </div>
 
 <!-- content (data-driven; load order: constants → world → things → people → words) -->
-<script src="js/data/core.js?v=8"></script>
-<script src="js/data/world.js?v=8"></script>
-<script src="js/data/economy.js?v=8"></script>
-<script src="js/data/npcs.js?v=8"></script>
-<script src="js/data/schedules.js?v=8"></script>
-<script src="js/data/dialogue.js?v=8"></script>
-<script src="js/data/festivals.js?v=8"></script>
-<script src="js/data/arcs.js?v=8"></script>
+<script src="js/data/core.js?v=9"></script>
+<script src="js/data/world.js?v=9"></script>
+<script src="js/data/economy.js?v=9"></script>
+<script src="js/data/npcs.js?v=9"></script>
+<script src="js/data/schedules.js?v=9"></script>
+<script src="js/data/dialogue.js?v=9"></script>
+<script src="js/data/festivals.js?v=9"></script>
+<script src="js/data/arcs.js?v=9"></script>
 <!-- systems -->
-<script src="js/audio.js?v=8"></script>
-<script src="js/art.js?v=8"></script>
-<script src="js/engine.js?v=8"></script>
-<script src="js/game.js?v=8"></script>
-<script src="js/ui.js?v=8"></script>
-<script src="js/main.js?v=8"></script>
+<script src="js/audio.js?v=9"></script>
+<script src="js/art.js?v=9"></script>
+<script src="js/engine.js?v=9"></script>
+<script src="js/game.js?v=9"></script>
+<script src="js/ui.js?v=9"></script>
+<script src="js/main.js?v=9"></script>
 </body>
 </html>

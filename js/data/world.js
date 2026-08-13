@@ -315,6 +315,39 @@ CS.INTERIOR_SPAWNS = { apartment:[5,6], cafe:[6,6], bakery:[4,5], market:[5,5], 
                        thrift:[5,5], bar:[6,5], labs:[5,4], harbor_house:[6,5],
                        bellinis:[6,6], teahouse:[4,4] };
 
+/* Building facades: drawn as whole structures (roof + walls + windows)
+   over their '#' footprints. style: 'shop' (shingle roof + awning),
+   'block' (brick + parapet), 'glass' (greenhouse). */
+CS.BUILDINGS = {
+  outdoor: [
+    { x:16, y:2,  w:8,  h:5, style:'block', wall:'#c09a72', roof:'#6e5f55' },  // Harbor Studios
+    { x:26, y:2,  w:10, h:6, style:'block', wall:'#c07f62', roof:'#5d4e40' },  // Harbor House
+    { x:47, y:3,  w:6,  h:4, style:'glass' },                                  // Greenhouse
+    { x:3,  y:19, w:7,  h:4, style:'shop',  wall:'#cbb9a0', roof:'#7d5ba6' },  // Second Life
+    { x:12, y:19, w:8,  h:4, style:'shop',  wall:'#e0d3b8', roof:'#5c8a6f' },  // Juniper Café
+    { x:22, y:19, w:6,  h:4, style:'shop',  wall:'#e6d2ae', roof:'#b07a2a' },  // Moonrise
+    { x:30, y:19, w:7,  h:4, style:'shop',  wall:'#d8cbb2', roof:'#4a6fa5' },  // Corner Market
+    { x:39, y:19, w:8,  h:4, style:'shop',  wall:'#b8a48c', roof:'#8a3b4a' },  // The Anchor
+    { x:48, y:19, w:6,  h:4, style:'shop',  wall:'#cfd8d2', roof:'#37535e' },  // Glasshouse
+    { x:44, y:26, w:9,  h:6, style:'block', wall:'#a7b2b6', roof:'#5b8aa6' },  // Pier Labs
+  ],
+  astoria: [
+    { x:6,  y:2, w:12, h:3, style:'shop', wall:'#d8c4a4', roof:'#8a3b4a' },    // Bellini's
+  ],
+  chinatown: [
+    { x:4,  y:2, w:9, h:3, style:'shop', wall:'#c9553e', roof:'#3f4f3a' },     // Jade Pavilion
+    { x:16, y:2, w:8, h:3, style:'shop', wall:'#d8b48a', roof:'#b3542e' },     // Golden Bowl row
+  ],
+  flushing: [
+    { x:3,  y:2, w:12, h:3, style:'shop', wall:'#d8c4a4', roof:'#c9553e' },    // Golden Mall
+    { x:17, y:2, w:7,  h:3, style:'shop', wall:'#c9b694', roof:'#5b8aa6' },
+  ],
+  williamsburg: [
+    { x:3,  y:2, w:8,  h:3, style:'block', wall:'#a8846a', roof:'#6b5b4c' },   // warehouse
+    { x:14, y:2, w:10, h:3, style:'block', wall:'#9a8a7a', roof:'#5d4e40' },
+  ],
+};
+
 /* Tram/subway destinations. `unlockFlag` is set by story/text triggers. */
 CS.TRAVEL = {
   astoria:   { name:"Astoria — Bellini's", cost:3, unlockFlag:'travelAstoria',  spawn:[5,7] },
