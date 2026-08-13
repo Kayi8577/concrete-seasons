@@ -253,6 +253,8 @@
   U.closePanels = function () {
     $('panel-backdrop').classList.add('hidden');
     document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+    // wipe list contents so stale rows can't fire old closures
+    ['picker-list', 'shop-list', 'sell-list'].forEach(id => { $(id).innerHTML = ''; });
   };
   document.querySelectorAll('.panel-close').forEach(b => b.onclick = U.closePanels);
   $('panel-backdrop').onclick = U.closePanels;

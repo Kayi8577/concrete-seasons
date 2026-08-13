@@ -106,6 +106,9 @@
 
   function advanceMinute() {
     S.time.minutes += 1;
+    // quiet checkpoint every two game-hours — a crash or reload should
+    // never cost more than a sliver of a day
+    if (S.time.minutes % 120 === 0) G.saveToSlot(S.slot);
     if (S.date && S.time.minutes >= S.date.until) {
       const first = CS.NPCS[S.date.npc].name.split(' ')[0];
       S.date = null;
@@ -510,7 +513,15 @@
   G.handleTap = function (tx, ty) {
     const p = S.playerRT;
     const scene = p.scene;
-    const ch = E().tileAt(scene, tx, ty);
+    let ch = E().tileAt(scene, tx, ty);
+    // interiors: a tap on the bottom wall means "I want to leave" —
+    // snap it to the exit mat so the door isn't a one-tile target
+    const map = CS.MAPS[scene];
+    if (!map.outdoor && ch === '#' && ty >= map.grid.length - 1) {
+      const ey = map.grid.length - 1;
+      const ex = map.grid[ey].indexOf('E');
+      if (ex >= 0) { tx = ex; ty = ey; ch = 'E'; }
+    }
     p.marker = [tx, ty]; p.markerT = 30;
 
     // NPC tapped?
@@ -901,6 +912,7 @@
       CS.ui.pick('Plant what?', seeds.map(sd => ({
         icon: sd, name: `${CS.ITEMS[sd].name} ×${S.inv[sd]}`, desc: CS.ITEMS[sd].desc,
         fn: () => {
+          if (!(S.inv[sd] > 0) || pl.crop) return; // stale click, seed gone or already planted
           if (!spendEnergy(CS.COSTS.plant)) return;
           S.inv[sd] -= 1; if (S.inv[sd] <= 0) delete S.inv[sd];
           pl.crop = CS.ITEMS[sd].crop; pl.days = 0;

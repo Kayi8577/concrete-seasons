@@ -32,6 +32,6 @@ CS.WEATHER_TABLE = {
 };
 
 /* ---------------- Energy costs ---------------- */
-CS.COSTS = { till:4, plant:1, water:1, harvest:2 };
+CS.COSTS = { till:3, plant:1, water:1, harvest:2 };
 CS.RENT = 120;
 CS.START_MONEY = 400;
