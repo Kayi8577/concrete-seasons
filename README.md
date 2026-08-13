@@ -88,7 +88,15 @@ Everything from the v0.1 slice, plus:
 - **Then & Now** (Year 5): a journal wall of before/after pairs built from *your* world's history — which café survived, what the waterfront became, who left and who came home
 - **New Game+** (Year 6): the recipes you learned carry into new saves; everything else is a new timeline
 
+### v0.6 (Phase 5) additions — texture and depth
+
+- **Procedural sound** (`js/audio.js`): no audio files, fully offline — a soft synth pad keyed to time of day, filtered-noise ambience that follows weather (rain hiss, muffled snow) and goes quiet indoors, sparse pentatonic plinks that brighten during festivals. Starts on first tap (mobile-safe), toggle in Menu
+- **Farm progression**: buy improvements from Malik — drip irrigation (outdoor plots self-water), compost (crops sometimes grow two days in one), hydroponic racks (requires irrigation; doubles the greenhouse to 16 season-proof beds). Late-game farming means less watering, not more
+- **Housing**: Year 2 lease offer — stay in the studio or take the one-bedroom ($500 + higher rent): a bigger apartment with two windows and a reading nook, and everyone (spouse, kid, pets) moves with you
+- **Difficulty**: Cozy / Standard / Challenging at character creation — starting money, rent, and energy costs scale
+- **Three more festivals**: Halloween on Main (Fall 28), Friendsgiving at Harbor House (Fall 26), and New Year's Eve — with a midnight countdown moment on the promenade, different if someone's holding your hand
+
 ## Roadmap
 
-- Remaining from the master design: player housing upgrades & cohabitation options, more player jobs, hydroponics/late-game farm automation, remaining festivals, sound & music, more of the condensed-NYC hubs, difficulty modes.
+- Remaining from the master design: more player jobs & careers, more condensed-NYC hubs (Flushing, Williamsburg…), cohabitation before marriage, Open Streets / Marathon / outdoor-movie festivals, deeper pet events.
 - See the design document for the complete five-year vision.

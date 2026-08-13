@@ -98,6 +98,15 @@ Object.assign(CS.DIALOGUE, {
 /* Ava & Nia grow up on their own clock */
 CS.ARCS.push(
   {
+    id: 'lease',
+    stages: [
+      { at:{ y:2, s:0, d:2 }, run(api) {
+        api.S.flags.leaseOffer = true;
+        api.addMsg('hp', 'Harbor Studios lease renewals are open. A one-bedroom just freed up in the building — inquire at the Harbor House desk if interested.');
+      }},
+    ],
+  },
+  {
     id: 'ava_growing',
     stages: [
       { at:{ y:2, s:2, d:3 }, run(api) {
@@ -157,6 +166,58 @@ CS.TODDLER_LINES = [
   "The toddler's current loves: the cat, the window, one specific spoon. The spoon is non-negotiable.",
   "\"They walked the whole waterfront today on their own feet. Slowest, best walk of my life.\"",
 ];
+
+/* ---------------- more festivals ---------------- */
+Object.assign(CS.FESTIVALS, {
+  halloween: { name:'Halloween on Main', season:2, day:28, start:1080, end:1440,
+    blurb:'Costumes, porch candy, and Malik\'s "scary" scarecrow that fools no one.' },
+  friendsgiving: { name:'Friendsgiving', season:2, day:26, start:960, end:1320, where:'harbor_house',
+    blurb:'Harbor House, long tables, everyone brings a dish. Mateo brings four.' },
+  nye: { name:'New Year\'s Eve', season:3, day:30, start:1140, end:1560,
+    blurb:'The waterfront at midnight. The whole island counts down together.' },
+});
+Object.assign(CS.FESTIVAL_LINES, {
+  halloween: [
+    "Nia's costume is 'ferry captain.' It's mostly a hat. It's perfect.",
+    "Grace hands out full-size rolls instead of candy. Legend status: secured.",
+    "Someone dressed as the tram. The tram, if it could, would be honored.",
+  ],
+  friendsgiving: [
+    "Three kinds of stuffing, zero consensus, one perfect evening.",
+    "Mateo cooked for forty. There are maybe twenty people here. Leftovers are a love language.",
+    "Malik gives the same toast every year. Everyone mouths along. Nobody would change a word.",
+  ],
+  nye: [
+    "Resolutions get shouted over the wind. The river keeps all of them.",
+    "Somebody brought sparklers. Somebody always brings sparklers.",
+    "Ten minutes to midnight and the whole island is on the promenade.",
+  ],
+});
+
+/* ---------------- farm upgrades ---------------- */
+CS.FARM_UPGRADES = {
+  irrigation: { name:'Drip irrigation', cost:800,
+    desc:'Outdoor plots water themselves every morning. Your wrists send thanks.' },
+  compost:    { name:'Compost bin', cost:400,
+    desc:'Rich soil: crops sometimes grow two days in one.' },
+  hydro:      { name:'Hydroponic racks', cost:1500, needs:'irrigation',
+    desc:'Eight more greenhouse beds, self-watering, season-proof. The future smells like basil.' },
+};
+
+/* ---------------- the one-bedroom (Year 2 lease offer) ----------------
+   Same scene id as the studio; the grid swaps. Studio landmarks (bed,
+   kitchen, window, tank shelf) keep their coordinates so pets, cribs and
+   spouse spots stay valid. */
+CS.ONEBR_GRID = [
+  '################',
+  '#KK......W..tt.#',
+  '#..............#',
+  '#bb..tt........#',
+  '#bb............#',
+  '#..........tt..#',
+  '#q...........W.#',
+  '#####E##########',
+].map(r => r.split(''));
 
 /* ---------------- pet moments (random wake events) ---------------- */
 CS.PET_MOMENTS = {

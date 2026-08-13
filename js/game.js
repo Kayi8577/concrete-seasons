@@ -11,11 +11,12 @@
 
   /* ================= state factory ================= */
   G.newState = function (player, slot) {
+    const startMoney = { cozy: 500, standard: 400, challenging: 300 }[player.difficulty] || CS.START_MONEY;
     return {
       saveVersion: CS.SAVE_VERSION,
       slot,
       player: Object.assign({
-        money: CS.START_MONEY, energy: 100,
+        money: startMoney, energy: 100,
         scene: 'apartment', x: 5, y: 4,
       }, player),
       time: { year: 1, seasonIndex: 0, day: 1, minutes: 540, weekdayIndex: 0 },
@@ -48,6 +49,11 @@
     S.coffeeGlasshouse = S.coffeeGlasshouse || 0;
     S.coupleMeta = S.coupleMeta || {};    // 'a+b' -> {since, stage, weddingDay}
     S.family = S.family || null;          // {stage, mode, due, name, arrivedDay}
+    S.farmUpgrades = S.farmUpgrades || {};
+    S.housing = S.housing || 'studio';
+    S.player.difficulty = S.player.difficulty || 'standard';
+    applyHousing();
+    applyHydro();
     for (const id of Object.keys(CS.NPCS)) {
       S.npcs[id] = Object.assign(
         { met: false, fam: 0, friend: 0, talkedToday: false, attraction: 0, romance: null, giftedDay: -1 },
@@ -116,6 +122,28 @@
     checkEvents('time');
   }
 
+  /* ---- housing & farm-infrastructure appliers (idempotent) ---- */
+  const STUDIO_GRID = CS.MAPS.apartment.grid;
+  function applyHousing() {
+    CS.MAPS.apartment.grid = (S.housing === 'onebr') ? CS.ONEBR_GRID : STUDIO_GRID;
+    CS.MAPS.apartment.name = (S.housing === 'onebr') ? 'Your One-Bedroom' : 'Your Studio';
+  }
+  function applyHydro() {
+    if (!S.farmUpgrades.hydro) return;
+    const g = CS.MAPS.greenhouse.grid;
+    for (let y = 3; y <= 4; y++) for (let x = 5; x <= 8; x++) g[y][x] = 'g';
+  }
+  G.applyHydro = applyHydro;
+
+  /* ---- difficulty ---- */
+  const DIFF = {
+    cozy:        { rent: 90,  energyMult: 0.7, startMoney: 500 },
+    standard:    { rent: 120, energyMult: 1.0, startMoney: 400 },
+    challenging: { rent: 160, energyMult: 1.3, startMoney: 300 },
+  };
+  G.diff = () => DIFF[S.player.difficulty] || DIFF.standard;
+  G.rentAmount = () => G.diff().rent + (S.housing === 'onebr' ? 80 : 0);
+
   /* ================= time & calendar ================= */
   G.totalDay = () => (S.time.year - 1) * 120 + S.time.seasonIndex * 30 + (S.time.day - 1);
   G.weekdayIndex = () => G.totalDay() % 7;
@@ -159,9 +187,13 @@
           pl.dead = true;
           continue;
         }
-        if (pl.watered || indoor || S.weather.today === 'rain' && !indoor) pl.days += 1;
+        const irrigated = !indoor && S.farmUpgrades.irrigation;
+        if (pl.watered || indoor || irrigated || (S.weather.today === 'rain' && !indoor)) {
+          pl.days += 1;
+          if (S.farmUpgrades.compost && Math.random() < .25) pl.days += 1; // rich soil
+        }
         pl.watered = false;
-        if (!indoor && S.weather.today === 'rain') pl.watered = true; // rain pre-waters today
+        if (!indoor && (S.weather.today === 'rain' || irrigated)) pl.watered = true;
       }
     }
     if (seasonChanged) {
@@ -260,8 +292,9 @@
 
     // rent on Mondays (from week 2)
     if (S.time.weekdayIndex === 0 && G.totalDay() >= 7) {
-      S.player.money = Math.max(0, S.player.money - CS.RENT);
-      CS.ui.toast(`Rent paid: -$${CS.RENT}`, 'money');
+      const rent = G.rentAmount();
+      S.player.money = Math.max(0, S.player.money - rent);
+      CS.ui.toast(`Rent paid: -$${rent}`, 'money');
     }
 
     // wake up in apartment
@@ -768,6 +801,24 @@
 
   function noticeboard(scene) {
     if (scene === 'harbor_house') {
+      if (S.flags.leaseOffer && S.housing === 'studio') {
+        CS.ui.choose("The desk volunteer slides over the housing folder. \"The one-bedroom upstairs — $500 to move, rent goes up $80 a week. River-facing. Room for a life, if yours is growing.\"", [
+          { label: 'Take the one-bedroom ($500, rent +$80/wk)', fn: () => {
+            if (S.player.money < 500) { CS.ui.toast('Not enough money.'); return; }
+            S.player.money -= 500;
+            S.housing = 'onebr';
+            applyHousing();
+            CS.ui.refreshHUD();
+            CS.ui.narrate("Moving day takes one afternoon and four favors. By evening the boxes are in, the second window catches the river light, and the studio's echo is somebody else's now.");
+            discover('moved_onebr', `Year ${S.time.year}: moved into the one-bedroom. Two windows, room for a reading chair, and a rent number you try not to think about on Mondays.`);
+          }},
+          { label: 'Stay in the studio', fn: () => {
+            S.flags.leaseOffer = false;
+            CS.ui.narrate("You re-sign for the studio. It's small, it hums, it's yours. The volunteer nods like you passed a test.");
+          }},
+        ]);
+        return;
+      }
       CS.ui.narrate("Harbor House bulletin: after-school program schedules, a redevelopment community-input flyer (Priya's handwriting), and a sign-up sheet for the next neighborhood picnic.");
       return;
     }
@@ -870,11 +921,12 @@
   };
 
   function spendEnergy(n) {
-    if (S.player.energy < n) {
+    const cost = Math.max(1, Math.round(n * G.diff().energyMult));
+    if (S.player.energy < cost) {
       CS.ui.narrate("You're exhausted. Eat something, grab a coffee, or sleep it off.");
       return false;
     }
-    S.player.energy -= n;
+    S.player.energy -= cost;
     CS.ui.refreshHUD();
     return true;
   }
@@ -952,6 +1004,9 @@
     holiday_market: ['stall_a', 'stall_b', 'mainstreet', 'mainstreet_b'],
     lunar_new_year: ['ct_street_a', 'ct_street_b', 'ct_street_c', 'ct_stall'],
     pride: ['mainstreet', 'mainstreet_b', 'stall_a', 'stall_b'],
+    halloween: ['mainstreet', 'mainstreet_b', 'stall_a', 'stall_b'],
+    friendsgiving: ['hh_a', 'hh_b'],
+    nye: ['waterfront_a', 'waterfront_b', 'waterfront_c', 'lawn_b'],
   };
   const COUPLE_SPOTS = ['cafe_table_b', 'waterfront_b', 'bar_table']; // rotates by weekday
 
@@ -1193,6 +1248,9 @@
       else if (r.friend >= 60) opts.push({ label: 'Ask to hang out', fn: () => askHangout(id, false) });
     }
     if (id === 'joan' && canWorkShift()) opts.push({ label: 'Help with the morning rush ($45)', fn: () => workShift() });
+    if (id === 'malik' && S.flags.gardenIntro && Object.keys(CS.FARM_UPGRADES).some(k => !S.farmUpgrades[k])) {
+      opts.push({ label: 'Ask about farm improvements', fn: () => farmUpgradeMenu() });
+    }
     if (id === S.spouse && r.romance === 'married' && !S.family
         && G.totalDay() - (r.romanceDay || 0) >= 30) {
       opts.push({ label: 'Talk about the future', fn: () => familyTalk(id) });
@@ -1292,6 +1350,31 @@
         CS.ui.narrate(`"Not yet," you say, and ${first} squeezes your hand. "Then not yet. We're already a whole thing, you and me." The tram hums past. Enough, for now, is enough.`);
       }},
     ]);
+  }
+
+  function farmUpgradeMenu() {
+    const opts = [];
+    for (const key of Object.keys(CS.FARM_UPGRADES)) {
+      const u = CS.FARM_UPGRADES[key];
+      if (S.farmUpgrades[key]) continue;
+      if (u.needs && !S.farmUpgrades[u.needs]) continue;
+      opts.push({ label: `${u.name} — $${u.cost}`, fn: () => {
+        if (S.player.money < u.cost) { CS.ui.toast('Not enough money.'); return; }
+        S.player.money -= u.cost;
+        S.farmUpgrades[key] = true;
+        CS.ui.refreshHUD();
+        if (key === 'hydro') applyHydro();
+        const react = {
+          irrigation: '"Drip lines," Malik says, unrolling tube like it\'s treasure. "Now the plants drink on schedule and you sleep past sunrise. Civilization."',
+          compost: 'Malik pats the new compost bin like an old friend. "Feed the soil, the soil feeds you. Oldest deal on earth."',
+          hydro: 'Racks, pumps, soft grow-light hum. Malik whistles. "Greenhouse grows in January now. The old girl\'s got a second life."',
+        }[key];
+        CS.ui.narrate(react);
+        discover('upgrade_' + key, `Farm upgrade: ${u.name}. ${u.desc}`);
+      }});
+    }
+    opts.push({ label: 'Maybe later', fn: () => {} });
+    CS.ui.choose('Malik pulls a folded list from his cap. "Been thinking about this plot\'s future. Pick your improvement."', opts);
   }
 
   function canWorkShift() {
@@ -1523,6 +1606,10 @@
     const fest = G.currentFestival();
     if (fest && !S.flags['fest_' + fest.key + '_' + S.time.year]) {
       const FEST_TEXT = {
+        pride: `Harbor Pride, Year ${S.time.year}. Bunting from the thrift shop to the bar, and Malik's twenty-year-old rainbow cap leading the walk.`,
+        halloween: `Halloween on Main, Year ${S.time.year}. Grace gave out full-size rolls. Nia was a ferry captain. Perfection.`,
+        friendsgiving: `Friendsgiving at Harbor House, Year ${S.time.year}. Three stuffings, Malik's annual toast, Mateo's leftovers economy.`,
+        nye: `New Year's Eve on the promenade, Year ${S.time.year}. The whole island counting down into the wind.`,
         cherry: `Cherry Blossom Picnic, Year ${S.time.year}. The whole neighborhood on one lawn, petals in everyone's coffee.`,
         night_market: `Night Market, Year ${S.time.year}. Main Street under string lights, your produce selling at festival prices.`,
         harbor_lights: `Harbor Lights, Year ${S.time.year}. Fireworks over the East River, the whole island looking up at once.`,
@@ -1531,9 +1618,10 @@
         lunar_new_year: `Lunar New Year on Mott Street, Year ${S.time.year}. Drums, lions, lanterns — and Mrs. Woo's line around the block.`,
       };
       const onSite = (fest.key === 'cherry' && p.scene === 'outdoor' && p.y >= 23)
-                  || (['night_market', 'street_food', 'holiday_market'].includes(fest.key) && p.scene === 'outdoor' && p.y >= 14 && p.y <= 20)
-                  || (fest.key === 'harbor_lights' && p.scene === 'outdoor' && p.y >= 32)
-                  || (fest.key === 'lunar_new_year' && p.scene === 'chinatown');
+                  || (['night_market', 'street_food', 'holiday_market', 'pride', 'halloween'].includes(fest.key) && p.scene === 'outdoor' && p.y >= 14 && p.y <= 20)
+                  || (['harbor_lights', 'nye'].includes(fest.key) && p.scene === 'outdoor' && p.y >= 32)
+                  || (fest.key === 'lunar_new_year' && p.scene === 'chinatown')
+                  || (fest.key === 'friendsgiving' && p.scene === 'harbor_house');
       if (onSite) {
         S.flags['fest_' + fest.key + '_' + S.time.year] = true;
         discover('fest_' + fest.key + '_' + S.time.year, FEST_TEXT[fest.key]);
@@ -1550,6 +1638,21 @@
           }
         }
       }
+    }
+
+    // Midnight on New Year's Eve, on the promenade
+    if (fest && fest.key === 'nye' && S.time.minutes >= 1440 && p.scene === 'outdoor' && p.y >= 32
+        && !S.flags['midnight_' + S.time.year]) {
+      S.flags['midnight_' + S.time.year] = true;
+      const withSomeone = S.spouse ? CS.NPCS[S.spouse].name.split(' ')[0]
+        : (S.date ? CS.NPCS[S.date.npc].name.split(' ')[0] : null);
+      CS.ui.narrate(withSomeone
+        ? `TEN. NINE. The count rolls down the promenade like a wave. At zero the ferries all sound their horns at once and ${withSomeone}'s cold hand finds yours. A brand-new year, already warmer than the last.`
+        : `TEN. NINE. The count rolls down the promenade like a wave. At zero the ferry horns bellow, strangers hug you, and the river carries the old year out with the tide. You walked into this crowd alone and stand in it belonging.`, () => {
+        discover('midnight_' + S.time.year, `Midnight, New Year's Eve, Year ${S.time.year} → ${S.time.year + 1}. Ferry horns, sparklers, the island in one crowd.`);
+      });
+      if (withSomeone && S.spouse) S.npcs[S.spouse].friend += 10;
+      return;
     }
 
     // Harbor Lights + a date = the scene the whole year quietly builds toward

@@ -33,4 +33,13 @@
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+
+  // procedural audio: unlock on first gesture, retune about once a second
+  document.addEventListener('pointerdown', () => CS.audio.unlock(), { once: true });
+  setInterval(() => {
+    const S = CS.game.state();
+    if (S && document.getElementById('screen-game').classList.contains('active')) {
+      CS.audio.update(S);
+    }
+  }, 1000);
 })();

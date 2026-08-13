@@ -489,6 +489,11 @@
     c.classList.add('selected');
     G().state().settings.speed = parseInt(c.dataset.v);
   });
+  $('menu-sound').querySelectorAll('.chip').forEach(c => c.onclick = () => {
+    $('menu-sound').querySelectorAll('.chip').forEach(x => x.classList.remove('selected'));
+    c.classList.add('selected');
+    CS.audio.setEnabled(c.dataset.v === 'on');
+  });
   $('cheat-go').onclick = () => {
     const v = $('cheat-input').value;
     if (!v.trim()) return;
@@ -568,7 +573,7 @@
   };
 
   /* ---- character creation ---- */
-  const cc = { slot: 0, gender: 'F', pref: 'discover', bseason: 0, bday: 1, look: { skin: 0, hair: 0, hairStyle: 'short', outfit: 0 } };
+  const cc = { slot: 0, gender: 'F', pref: 'discover', difficulty: 'standard', bseason: 0, bday: 1, look: { skin: 0, hair: 0, hairStyle: 'short', outfit: 0 } };
 
   function startCreation(slot) {
     cc.slot = slot;
@@ -587,6 +592,7 @@
     });
   }
   chipRow('cc-gender', v => cc.gender = v);
+  chipRow('cc-diff', v => cc.difficulty = v);
   chipRow('cc-pref', v => cc.pref = v);
   chipRow('cc-bseason', v => { cc.bseason = parseInt(v); });
   chipRow('cc-hairstyle', v => { cc.look.hairStyle = v; updatePreview(); });
@@ -638,7 +644,7 @@
     const name = $('cc-name').value.trim();
     if (!name) { $('cc-name').style.borderColor = '#c74f6d'; $('cc-name').focus(); return; }
     const player = {
-      name, gender: cc.gender, pref: cc.pref,
+      name, gender: cc.gender, pref: cc.pref, difficulty: cc.difficulty,
       birthSeason: cc.bseason, birthDay: cc.bday,
       look: { ...cc.look },
     };
