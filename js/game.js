@@ -414,6 +414,14 @@
       S.flags.travelChinatown = true;
       G.addMsg('mei_lin', "There's a tea shop on Mott Street you should know about. Jade Pavilion — tell Mrs. Woo I sent you. The subway gets you there.");
     }
+    if (!S.flags.travelFlushing && S.npcs.maya && S.npcs.maya.hasNumber && G.tierOf('maya') >= 2) {
+      S.flags.travelFlushing = true;
+      G.addMsg('maya', 'important medical advice: golden mall food court, flushing. the hand-pulled noodles fix things science cannot. subway gets you there');
+    }
+    if (!S.flags.travelWilliamsburg && S.npcs.avery && S.npcs.avery.hasNumber && G.tierOf('avery') >= 2) {
+      S.flags.travelWilliamsburg = true;
+      G.addMsg('avery', 'you like the thrift shop? the WILLIAMSBURG FLEA, weekends only. wear comfortable shoes and emotional armor. subway to bedford');
+    }
     if (!S.flags.travelChinatown && S.time.seasonIndex === 3 && S.time.day >= 18) {
       S.flags.travelChinatown = true;
       G.addMsg('hp', 'Holiday service: the tram now connects to Chinatown for the Lunar New Year season. Lion dances on Mott Street on the 25th.');
@@ -638,16 +646,26 @@
     if (ch === 'X') return () => CS.ui.openSell();
     if (ch === 'N') return () => noticeboard(scene);
     if (ch === 'k') return () => {
+      // the Williamsburg flea runs every weekend, festival or not
+      if (scene === 'williamsburg') {
+        if (S.time.weekdayIndex >= 5) CS.ui.openFlea();
+        else CS.ui.narrate('Folded tables and locked bins. The flea is a weekend animal — come back Saturday.');
+        return;
+      }
       const fest = G.currentFestival();
-      const stallFests = ['night_market', 'street_food', 'holiday_market', 'lunar_new_year'];
+      const stallFests = { night_market: 1.5, street_food: 1.5, holiday_market: 1.5, lunar_new_year: 1.5, marathon: 1.4 };
       const rightPlace = fest && ((fest.where || 'outdoor') === scene);
-      if (fest && stallFests.includes(fest.key) && rightPlace) CS.ui.openSell(1.5, fest.name + ' Stall');
-      else CS.ui.narrate("An empty market stall. On festival days these come alive.");
+      if (fest && stallFests[fest.key] && rightPlace) {
+        CS.ui.openSell(stallFests[fest.key], fest.key === 'marathon' ? 'Cheer Station Stand' : fest.name + ' Stall');
+      } else {
+        CS.ui.narrate("An empty market stall. On festival days these come alive.");
+      }
     };
     if (ch === 'i') return () => CS.ui.narrate("The old lighthouse. Decommissioned for decades, still the most reliable thing on the island. Locals say if you're here at the right moment, you'll understand why people stay.");
     if (ch === 'P') return () => travelMenu();
     if (ch === 'U' && scene === 'teahouse') return () => CS.ui.buyPrompt('tea', 5, "Mrs. Woo's oolong. +20 energy.");
     if (ch === 'U' && scene === 'bellinis') return () => bellinisMenu();
+    if (ch === 'U' && scene === 'foodcourt') return () => foodcourtMenu();
     if (ch === 'h') return () => CS.ui.narrate("You sit for a moment. The river doesn't care about anyone's schedule. It's the most relaxing thing in New York.");
     if (ch === 's' || ch === 'g') return () => farmAction(scene, x, y);
     return null;
@@ -687,6 +705,14 @@
     }
     refreshNPCs(true);
     CS.ui.refreshHUD();
+  }
+
+  function foodcourtMenu() {
+    CS.ui.choose('Golden Mall: steam, chatter in four languages, and the best $10 you will ever spend.',
+      CS.FOODCOURT_MENU.map(f => ({
+        label: `${f.name} — $${f.price} (+${f.energy} energy)`,
+        fn: () => buyEnergy(f.price, f.energy, 'You eat at the counter, elbow to elbow with strangers who all made the same excellent decision.'),
+      })).concat([{ label: 'Just breathing it in', fn: () => {} }]));
   }
 
   function bellinisMenu() {
@@ -1007,6 +1033,9 @@
     halloween: ['mainstreet', 'mainstreet_b', 'stall_a', 'stall_b'],
     friendsgiving: ['hh_a', 'hh_b'],
     nye: ['waterfront_a', 'waterfront_b', 'waterfront_c', 'lawn_b'],
+    open_streets: ['mainstreet', 'mainstreet_b', 'stall_a', 'stall_b'],
+    marathon: ['mainstreet', 'mainstreet_b', 'stall_a', 'stall_b'],
+    movie_night: ['lawn_a', 'lawn_b', 'lawn_c', 'lawn_d', 'lawn_e'],
   };
   const COUPLE_SPOTS = ['cafe_table_b', 'waterfront_b', 'bar_table']; // rotates by weekday
 
@@ -1057,8 +1086,8 @@
     if (S.date && S.date.npc === id && S.time.minutes < S.date.until) {
       return { spot: CS.SPOTS[remapSpot(S.date.spot)], act: 'spending time with you' };
     }
-    // your spouse lives here now — mornings and evenings at home
-    if (r.romance === 'married') {
+    // your spouse (or live-in partner) — mornings and evenings at home
+    if (r.romance === 'married' || S.cohab === id) {
       if (S.time.minutes < 480 || S.time.minutes >= 1200) {
         return { spot: CS.SPOTS.apartment_home, act: 'home, with you' };
       }
@@ -1251,6 +1280,20 @@
     if (id === 'malik' && S.flags.gardenIntro && Object.keys(CS.FARM_UPGRADES).some(k => !S.farmUpgrades[k])) {
       opts.push({ label: 'Ask about farm improvements', fn: () => farmUpgradeMenu() });
     }
+    if (id === 'sofia' && G.tierOf('sofia') >= 2 && canGig() && S.time.weekdayIndex <= 4
+        && S.time.minutes >= 900 && S.time.minutes < 1080 && S.playerRT.scene === 'harbor_house') {
+      opts.push({ label: 'Help tutor the after-school kids ($50)', fn: () => doGig(50, 25, 150,
+        "Two hours of fractions, four hours of questions about the farm. Sofia calls you 'a natural' — she says it to all the volunteers, and it works every time.") });
+    }
+    if (id === 'theo' && G.tierOf('theo') >= 2 && canGig() && S.time.weekdayIndex >= 5
+        && S.time.minutes >= 540 && S.time.minutes < 720) {
+      opts.push({ label: 'Assist a photo shoot ($70)', fn: () => doGig(70, 20, 180,
+        "Three hours of holding reflectors and learning to see the neighborhood the way Theo does — in patient rectangles. He pays cash and gives you a print. The print's the real wage.") });
+    }
+    if (!npc.decorative && r.romance === 'partner' && !S.cohab && !S.spouse
+        && S.housing === 'onebr' && G.totalDay() - (r.romanceDay || 0) >= 20) {
+      opts.push({ label: 'Ask them to move in', fn: () => askCohab(id) });
+    }
     if (id === S.spouse && r.romance === 'married' && !S.family
         && G.totalDay() - (r.romanceDay || 0) >= 30) {
       opts.push({ label: 'Talk about the future', fn: () => familyTalk(id) });
@@ -1379,16 +1422,32 @@
 
   function canWorkShift() {
     const wd = S.time.weekdayIndex;
-    return wd <= 4 && S.time.minutes >= 420 && S.time.minutes < 600 && !S.flags['shift' + G.totalDay()];
+    return wd <= 4 && S.time.minutes >= 420 && S.time.minutes < 600 && canGig();
   }
   function workShift() {
-    if (!G.spendEnergy(25)) return;
-    S.flags['shift' + G.totalDay()] = true;
-    S.time.minutes += 180;
-    S.player.money += 45;
+    doGig(45, 25, 180,
+      "Three hours of steaming milk, calling names, and learning who orders what. Joan nods at the end — high praise. You made $45 and about forty micro-acquaintances.");
+  }
+  // one paid gig per day, shared across all jobs
+  function canGig() { return !S.flags['gig' + G.totalDay()]; }
+  function doGig(pay, energy, minutes, flavor) {
+    if (!G.spendEnergy(energy)) return;
+    S.flags['gig' + G.totalDay()] = true;
+    S.time.minutes += minutes;
+    S.player.money += pay;
     refreshNPCs(true);
     CS.ui.refreshHUD();
-    CS.ui.narrate("Three hours of steaming milk, calling names, and learning who orders what. Joan nods at the end — high praise. You made $45 and about forty micro-acquaintances.");
+    CS.ui.narrate(flavor);
+  }
+
+  function askCohab(id) {
+    const npc = CS.NPCS[id], first = npc.name.split(' ')[0];
+    S.cohab = id;
+    S.npcs[id].friend += 15;
+    discover('cohab_' + id, `${npc.name} moved in. Two toothbrushes, one rent conversation, a shelf that reorganized itself into "ours."`);
+    CS.ui.dialogue(npc, [
+      `You ask over dinner, casually, the way you'd rehearsed being casual. ${first} puts the fork down. "I was going to give it one more month before I asked you." Boxes arrive Saturday. The apartment absorbs a second whole life without complaint.`,
+    ]);
   }
 
   /* ---- phone ---- */
@@ -1416,9 +1475,9 @@
     const tier = G.tierOf(id);
     const m = S.time.minutes;
     const r = S.npcs[id];
-    // married small talk — half the time, the ordinary intimacy leads
-    if (r.romance === 'married' && Math.random() < .4) {
-      let pool = CS.MARRIED_LINES;
+    // married / living-together small talk — the ordinary intimacy leads
+    if ((r.romance === 'married' || S.cohab === id) && Math.random() < .4) {
+      let pool = r.romance === 'married' ? CS.MARRIED_LINES : CS.COHAB_LINES;
       if (S.family && S.family.stage === 'baby') pool = pool.concat(CS.BABY_LINES);
       if (S.family && S.family.stage === 'toddler') pool = pool.concat(CS.TODDLER_LINES);
       return pool[Math.floor(Math.random() * pool.length)].replace(/\{name\}/g, S.family ? S.family.name : '');
@@ -1531,10 +1590,20 @@
     if (!S || !S.pet || !S.petRT || S.petRT.scene !== scene) return;
     const rt = S.petRT;
     if (S.pet.type === 'fish') {
-      CS.art.aquarium(ctx, rt.px - camX, rt.py - camY, T, t);
+      CS.art.aquarium(ctx, rt.px - camX, rt.py - camY, T, t, S.pet.fishCount || 1);
       return;
     }
     CS.art.pet(ctx, S.pet.type, S.pet.fur || '#8a6242', rt.px - camX, rt.py - camY, T, t);
+  };
+
+  G.addAquariumFish = function (price) {
+    if (S.player.money < price) { CS.ui.toast('Not enough money.'); return; }
+    S.player.money -= price;
+    S.pet.fishCount = (S.pet.fishCount || 1) + 1;
+    S.pet.affection += 3;
+    CS.ui.refreshHUD();
+    CS.ui.toast(`A new guppy joins ${S.pet.name}'s small nation (${S.pet.fishCount} fish)`);
+    if (S.pet.fishCount === 3) discover('full_tank', `The aquarium reached full population: three fish, one ecosystem, zero vacancies. ${S.pet.name} governs wisely.`);
   };
 
   G.interactPet = function () {
@@ -1610,6 +1679,9 @@
         halloween: `Halloween on Main, Year ${S.time.year}. Grace gave out full-size rolls. Nia was a ferry captain. Perfection.`,
         friendsgiving: `Friendsgiving at Harbor House, Year ${S.time.year}. Three stuffings, Malik's annual toast, Mateo's leftovers economy.`,
         nye: `New Year's Eve on the promenade, Year ${S.time.year}. The whole island counting down into the wind.`,
+        open_streets: `Open Streets, Year ${S.time.year}. Main Street with no cars sounds like the neighborhood's original voice.`,
+        marathon: `Marathon Weekend, Year ${S.time.year}. Forty thousand strangers ran past and the island cheered every single one.`,
+        movie_night: `Movie Night on the lawn, Year ${S.time.year}. Crooked projector, wind for sound, nobody would fix a thing.`,
         cherry: `Cherry Blossom Picnic, Year ${S.time.year}. The whole neighborhood on one lawn, petals in everyone's coffee.`,
         night_market: `Night Market, Year ${S.time.year}. Main Street under string lights, your produce selling at festival prices.`,
         harbor_lights: `Harbor Lights, Year ${S.time.year}. Fireworks over the East River, the whole island looking up at once.`,
@@ -1617,8 +1689,8 @@
         holiday_market: `Holiday Market, Year ${S.time.year}. String lights, cold hands, warm cider, Main Street at its kindest.`,
         lunar_new_year: `Lunar New Year on Mott Street, Year ${S.time.year}. Drums, lions, lanterns — and Mrs. Woo's line around the block.`,
       };
-      const onSite = (fest.key === 'cherry' && p.scene === 'outdoor' && p.y >= 23)
-                  || (['night_market', 'street_food', 'holiday_market', 'pride', 'halloween'].includes(fest.key) && p.scene === 'outdoor' && p.y >= 14 && p.y <= 20)
+      const onSite = (['cherry', 'movie_night'].includes(fest.key) && p.scene === 'outdoor' && p.y >= 23)
+                  || (['night_market', 'street_food', 'holiday_market', 'pride', 'halloween', 'open_streets', 'marathon'].includes(fest.key) && p.scene === 'outdoor' && p.y >= 14 && p.y <= 20)
                   || (['harbor_lights', 'nye'].includes(fest.key) && p.scene === 'outdoor' && p.y >= 32)
                   || (fest.key === 'lunar_new_year' && p.scene === 'chinatown')
                   || (fest.key === 'friendsgiving' && p.scene === 'harbor_house');
@@ -1638,6 +1710,35 @@
           }
         }
       }
+    }
+
+    // Movie night, late on the lawn, someone beside you
+    if (fest && fest.key === 'movie_night' && S.date && p.scene === 'outdoor' && p.y >= 23
+        && S.time.minutes >= 1200 && !S.flags['movie_moment_' + S.time.year]) {
+      S.flags['movie_moment_' + S.time.year] = true;
+      const first = CS.NPCS[S.date.npc].name.split(' ')[0];
+      S.npcs[S.date.npc].attraction += 8;
+      S.npcs[S.date.npc].friend += 8;
+      CS.ui.narrate(`Halfway through the movie, ${first}'s head finds your shoulder — casually, like it's been doing this for years. On the bedsheet screen, somebody's chasing somebody. Neither of you will remember who.`, () => {
+        discover('movie_moment_' + S.time.year, `Movie Night, Year ${S.time.year} — the film was fine. The shoulder situation was better.`);
+      });
+      return;
+    }
+
+    // Saturday dog park hour at Lighthouse Park
+    if (trigger === 'enter' && S.pet && S.pet.type === 'dog' && S.pet.walkedToday
+        && S.time.weekdayIndex === 5 && S.time.minutes >= 480 && S.time.minutes < 660
+        && p.scene === 'outdoor' && p.x <= 13 && p.y <= 11
+        && S.flags.dogparkWeek !== Math.floor(G.totalDay() / 7)) {
+      S.flags.dogparkWeek = Math.floor(G.totalDay() / 7);
+      S.pet.affection += 5;
+      CS.ui.narrate(`Saturday morning under the lighthouse: four dogs, five owners, one unspoken club. ${S.pet.name} greets Biscuit the corgi like a returning war buddy. You learn two names (both dogs') and trade zucchini advice with a stranger. Membership: confirmed.`, () => {
+        if (!S.flags.dogparkFirst) {
+          S.flags.dogparkFirst = true;
+          discover('dogpark', `The Saturday dog-park hour at Lighthouse Park. Nobody organized it. Nobody would dare cancel it. ${S.pet.name} is a founding member now.`);
+        }
+      });
+      return;
     }
 
     // Midnight on New Year's Eve, on the promenade

@@ -311,6 +311,21 @@
       el.appendChild(b);
       list.appendChild(el);
     }
+    // aquarium owners can grow the tank (up to three fish)
+    if (S.pet && S.pet.type === 'fish' && (S.pet.fishCount || 1) < 3) {
+      const def = CS.ITEMS.fancy_fish;
+      const el = document.createElement('div');
+      el.className = 'shop-row';
+      el.appendChild(CS.art.iconCanvas('fancy_fish', 30));
+      el.insertAdjacentHTML('beforeend',
+        `<div class="info"><div class="nm">${def.name}</div><div class="ds">${def.desc}</div></div>`);
+      const b = document.createElement('button');
+      b.className = 'buy';
+      b.textContent = '$40';
+      b.onclick = () => { G().addAquariumFish(40); U.openShop(); };
+      el.appendChild(b);
+      list.appendChild(el);
+    }
     openPanel('panel-shop');
   };
 
@@ -347,6 +362,51 @@
       list.appendChild(el);
     }
     openPanel('panel-sell');
+  };
+
+  /* ---- the Williamsburg flea (weekends) ---- */
+  U.openFlea = function () {
+    const S = G().state();
+    const week = Math.floor(G().totalDay() / 7);
+    if (!S.flea || S.flea.week !== week) {
+      // six finds a week, seeded so revisits within the weekend match
+      let seed = week * 2654435761 % 2147483647;
+      const rnd = () => (seed = seed * 48271 % 2147483647) / 2147483647;
+      const pool = [...CS.FLEA_POOL];
+      const items = [];
+      for (let i = 0; i < 6 && pool.length; i++) {
+        const [id, price] = pool.splice(Math.floor(rnd() * pool.length), 1)[0];
+        items.push({ id, price: Math.round(price * (0.9 + rnd() * 0.5)), sold: false });
+      }
+      S.flea = { week, items };
+    }
+    $('shop-title').textContent = 'Artists & Fleas';
+    const list = $('shop-list');
+    list.innerHTML = '<div style="font-size:13px;color:#8a7361;padding:0 2px 6px">Weekend stock. Haggling not included; smugness is.</div>';
+    S.flea.items.forEach((it) => {
+      const def = CS.ITEMS[it.id];
+      const el = document.createElement('div');
+      el.className = 'shop-row';
+      el.appendChild(CS.art.iconCanvas(it.id, 30));
+      el.insertAdjacentHTML('beforeend',
+        `<div class="info"><div class="nm">${def.name}${def.rare ? ' ★' : ''}</div><div class="ds">${def.desc}</div></div>`);
+      const b = document.createElement('button');
+      b.className = 'buy';
+      b.textContent = it.sold ? 'Sold' : `$${it.price}`;
+      b.disabled = it.sold;
+      b.onclick = () => {
+        if (S.player.money < it.price) { U.toast('Not enough money.'); return; }
+        S.player.money -= it.price;
+        it.sold = true;
+        G().addItem(it.id, 1);
+        U.refreshHUD();
+        U.toast(`Bought ${def.name}`);
+        U.openFlea();
+      };
+      el.appendChild(b);
+      list.appendChild(el);
+    });
+    openPanel('panel-shop');
   };
 
   /* ---- thrift (Second Life) ---- */

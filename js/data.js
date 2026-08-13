@@ -589,13 +589,20 @@ CS.SCHEDULES = {
         { until:9999, at:null, act:'on the overnight at the hospital' },
       ];
     }
-    // weekend
-    return [
+    if (wd === 5) return [
       { until:540,  at:null, act:'sleeping in, finally' },
       { until:660,  at:'cafe_table_b', act:'weekend coffee ritual' },
       { until:780,  at:'farm_gate', act:'poking around the community farm' },
       { until:900,  at: rain ? null : 'waterfront_a', act: rain ? 'reading at home' : 'river walk' },
       { until:9999, at:null, act:'quiet night in' },
+    ];
+    // Sunday: family day in Flushing
+    return [
+      { until:600,  at:null, act:'sleeping in, finally' },
+      { until:720,  at:'cafe_table_b', act:'weekend coffee ritual' },
+      { until:840,  at:null, act:'on the 7 train to Flushing' },
+      { until:1020, at:'ft_court', act:'dim sum with the Chens' },
+      { until:9999, at:null, act:'home with leftovers her mother insisted on' },
     ];
   },
   daniel(s) {

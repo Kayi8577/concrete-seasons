@@ -96,7 +96,19 @@ Everything from the v0.1 slice, plus:
 - **Difficulty**: Cozy / Standard / Challenging at character creation — starting money, rent, and energy costs scale
 - **Three more festivals**: Halloween on Main (Fall 28), Friendsgiving at Harbor House (Fall 26), and New Year's Eve — with a midnight countdown moment on the promenade, different if someone's holding your hand
 
+### v0.7 (Phase 6) additions — a bigger city, a fuller week
+
+- **Two more hubs**: Flushing (Golden Mall food court — the best $10 in the game; Maya's family Sunday dim sum happens here) and Williamsburg (Artists & Fleas — a weekend-only flea market with its own rotating stock, hipster pricing, and flea-exclusive finds like a working neon sign). Unlocked by Maya's and Avery's friendship texts
+- **Gig work**: one paid gig per day — Joan's café rush ($45), tutoring Sofia's after-school kids ($50, weekday afternoons at Harbor House), or assisting Theo's weekend photo shoots ($70)
+- **Cohabitation**: a partner can move in before marriage (one-bedroom required — the studio can't hold two lives). Live-in partners come home evenings, wake up with you, and get their own domestic small-talk
+- **Three more festivals**: Open Streets (Spring 8), Marathon Weekend (Fall 5 — the cheer-station stall sells at 1.4×, runners buy anything cold), Movie Night on the Lawn (Summer 18, with a shoulder-situation moment if you bring a date)
+- **Deeper pets**: the unofficial Saturday dog-park hour at Lighthouse Park ({your dog} and Biscuit the corgi, founding members), and aquariums grow to three fish via the Corner Market
+
+### Release checklist
+
+Bump BOTH on every release: `CACHE_VERSION` in `sw.js` **and** the `?v=` query on every asset URL in `index.html` (defeats the browser's heuristic HTTP cache).
+
 ## Roadmap
 
-- Remaining from the master design: more player jobs & careers, more condensed-NYC hubs (Flushing, Williamsburg…), cohabitation before marriage, Open Streets / Marathon / outdoor-movie festivals, deeper pet events.
+- Remaining niceties: deeper career ladders, remaining festival calendar, more thrift/collection depth, Year 6+ evergreen event variety.
 - See the design document for the complete five-year vision.

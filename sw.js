@@ -1,7 +1,7 @@
 /* Concrete Seasons — service worker.
    Cache-first so the game is fully playable offline / in airplane mode.
    Bump CACHE_VERSION on every release so clients pick up new files. */
-const CACHE_VERSION = 'cs-v6';
+const CACHE_VERSION = 'cs-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const ASSETS = [
   './js/data2.js',
   './js/data3.js',
   './js/data4.js',
+  './js/data5.js',
   './js/audio.js',
   './js/art.js',
   './js/engine.js',
@@ -41,7 +42,10 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    fetch(e.request)
+    // no-cache: always revalidate with the server when online (avoids the
+    // browser's heuristic HTTP cache serving stale JS); offline falls back
+    // to the last cached copy.
+    fetch(e.request, { cache: 'no-cache' })
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE_VERSION).then((c) => c.put(e.request, copy));

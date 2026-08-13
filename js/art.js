@@ -566,7 +566,7 @@
     }
   };
 
-  A.aquarium = function (ctx, sx, sy, T, t) {
+  A.aquarium = function (ctx, sx, sy, T, t, count) {
     sh(ctx, sx + T / 2, sy + T - 3, T * .36, 2.5);
     rr(ctx, sx + 3, sy + T - 9, T - 6, 6, 1.5, P.wood); // stand
     // tank
@@ -579,14 +579,20 @@
     ctx.strokeStyle = P.leaf; ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.moveTo(sx + 8, sy + T - 13);
     ctx.quadraticCurveTo(sx + 7, sy + T - 19, sx + 9, sy + T - 22); ctx.stroke();
-    // fish
-    const fx = sx + T / 2 + Math.sin(t / 900) * 5, fy = sy + T / 2 - 1 + Math.sin(t / 600) * 1.5;
-    const dir = Math.cos(t / 900) >= 0 ? 1 : -1;
-    ctx.fillStyle = P.orange;
-    ctx.beginPath(); ctx.ellipse(fx, fy, 3.5, 2.2, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(fx - 3 * dir, fy); ctx.lineTo(fx - 6 * dir, fy - 2); ctx.lineTo(fx - 6 * dir, fy + 2);
-    ctx.fill();
+    // the residents (1–3 fish, each on their own lap of the tank)
+    const cols = [P.orange, '#5b87a8', '#c2589e'];
+    const n = Math.min(3, count || 1);
+    for (let i = 0; i < n; i++) {
+      const ph = t / (900 + i * 240) + i * 2.1;
+      const fx = sx + T / 2 + Math.sin(ph) * (5 - i), fy = sy + T / 2 - 1 + i * 3 + Math.sin(t / (600 + i * 100)) * 1.5;
+      const dir = Math.cos(ph) >= 0 ? 1 : -1;
+      const sc = 1 - i * .2;
+      ctx.fillStyle = cols[i];
+      ctx.beginPath(); ctx.ellipse(fx, fy, 3.5 * sc, 2.2 * sc, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(fx - 3 * sc * dir, fy); ctx.lineTo(fx - 6 * sc * dir, fy - 2 * sc); ctx.lineTo(fx - 6 * sc * dir, fy + 2 * sc);
+      ctx.fill();
+    }
   };
 
   /* ================= characters ================= */
@@ -698,6 +704,17 @@
       case 'kale': case 'carrot': case 'squash': case 'chrysanthemum':
         A.crop(ctx, id, 1, 0, S * .05, S);
         break;
+      case 'fancy_fish': {
+        ctx.fillStyle = '#c2589e';
+        ctx.beginPath(); ctx.ellipse(S * .52, S * .5, S * .2, S * .13, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(S * .36, S * .5); ctx.lineTo(S * .2, S * .38); ctx.lineTo(S * .2, S * .62);
+        ctx.closePath(); ctx.fill();
+        circle(ctx, S * .6, S * .47, S * .025, '#2d2a26');
+        circle(ctx, S * .3, S * .3, S * .03, 'rgba(120,180,220,.8)');
+        circle(ctx, S * .7, S * .26, S * .025, 'rgba(120,180,220,.8)');
+        break;
+      }
       case 'tea':
         rr(ctx, S * .28, S * .4, S * .38, S * .32, S * .06, '#7a8a6e');
         ctx.strokeStyle = '#7a8a6e'; ctx.lineWidth = S * .05;
