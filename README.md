@@ -20,16 +20,30 @@ A cozy, fully-offline life-simulation game set in **Harbor Point**, a fictional 
 
 No frameworks, no build step, no image assets. Plain JS modules loaded in order, one global namespace `CS`.
 
+**Content** lives in `js/data/` — one file per domain, load order matters (constants → world → things → people → words):
+
 | File | Responsibility |
 |---|---|
-| `js/data.js` | **Core content**: maps, crops, items, the founding NPCs, shops, recipes, festivals, constants. Adding content = editing data, not logic. |
-| `js/data2.js` | **Phase 2 content**: the ten remaining major NPCs (definitions, schedules, dialogue), phone-message pools, festival lines. |
+| `js/data/core.js` | Namespace, constants, calendar math, palettes, weather tables. |
+| `js/data/world.js` | Every map (Harbor Point, interiors, city hubs), named spots, travel destinations. |
+| `js/data/economy.js` | Crops, items, shops, thrift & flea stock, recipes, farm upgrades. |
+| `js/data/npcs.js` | Every resident: definitions, drawn looks, gift tastes; pets; chemistry pairs. |
+| `js/data/schedules.js` | Daily routines for the whole cast, branching on weekday/weather/arc state. |
+| `js/data/dialogue.js` | All words: dialogue pools, phone messages, festival/date/married lines. |
+| `js/data/festivals.js` | The festival calendar and its flavor lines. |
+| `js/data/arcs.js` | Year 2–5 life arcs: dated stages that reshape schedules, dialogue, and the map. |
+
+**Systems** live in `js/`:
+
+| File | Responsibility |
+|---|---|
 | `js/art.js` | **All visuals**: every sprite, portrait, and icon drawn procedurally with canvas vectors (cozy sage/earth palette, rounded forms, soft upper-left light). No emoji, no PNGs. |
+| `js/audio.js` | Procedural sound: WebAudio synthesis only, no audio files. |
 | `js/engine.js` | Canvas renderer, camera, BFS pathfinding, tap/keyboard input. |
-| `js/game.js` | Simulation: time/calendar, weather, farming, NPC schedules & relationships, events, pets, economy, save/load, cheats. |
-| `js/ui.js` | DOM UI: HUD, dialogue, panels (bag/shop/journal/menu), character creation, save slots. |
-| `js/main.js` | Boot + game loop + service-worker registration. |
-| `sw.js` | Offline cache (network-first, cache fallback). Bump `CACHE_VERSION` on release. |
+| `js/game.js` | Simulation: time/calendar, weather, farming, NPC schedules & relationships, arcs, romance/marriage/family, events, pets, economy, save/load, cheats. |
+| `js/ui.js` | DOM UI: HUD, dialogue, panels (bag/shop/phone/journal/menu), character creation, save slots. |
+| `js/main.js` | Boot + game loop + service-worker & audio hookup. |
+| `sw.js` | Offline cache (network-first with `no-cache` revalidation, cache fallback). |
 
 ### Design rules baked in
 

@@ -1,153 +1,7 @@
 /* =========================================================================
-   Concrete Seasons — data3.js (Phase 3 content)
-   Year 2–5 life arcs, Glasshouse Coffee, marriage content, departures &
-   returns. Loaded after data.js/data2.js; merges into CS.*.
-   Arc `run(api)` gets: { S, addMsg, toast, discover, setArc, tierOf }.
+   Concrete Seasons — data/arcs.js
+   Year 2–5 life arcs: dated stages that reshape the world.
    ========================================================================= */
-(function () {
-
-const dayOf = (year, season, day) => (year - 1) * 120 + season * 30 + (day - 1);
-CS.dayOf = dayOf;
-
-/* ---------------- Glasshouse Coffee ---------------- */
-CS.MAPS.glasshouse = {
-  name: 'Glasshouse Coffee', outdoor: false, exitTo: 'outdoor', exitKey: 'Q',
-  grid: [
-    '############',
-    '#UUU....==.#',
-    '#..........#',
-    '#.tt..tt...#',
-    '#..........#',
-    '#.tt..tt...#',
-    '#####E######',
-  ].map(r => r.split('')),
-  labels: [],
-};
-CS.INTERIOR_SPAWNS.glasshouse = [5, 5];
-
-Object.assign(CS.SPOTS, {
-  glass_counter:  { scene:'glasshouse', x:4, y:2 },
-  glass_table_a:  { scene:'glasshouse', x:2, y:4 },
-  glass_table_b:  { scene:'glasshouse', x:7, y:4 },
-  apartment_home: { scene:'apartment', x:8, y:2 },
-});
-/* when Juniper closes, its regulars migrate across the street */
-CS.CAFE_FALLBACK = {
-  cafe_table_a:'glass_table_a', cafe_table_b:'glass_table_b',
-  cafe_table_c:'glass_table_a', cafe_counter:'glass_counter',
-};
-CS.GLASS_FALLBACK = {
-  glass_table_a:'cafe_table_a', glass_table_b:'cafe_table_b', glass_counter:'cafe_counter',
-};
-
-CS.NPCS.claire = {
-  name:'Claire Fontaine', color:'#37535e', gender:'F', rom:[],
-  look:{ skin:'#f6d7b8', hair:'#c9a24b', style:'long', outfit:'#37535e' },
-  bio:'Opened Glasshouse Coffee with a loan, a dream, and very good taste.', decorative:true,
-};
-CS.SCHEDULES.claire = function (s) {
-  if (!s.flags.glasshouseOpen || s.flags.glasshouseClosed) return [{ until:9999, at:null, act:'' }];
-  return [
-    { until:390, at:null, act:'' },
-    { until:1200, at:'glass_counter', act:'running Glasshouse on hope and espresso' },
-    { until:9999, at:null, act:'' },
-  ];
-};
-CS.DIALOGUE.claire = {
-  intro: "\"Welcome to Glasshouse! Claire.\" She says it like she's still getting used to saying it. \"Yes, we're the new place. No, we're not trying to kill anyone's café. I just... really love coffee. Try the cortado?\"",
-  pools: [
-    { cond:{}, lines:[
-      "\"The loan officer asked for my five-year plan. I showed him a coffee menu. Somehow it worked.\"",
-      "\"People think new means corporate. It's me. It's literally just me and a grinder I'm still paying off.\"",
-      "\"Joan came by on my first week. Wished me luck. I almost cried into the batch brew.\"",
-    ]},
-  ],
-};
-
-/* ---------------- ring ---------------- */
-CS.ITEMS.ring = { name:'Gold Band', type:'misc', desc:'A quiet little forever, in a box.' };
-CS.SHOP_MARKET.push({ item:'ring', price:280 });
-
-/* ---------------- married / partner lines ---------------- */
-CS.MARRIED_LINES = [
-  "\"We need dish soap. This is what romance looks like now. I love it.\"",
-  "They hand you the good mug without being asked. Eleven years of mornings could feel like this and it wouldn't get old.",
-  "\"Come look at the river with me for a second. It's doing the thing.\"",
-  "You find your spare key in their pocket and their spare key in yours. Neither of you mentions it.",
-];
-CS.WEDDING_LINES = {
-  vows: "Under the old lighthouse, in front of everyone who learned your name one season at a time, you both say the simple version out loud. The river applauds the only way it knows how.",
-};
-
-/* ---------------- arc dialogue pools (merged into existing NPCs) ---------------- */
-const ARC_POOLS = {
-  daniel: [
-    { cond:{ arc:'rumors' }, lines:[
-      "The layoff rumors got a spreadsheet. When I'M the one making the doom spreadsheet, it's bad.",
-      "Re-org meeting Thursday. 'Re-org' is Latin for 'update your resume.'",
-    ]},
-    { cond:{ arc:'laidoff' }, lines:[
-      "So. Funny story. I've been 'impacted.' That's the actual word they used. Like a wisdom tooth.",
-      "Day 12 of funemployment. I alphabetized my spices and applied to nine jobs. The spices went better.",
-      "You know what nobody tells you? Losing the job also loses the schedule. I miss the schedule most.",
-    ]},
-    { cond:{ arc:'startup' }, lines:[
-      "The startup's five people and a whiteboard. I haven't been this terrified or this awake in years.",
-      "No more Midtown tower. We work above a dumpling place in LIC. Objectively an upgrade.",
-    ]},
-    { cond:{ arc:'bigco' }, lines:[
-      "Back at a big company. The badge photo is worse but the health insurance is beautiful.",
-    ]},
-    { cond:{ arc:'freelance' }, lines:[
-      "Freelance PM. Turns out 'organized and pleasant' is a sellable service. Avery was right. Don't tell Avery.",
-    ]},
-  ],
-  maya: [
-    { cond:{ arc:'applying' }, lines:[
-      "Fellowship applications are open. Boston, Chicago, and one here. I keep rearranging the list. The list knows nothing.",
-      "Everyone asks where I want to end up. The honest answer keeps changing depending on who's asking.",
-    ]},
-    { cond:{ arc:'staying' }, lines:[
-      "I took the fellowship HERE. Turns out the tiebreaker wasn't the program. It was everything else. Some of it was you.",
-    ]},
-  ],
-  lena: [
-    { cond:{ arc:'defended' }, lines:[
-      "DOCTOR Hoffman. I keep saying it to the mirror. The mirror is very impressed.",
-      "The defense took 96 minutes and six years. Now everyone asks 'what's next' like that's a fair question.",
-    ]},
-    { cond:{ arc:'industry' }, lines:[
-      "I took the industry job. In the city. My advisor sighed for a full minute, but the river vetoed Chicago.",
-    ]},
-  ],
-  nico: [
-    { cond:{ arc:'deciding' }, lines:[
-      "Pop sat me down Sunday. THE talk. The restaurant, the keys, my name on the thing. I ordered more napkins. He noticed.",
-      "Everyone's got an opinion about my life this month. What's yours? No — wait. Actually, I'm asking.",
-    ]},
-    { cond:{ arc:'partial' }, lines:[
-      "We signed it: me and Pop, partners. Half the keys, half the yelling. Rosa says it's the first smart thing the family's done since the sauce.",
-    ]},
-    { cond:{ arc:'took_over' }, lines:[
-      "It's mine now. The whole thing. I cried in the walk-in, which is traditional.",
-    ]},
-    { cond:{ arc:'refused' }, lines:[
-      "I said no. Pop took it... okay. Rosa took it better. Somebody else's name on Bellini's — still hurts to say. But it was the honest answer.",
-    ]},
-  ],
-  priya: [
-    { cond:{ arc:'notice' }, lines:[
-      "The redevelopment notice is real. South Point, mixed-use, the whole file. This is the part where the neighborhood decides what it is. Come to the meeting.",
-    ]},
-    { cond:{ arc:'construction' }, lines:[
-      "Construction phase. Everyone hates me at the community board and I've never been more sure the details matter.",
-    ]},
-    { cond:{ arc:'done' }, lines:[
-      "Walk the new waterfront and tell me what you notice. Not the buildings — the benches. I fought for the benches.",
-    ]},
-  ],
-};
-
 /* ---------------- ARCS ----------------
    Stages fire on wake once their date arrives, in order. */
 CS.ARCS = [
@@ -317,9 +171,44 @@ CS.ARCS = [
   },
 ];
 
-/* merge arc dialogue into the cast */
-for (const id of Object.keys(ARC_POOLS)) {
-  CS.DIALOGUE[id].pools.push(...ARC_POOLS[id]);
-}
-
-})();
+/* Ava & Nia grow up on their own clock */
+CS.ARCS.push(
+  {
+    id: 'lease',
+    stages: [
+      { at:{ y:2, s:0, d:2 }, run(api) {
+        api.S.flags.leaseOffer = true;
+        api.addMsg('hp', 'Harbor Studios lease renewals are open. A one-bedroom just freed up in the building — inquire at the Harbor House desk if interested.');
+      }},
+    ],
+  },
+  {
+    id: 'ava_growing',
+    stages: [
+      { at:{ y:2, s:2, d:3 }, run(api) {
+        api.setArc('ava', 'apps');
+        if (api.S.npcs.sofia.hasNumber) api.addMsg('sofia', 'ava is deep in college apps. if she asks you to read an essay, the answer is yes and the review is glowing');
+      }},
+      { at:{ y:3, s:0, d:8 }, run(api) {
+        api.setArc('ava', 'accepted');
+        api.discover('ava_accepted', 'Year 3: Ava got into college upstate, full aid. Harbor House made a banner. Nia pretended not to cry and failed.');
+      }},
+      { at:{ y:3, s:2, d:2 }, run(api) {
+        api.setArc('ava', 'gone');
+        api.S.npcs.ava.awayCity = 'college upstate';
+        api.addMsg('hp', 'Send-off for Ava Coleman at Harbor House this week — the whole neighborhood chipped in for her dorm fund.');
+        api.discover('ava_leaves', 'Year 3, Fall: Ava left for college. Her Harbor House shift sat empty until Nia grew into it.');
+      }},
+    ],
+  },
+  {
+    id: 'nia_growing',
+    stages: [
+      { at:{ y:3, s:0, d:1 }, run(api) { api.setArc('nia', 'nia14'); }},
+      { at:{ y:5, s:0, d:1 }, run(api) {
+        api.setArc('nia', 'nia16');
+        api.discover('nia_sixteen', 'Year 5: Nia turned sixteen and took over Ava\'s old Harbor House shift. Generational time, visible to the naked eye.');
+      }},
+    ],
+  },
+);

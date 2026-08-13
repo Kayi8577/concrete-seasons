@@ -8,7 +8,7 @@
 <title>Concrete Seasons</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/style.css?v=7">
+<link rel="stylesheet" href="css/style.css?v=8">
 </head>
 <body>
 
@@ -232,16 +232,21 @@
   </div>
 </div>
 
-<script src="js/data.js?v=7"></script>
-<script src="js/data2.js?v=7"></script>
-<script src="js/data3.js?v=7"></script>
-<script src="js/data4.js?v=7"></script>
-<script src="js/data5.js?v=7"></script>
-<script src="js/audio.js?v=7"></script>
-<script src="js/art.js?v=7"></script>
-<script src="js/engine.js?v=7"></script>
-<script src="js/game.js?v=7"></script>
-<script src="js/ui.js?v=7"></script>
-<script src="js/main.js?v=7"></script>
+<!-- content (data-driven; load order: constants → world → things → people → words) -->
+<script src="js/data/core.js?v=8"></script>
+<script src="js/data/world.js?v=8"></script>
+<script src="js/data/economy.js?v=8"></script>
+<script src="js/data/npcs.js?v=8"></script>
+<script src="js/data/schedules.js?v=8"></script>
+<script src="js/data/dialogue.js?v=8"></script>
+<script src="js/data/festivals.js?v=8"></script>
+<script src="js/data/arcs.js?v=8"></script>
+<!-- systems -->
+<script src="js/audio.js?v=8"></script>
+<script src="js/art.js?v=8"></script>
+<script src="js/engine.js?v=8"></script>
+<script src="js/game.js?v=8"></script>
+<script src="js/ui.js?v=8"></script>
+<script src="js/main.js?v=8"></script>
 </body>
 </html>

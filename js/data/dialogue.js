@@ -1,282 +1,201 @@
 /* =========================================================================
-   Concrete Seasons — data2.js (Phase 2 content)
-   The remaining ten major NPCs: definitions, schedules, dialogue.
-   Plus phone-message pools and festival dialogue. Merged into CS.* after
-   data.js loads. All authored, all offline.
+   Concrete Seasons — data/dialogue.js
+   All spoken words: dialogue pools, texts, festival/date/married lines.
    ========================================================================= */
 (function () {
+/* ---------------- Dialogue pools ----------------
+   Picked by best condition match. cond fields (all optional):
+   minTier / maxTier (0 stranger,1 familiar,2 acquaintance,3 friend)
+   weather, sceneType('cafe'...), before/after (minutes), birthday:true, pet:'cat'|'dog'|'fish'
+*/
+CS.TIERS = ['Stranger', 'Familiar Face', 'Acquaintance', 'Friend', 'Close Friend'];
 
-/* ---------------- NPC definitions ---------------- */
-Object.assign(CS.NPCS, {
-  sofia: {
-    name:'Sofia Martinez', color:'#e0704f', gender:'F', rom:['M'],
-    look:{ skin:'#c68a52', hair:'#26221e', style:'long', outfit:'#e0704f' },
-    bio:'Public-school social worker. Lives with family. Knows everyone\'s cousin.',
-    loved:['tulip'], liked:['bread','meal_salad'],
+CS.DIALOGUE = {
+  maya: {
+    intro: "Oh — hey. You're the one who took over the farm plot, right? Malik hasn't stopped talking about it. I'm Maya. I'd shake your hand but I've been at the hospital for thirteen hours and I can't vouch for it.",
+    pools: [
+      { cond:{}, lines:[
+        "Coffee is a food group. I will not be taking questions.",
+        "If you ever see me running, something has gone very wrong. Or the tram is leaving.",
+        "The trick to this neighborhood is knowing which places open early. I'm not telling you which. Yet.",
+      ]},
+      { cond:{ maxTier:1 }, lines:[
+        "Hey. Farm person, right? It's coming back to me.",
+        "You're new-ish. You still look at the skyline when you walk. It wears off.",
+      ]},
+      { cond:{ minTier:2 }, lines:[
+        "You know what I like about you? You don't ask me medical questions at the café.",
+        "Save me something from the farm this week. I eat like a raccoon during shift blocks.",
+        "Lena keeps citing studies at me. I keep telling her ER doctors ARE the study.",
+      ]},
+      { cond:{ minTier:3 }, lines:[
+        "Honestly? Some weeks this neighborhood is the only thing that feels like mine. Don't quote me.",
+        "If I ever apply for fellowship somewhere far away, talk me through it first, okay?",
+      ]},
+      { cond:{ weather:'rain' }, lines:[
+        "Rain means quiet ER mornings and chaotic ER nights. Enjoy the quiet part.",
+        "I love the rain here. Everything smells like river and wet concrete. It's oddly great.",
+      ]},
+      { cond:{ after:1260 }, lines:[
+        "Why are we both awake right now. Don't answer that.",
+      ]},
+      { cond:{ birthday:true, minTier:2 }, lines:[
+        "Wait — it's your birthday, isn't it? I remember things. It's the job. Happy birthday, farm person.",
+      ]},
+    ],
   },
-  gabriel: {
-    name:'Gabriel Rivera', color:'#3f6e56', gender:'M', rom:['F'],
-    look:{ skin:'#c68a52', hair:'#1f1c19', style:'short', outfit:'#3f6e56' },
-    bio:'Paramedic. Jokes his way through twelve-hour shifts.',
-    loved:['meal_pasta'], liked:['coffee','bread'],
+  daniel: {
+    intro: "Hi! Daniel. I've seen you hauling seed bags past the café — very agrarian of you. I'm in tech, which means I describe vegetables as 'deliverables' and everyone hates it. Welcome to Harbor Point.",
+    pools: [
+      { cond:{}, lines:[
+        "My calendar has a block that says 'go outside.' This is that block.",
+        "The tram is honestly the best product New York ever shipped. Zero bugs since 1976. Roughly.",
+        "I rank the café's pastries in a spreadsheet. Grace's croissant is undefeated.",
+      ]},
+      { cond:{ maxTier:1 }, lines:[
+        "Hey, farm neighbor. Still settling in?",
+        "You're the community garden person! I have questions about tomatoes. For later. I'll schedule it.",
+      ]},
+      { cond:{ minTier:2 }, lines:[
+        "Work's fine. Work is always 'fine.' That's tech for 'we'll know in Q3.'",
+        "If you ever sell basil, I will personally destabilize the local basil economy.",
+        "Maya says hi, by the way. Well — she said 'tell the farm person the lettuce was decent.' High praise.",
+      ]},
+      { cond:{ minTier:3 }, lines:[
+        "Between us? There are layoff rumors going around. I'm fine. Probably. Anyway — how are the crops?",
+      ]},
+      { cond:{ weather:'rain' }, lines:[
+        "Rain day. The office Slack is 30% weather commentary right now.",
+        "I brought an umbrella big enough for three people. This is what preparedness looks like.",
+      ]},
+      { cond:{ birthday:true, minTier:2 }, lines:[
+        "Happy birthday!! It's in my calendar. Recurring event. That's how you know I care.",
+      ]},
+    ],
   },
-  theo: {
-    name:'Theo Bennett', color:'#4d4a5e', gender:'M', rom:['F'],
-    look:{ skin:'#5d3a20', hair:'#141210', style:'curly', outfit:'#4d4a5e' },
-    bio:'Documentary photographer. Calm, observant, allergic to five-year plans.',
-    loved:['film_camera','vinyl_record'], liked:['coffee'],
+  lena: {
+    intro: "Oh! Human interaction. Hi. Lena — neuroscience, PhD, year four, don't ask when I'm defending. You're the farm person? Plants are just very slow neurons. That's not true. But isn't it a great sentence?",
+    pools: [
+      { cond:{}, lines:[
+        "I've had four coffees and I can hear colors. This is fine.",
+        "The river at night is the only thing that makes my brain go quiet. Highly recommend.",
+        "Fun fact: lettuce is 95% water and 5% the satisfaction of having grown it.",
+      ]},
+      { cond:{ maxTier:1 }, lines:[
+        "You're the one with the plot by the greenhouse, right? I notice things. It's the training.",
+      ]},
+      { cond:{ minTier:2 }, lines:[
+        "My advisor said 'promising.' I've been running on that word for nine days.",
+        "Maya threatened to physically remove me from the lab at midnight. As a friend. I think.",
+        "Can I put a sensor in your greenhouse someday? For science. Small sensor. Tiny.",
+      ]},
+      { cond:{ minTier:3 }, lines:[
+        "Sometimes I worry the dissertation ends and I just... leave for a postdoc somewhere. Then I look at the river and un-worry. Mostly.",
+      ]},
+      { cond:{ weather:'rain' }, lines:[
+        "Rain increases my productivity by 40%. Sample size: me.",
+        "I was going to walk by the river but the river came to me instead. Rude.",
+      ]},
+      { cond:{ after:1320 }, lines:[
+        "Shh. The city's asleep. This is the best version of it.",
+      ]},
+      { cond:{ birthday:true, minTier:2 }, lines:[
+        "Birthday! Yours! Today! I remembered because I wrote it on my hand. Last week. It's still there. Happy birthday!",
+      ]},
+    ],
   },
-  avery: {
-    name:'Avery Morgan', color:'#c2589e', gender:'NB', rom:['F','M'],
-    look:{ skin:'#f6d7b8', hair:'#3aa6a0', style:'short', outfit:'#c2589e' },
-    bio:'Freelance designer, bartender at The Anchor. Funny, independent, tired.',
-    loved:['sunflower'], liked:['coffee','old_poster'],
+  nico: {
+    intro: "Hey hey — new neighbor! Nico. My family runs Bellini's over in Astoria, so if you ever grow basil, we're gonna be best friends. That's not a threat. It's a forecast.",
+    pools: [
+      { cond:{}, lines:[
+        "You want restaurant advice? Never trust a quiet kitchen.",
+        "This bread? Grace's. I take it to Queens every morning. My nonna approves, which is the highest rating that exists.",
+        "Everyone's got a hustle in this city. Yours grows in dirt. I respect it.",
+      ]},
+      { cond:{ maxTier:1 }, lines:[
+        "Farm neighbor! Still alive! The city hasn't eaten you yet. Good sign.",
+      ]},
+      { cond:{ minTier:2 }, lines:[
+        "My dad keeps asking when I'm 'taking over officially.' I keep ordering more napkins instead. It's a system.",
+        "Grow me tomatoes in the summer and I'll name a special after you. I'm serious. 'The Farmer.' It writes itself.",
+      ]},
+      { cond:{ minTier:3 }, lines:[
+        "Between you and me? I don't know if I want the restaurant. Don't tell my nonna. Don't tell ANYBODY'S nonna.",
+      ]},
+      { cond:{ weather:'rain' }, lines:[
+        "Rain kills the dinner walk-ins but the regulars still show. Regulars are family. Damp family.",
+      ]},
+      { cond:{ birthday:true, minTier:2 }, lines:[
+        "It's your birthday?? Come by Bellini's sometime, birthday meal on me. House rules.",
+      ]},
+    ],
   },
-  naomi: {
-    name:'Naomi Brooks', color:'#2f3f5c', gender:'F', rom:['M','F'],
-    look:{ skin:'#5d3a20', hair:'#141210', style:'bun', outfit:'#2f3f5c' },
-    bio:'Corporate attorney. Polished, generous, running on fumes.',
-    loved:['meal_galette'], liked:['coffee','tulip'],
+  grace: {
+    intro: "Morning, sweetheart. Grace — this is my bakery. You're the one taking over Malik's lost cause of a farm plot? Good. This neighborhood needs more people who fix things. Roll's on the house. First one only.",
+    pools: [
+      { cond:{}, lines:[
+        "Bread doesn't keep secrets. You can taste a rushed proof. People are the same.",
+        "Twenty-two years on this corner. The rent goes up, the ovens stay on.",
+        "Malik will talk your ear off. Let him. He's earned it.",
+      ]},
+      { cond:{ maxTier:1 }, lines:[
+        "Back again? The smell gets everybody. It's the cardamom.",
+      ]},
+      { cond:{ minTier:2 }, lines:[
+        "If your strawberries come in nice, bring me some. I'll show you what a real galette looks like.",
+        "You're starting to walk like a local. Slower on the corners. It's a good sign.",
+      ]},
+      { cond:{ minTier:3 }, lines:[
+        "One day I'll need someone to take the morning bake. Not today. But I've started noticing who shows up early.",
+      ]},
+      { cond:{ weather:'rain' }, lines:[
+        "Rain days are bread days. Nobody buys salad in the rain — they buy comfort.",
+      ]},
+      { cond:{ before:390 }, lines:[
+        "You're up before the birds. Either something's wrong or you're one of mine now.",
+      ]},
+      { cond:{ birthday:true, minTier:1 }, lines:[
+        "Happy birthday, sweetheart. Bakers know everyone's birthday. It's in the special orders.",
+      ]},
+    ],
   },
-  arjun: {
-    name:'Arjun Mehta', color:'#5b8aa6', gender:'M', rom:['F'],
-    look:{ skin:'#a06a3b', hair:'#1f1c19', style:'short', outfit:'#5b8aa6' },
-    bio:'Machine-learning engineer at Pier Labs. Quiet, thoughtful, far from home.',
-    loved:['meal_pasta'], liked:['cucumber','paperback'],
+  malik: {
+    intro: "There you are! Malik Johnson — I keep the community farm from falling into the river. Or I did, until you showed up. Come by the plots and I'll get you started. That soil's been waiting for somebody stubborn.",
+    pools: [
+      { cond:{}, lines:[
+        "Thirty-one years driving trains under this city. Now I grow things on top of it. Better view.",
+        "Water in the morning if you can. The plants like it, and so does the soul.",
+        "That greenhouse is older than some of these buildings' rent prices. Treat her kind.",
+      ]},
+      { cond:{ maxTier:1 }, lines:[
+        "How's the plot treating you? Soil doesn't lie — it'll tell you if you've been lazy.",
+      ]},
+      { cond:{ minTier:2 }, lines:[
+        "Grace saves me the end-of-day loaf. Been doing it for fifteen years. That's what a neighborhood is.",
+        "You keep showing up. That's the whole secret, you know. To all of it.",
+      ]},
+      { cond:{ minTier:3 }, lines:[
+        "I've seen this island change three times over. It'll change again. What matters is who's still saying good morning when it does.",
+      ]},
+      { cond:{ weather:'rain' }, lines:[
+        "Free watering day! Don't let anybody tell you rain is bad news on a farm.",
+        "The river gets moody in the rain. I like her moody.",
+      ]},
+      { cond:{ birthday:true, minTier:1 }, lines:[
+        "Happy birthday! I'd have grown you something but you took my farm. Ha! Come by, pick a flower.",
+      ]},
+    ],
   },
-  priya: {
-    name:'Priya Nair', color:'#9c4f2e', gender:'F', rom:['M'],
-    look:{ skin:'#a06a3b', hair:'#26221e', style:'long', outfit:'#9c4f2e' },
-    bio:'Urban-planning analyst on the Harbor Point redevelopment. Practical, direct.',
-    loved:['cucumber'], liked:['bread','planter_box'],
+  joan: {
+    intro: "Welcome to Juniper. First one's full price — we're not that kind of story. What can I get you?",
+    pools: [
+      { cond:{}, lines:[
+        "The usual crowd rotates through like clockwork. You'll learn it.",
+        "Oat milk? Whole? Existential? We have all three.",
+      ]},
+    ],
   },
-  jordan: {
-    name:'Jordan Ellis', color:'#6e5a2e', gender:'M', rom:['F'],
-    look:{ skin:'#5d3a20', hair:'#141210', style:'short', outfit:'#6e5a2e' },
-    bio:'Union infrastructure worker. Reliable in person, unreachable by text.',
-    loved:['bread'], liked:['radish','enamel_pot'],
-  },
-  mei_lin: {
-    name:'Mei-Lin Zhou', color:'#8a3b4a', gender:'F', rom:['M','F'],
-    look:{ skin:'#f0c795', hair:'#1a1714', style:'long', outfit:'#8a3b4a' },
-    bio:'Museum exhibition producer. Stylish, observant, careful with her heart.',
-    loved:['film_camera','ceramic_vase'], liked:['strawberry'],
-  },
-  mateo: {
-    name:'Mateo Alvarez', color:'#48653a', gender:'M', rom:['M','F'],
-    look:{ skin:'#c68a52', hair:'#26221e', style:'curly', outfit:'#48653a' },
-    bio:'Public defender. Takes care of everyone except himself.',
-    loved:['coffee'], liked:['bread','meal_roast'],
-  },
-});
-
-/* ---------------- Schedules ---------------- */
-Object.assign(CS.SCHEDULES, {
-  sofia(s) {
-    const wd = s.time.weekdayIndex, rain = s.weather.today === 'rain';
-    if (wd <= 4) return [
-      { until:480,  at:null, act:'breakfast chaos with the family' },
-      { until:540,  at:'tram', act:'commuting to school' },
-      { until:950,  at:null, act:'at school — someone always needs her' },
-      { until:1140, at:'hh_a', act:'running the after-school program at Harbor House' },
-      { until:1230, at: rain ? 'cafe_table_a' : 'waterfront_b', act:'finally, a breath' },
-      { until:9999, at:null, act:'family dinner. Non-negotiable.' },
-    ];
-    if (wd === 5) return [
-      { until:540,  at:null, act:'sleeping past seven, a miracle' },
-      { until:660,  at:'market_aisle', act:'shopping for the whole household' },
-      { until:780,  at:'mainstreet', act:'greeting approximately everyone' },
-      { until:900,  at:'waterfront_b', act:'river time' },
-      { until:9999, at:null, act:'cousins visiting' },
-    ];
-    return [
-      { until:780,  at:null, act:'church, then the long family lunch' },
-      { until:900,  at:'waterfront_c', act:'Sunday stroll' },
-      { until:9999, at:null, act:'prepping for the week' },
-    ];
-  },
-  gabriel(s) {
-    const wd = s.time.weekdayIndex, rain = s.weather.today === 'rain';
-    if (wd === 1 || wd === 3 || wd === 5) return [
-      { until:9999, at:null, act:'on a 12-hour ambulance shift' },
-    ];
-    return [
-      { until:390,  at:null, act:'sleeping off the last shift' },
-      { until:480,  at: rain ? null : 'waterfront_a', act: rain ? 'skipping the jog, no shame' : 'morning jog by the river' },
-      { until:540,  at:'bakery_front', act:'post-run reward at Moonrise' },
-      { until:720,  at:null, act:'errands and a nap, in that order' },
-      { until:900,  at:'lighthouse_park', act:'doing absolutely nothing, expertly' },
-      { until:1080, at:'mainstreet', act:'orbiting Main Street' },
-      { until:1260, at:'bar_seat_a', act:'holding court at The Anchor' },
-      { until:9999, at:null, act:'early night before the next shift' },
-    ];
-  },
-  theo(s) {
-    const wd = s.time.weekdayIndex, rain = s.weather.today === 'rain';
-    return [
-      { until:360,  at:null, act:'asleep with a camera on the nightstand' },
-      { until:540,  at:'waterfront_c', act: rain ? 'shooting the rain — best light there is' : 'shooting the morning light' },
-      { until:720,  at:'mainstreet', act:'documenting the neighborhood, quietly' },
-      { until:780,  at:'cafe_table_b', act:'coffee and contact sheets' },
-      { until:960,  at:'lighthouse_park', act:'waiting for the right moment' },
-      { until:1080, at:null, act:'developing film at home' },
-      (wd === 4 || wd === 5)
-        ? { until:1380, at:'bar_table', act:'listening more than talking' }
-        : { until:1320, at:'waterfront_a', act:'night frames by the river' },
-      { until:9999, at:null, act:'archiving the day' },
-    ];
-  },
-  avery(s) {
-    const wd = s.time.weekdayIndex;
-    const barNight = wd >= 2 && wd <= 5;
-    return [
-      { until:600,  at:null, act:'sleeping — bartenders earn their mornings' },
-      { until:780,  at:'cafe_table_a', act:'freelance design sprint, headphones on' },
-      { until:900,  at:'mainstreet', act:'sketchbook walk' },
-      { until:1020, at:null, act:'client calls (ugh)' },
-      barNight
-        ? { until:1440, at:'bar_work', act:'behind the bar at The Anchor' }
-        : { until:1380, at:'waterfront_b', act:'late-night river thoughts' },
-      { until:9999, at:null, act:'decompressing with bad TV' },
-    ];
-  },
-  naomi(s) {
-    const wd = s.time.weekdayIndex;
-    if (wd <= 4) return [
-      { until:390,  at:null, act:'reviewing documents before sunrise' },
-      { until:420,  at:'tram', act:'first-wave commute, immaculate' },
-      { until:1260, at:null, act:'billable hours. So many billable hours.' },
-      { until:1380, at:'bar_seat_b', act:'one drink, then sleep' },
-      { until:9999, at:null, act:'asleep by midnight, allegedly' },
-    ];
-    if (wd === 5) return [
-      { until:600,  at:null, act:'the week finally lets go' },
-      { until:720,  at:'cafe_table_b', act:'brunch alone, blissfully' },
-      { until:840,  at:'thrift_browse', act:'quality control at Second Life' },
-      { until:960,  at:'waterfront_c', act:'walking off the week' },
-      { until:9999, at:null, act:'dinner reservations in Manhattan' },
-    ];
-    return [
-      { until:660,  at:null, act:'"not working" (working)' },
-      { until:780,  at:'lighthouse_park', act:'pretending to read, actually resting' },
-      { until:9999, at:null, act:'Sunday scaries, managed professionally' },
-    ];
-  },
-  arjun(s) {
-    const wd = s.time.weekdayIndex, rain = s.weather.today === 'rain';
-    if (wd <= 4) return [
-      { until:510,  at:null, act:'call home — it\'s evening in Mumbai' },
-      { until:540,  at:'tram', act:'heading to the lab' },
-      { until:720,  at:'lab_a', act:'training runs at Pier Labs' },
-      { until:780,  at:'mainstreet', act:'lunchtime walk, always the same loop' },
-      { until:1140, at:'lab_a', act:'debugging something that worked yesterday' },
-      { until:1260, at: rain ? null : 'waterfront_c', act: rain ? 'staying in with a book' : 'evening walk by the water' },
-      { until:9999, at:null, act:'cooking dinner for one, well' },
-    ];
-    if (wd === 5) return [
-      { until:600,  at:null, act:'the long sleep' },
-      { until:780,  at:'lighthouse_park', act:'bowling practice against the lighthouse wall' },
-      { until:900,  at:'market_aisle', act:'weekly provisions' },
-      { until:9999, at:null, act:'video calls with college friends, three time zones' },
-    ];
-    return [
-      { until:720,  at:null, act:'slow Sunday morning' },
-      { until:900,  at:'lab_b', act:'weekend deploy. Don\'t ask.' },
-      { until:9999, at:null, act:'meal prep and cricket highlights' },
-    ];
-  },
-  priya(s) {
-    const wd = s.time.weekdayIndex;
-    if (wd <= 4) return [
-      { until:480,  at:null, act:'reading planning briefs over chai' },
-      { until:720,  at:'hh_b', act:'redevelopment office hours at Harbor House' },
-      { until:780,  at:'bakery_front', act:'strategic pastry acquisition' },
-      { until:1080, at:'lab_b', act:'zoning models at the coworking desks' },
-      { until:1200, at:'mainstreet', act:'counting storefronts — it\'s a planner thing' },
-      { until:9999, at:null, act:'annotating maps at home' },
-    ];
-    if (wd === 5) return [
-      { until:660,  at:null, act:'sleeping in, planner-style (8 AM)' },
-      { until:780,  at:'farm_gate', act:'sketching the farm — it\'s in the plan' },
-      { until:960,  at:'mainstreet', act:'observing how people actually use the street' },
-      { until:9999, at:null, act:'calling her mother, being lectured lovingly' },
-    ];
-    return [
-      { until:780,  at:null, act:'long breakfast, longer newspaper' },
-      { until:900,  at:'waterfront_b', act:'Sunday constitutional' },
-      { until:9999, at:null, act:'week planning. Color-coded.' },
-    ];
-  },
-  jordan(s) {
-    const wd = s.time.weekdayIndex;
-    if (wd <= 4) return [
-      { until:330,  at:null, act:'asleep — site call is at 6' },
-      { until:360,  at:'tram', act:'first train to the site' },
-      { until:990,  at:null, act:'on the job — water mains this week' },
-      { until:1110, at:'waterfront_a', act:'decompressing, phone on silent (always)' },
-      wd === 4
-        ? { until:1320, at:'bar_seat_a', act:'Friday beer with the crew' }
-        : { until:9999, at:null, act:'asleep by nine, no apologies' },
-      { until:9999, at:null, act:'out cold' },
-    ];
-    if (wd === 5) return [
-      { until:600,  at:null, act:'body refuses to sleep in' },
-      { until:780,  at:'mainstreet', act:'errands, done efficiently' },
-      { until:900,  at:'lighthouse_park', act:'sizing up the lighthouse masonry, professionally' },
-      { until:9999, at:null, act:'browsing property listings he can almost afford' },
-    ];
-    return [
-      { until:660,  at:null, act:'quiet morning' },
-      { until:780,  at:'bakery_front', act:'Sunday roll, same order for six years' },
-      { until:9999, at:null, act:'dinner at his mother\'s' },
-    ];
-  },
-  mei_lin(s) {
-    const wd = s.time.weekdayIndex;
-    if (wd <= 4) return [
-      { until:540,  at:null, act:'a considered breakfast' },
-      { until:570,  at:'tram', act:'off to the museum' },
-      { until:1140, at:null, act:'installing an exhibition in Manhattan' },
-      (wd === 1 || wd === 4)
-        ? { until:1260, at:'thrift_browse', act:'hunting for objects with a past' }
-        : { until:1260, at:'waterfront_b', act:'evening walk, unhurried' },
-      { until:9999, at:null, act:'tea and a film at home' },
-    ];
-    if (wd === 5) return [
-      { until:660,  at:null, act:'slow start, good robe' },
-      { until:840,  at:'thrift_browse', act:'the serious Second Life session' },
-      { until:960,  at:'lighthouse_park', act:'reading under the cherry trees' },
-      { until:1320, at:'bar_table', act:'a proper drink with Naomi' },
-      { until:9999, at:null, act:'home before it gets sloppy' },
-    ];
-    return [
-      { until:720,  at:null, act:'calls with her grandmother, in Shanghainese' },
-      { until:900,  at:'cafe_table_b', act:'Sunday coffee and a novel' },
-      { until:9999, at:null, act:'quiet evening in' },
-    ];
-  },
-  mateo(s) {
-    const wd = s.time.weekdayIndex;
-    if (wd <= 4) return [
-      { until:420,  at:null, act:'case files with cold coffee' },
-      { until:450,  at:'tram', act:'heading to arraignments' },
-      { until:1200, at:null, act:'court, then jail visits, then court again' },
-      { until:1320, at:'bar_seat_b', act:'decompressing badly at The Anchor' },
-      { until:9999, at:null, act:'falling asleep mid-brief' },
-    ];
-    if (wd === 5) return [
-      { until:720,  at:null, act:'the sleep of the righteous and exhausted' },
-      { until:840,  at:'bakery_front', act:'apologizing to Grace for missing Tuesday' },
-      { until:1020, at:'waterfront_c', act:'long walk, phone off (aspirationally)' },
-      { until:9999, at:null, act:'reviewing cases. Again. He knows.' },
-    ];
-    return [
-      { until:900,  at:null, act:'cooking for half the building' },
-      { until:1020, at:'mainstreet', act:'delivering tupperware to neighbors' },
-      { until:9999, at:null, act:'pretending tomorrow isn\'t Monday' },
-    ];
-  },
-});
+};
 
 /* ---------------- Dialogue ---------------- */
 Object.assign(CS.DIALOGUE, {
@@ -813,5 +732,187 @@ CS.ANNOUNCEMENTS = {
   festivalDay: f => `Today: ${f.name} — ${f.blurb}`,
   gossip: (a, b, spot) => `(gossip) Saw ${a} and ${b} at ${spot} again. Just saying.`,
 };
+
+CS.DIALOGUE.claire = {
+  intro: "\"Welcome to Glasshouse! Claire.\" She says it like she's still getting used to saying it. \"Yes, we're the new place. No, we're not trying to kill anyone's café. I just... really love coffee. Try the cortado?\"",
+  pools: [
+    { cond:{}, lines:[
+      "\"The loan officer asked for my five-year plan. I showed him a coffee menu. Somehow it worked.\"",
+      "\"People think new means corporate. It's me. It's literally just me and a grinder I'm still paying off.\"",
+      "\"Joan came by on my first week. Wished me luck. I almost cried into the batch brew.\"",
+    ]},
+  ],
+};
+
+/* ---------------- married / partner lines ---------------- */
+CS.MARRIED_LINES = [
+  "\"We need dish soap. This is what romance looks like now. I love it.\"",
+  "They hand you the good mug without being asked. Eleven years of mornings could feel like this and it wouldn't get old.",
+  "\"Come look at the river with me for a second. It's doing the thing.\"",
+  "You find your spare key in their pocket and their spare key in yours. Neither of you mentions it.",
+];
+CS.WEDDING_LINES = {
+  vows: "Under the old lighthouse, in front of everyone who learned your name one season at a time, you both say the simple version out loud. The river applauds the only way it knows how.",
+};
+
+/* ---------------- arc dialogue pools (merged into existing NPCs) ---------------- */
+const ARC_POOLS = {
+  daniel: [
+    { cond:{ arc:'rumors' }, lines:[
+      "The layoff rumors got a spreadsheet. When I'M the one making the doom spreadsheet, it's bad.",
+      "Re-org meeting Thursday. 'Re-org' is Latin for 'update your resume.'",
+    ]},
+    { cond:{ arc:'laidoff' }, lines:[
+      "So. Funny story. I've been 'impacted.' That's the actual word they used. Like a wisdom tooth.",
+      "Day 12 of funemployment. I alphabetized my spices and applied to nine jobs. The spices went better.",
+      "You know what nobody tells you? Losing the job also loses the schedule. I miss the schedule most.",
+    ]},
+    { cond:{ arc:'startup' }, lines:[
+      "The startup's five people and a whiteboard. I haven't been this terrified or this awake in years.",
+      "No more Midtown tower. We work above a dumpling place in LIC. Objectively an upgrade.",
+    ]},
+    { cond:{ arc:'bigco' }, lines:[
+      "Back at a big company. The badge photo is worse but the health insurance is beautiful.",
+    ]},
+    { cond:{ arc:'freelance' }, lines:[
+      "Freelance PM. Turns out 'organized and pleasant' is a sellable service. Avery was right. Don't tell Avery.",
+    ]},
+  ],
+  maya: [
+    { cond:{ arc:'applying' }, lines:[
+      "Fellowship applications are open. Boston, Chicago, and one here. I keep rearranging the list. The list knows nothing.",
+      "Everyone asks where I want to end up. The honest answer keeps changing depending on who's asking.",
+    ]},
+    { cond:{ arc:'staying' }, lines:[
+      "I took the fellowship HERE. Turns out the tiebreaker wasn't the program. It was everything else. Some of it was you.",
+    ]},
+  ],
+  lena: [
+    { cond:{ arc:'defended' }, lines:[
+      "DOCTOR Hoffman. I keep saying it to the mirror. The mirror is very impressed.",
+      "The defense took 96 minutes and six years. Now everyone asks 'what's next' like that's a fair question.",
+    ]},
+    { cond:{ arc:'industry' }, lines:[
+      "I took the industry job. In the city. My advisor sighed for a full minute, but the river vetoed Chicago.",
+    ]},
+  ],
+  nico: [
+    { cond:{ arc:'deciding' }, lines:[
+      "Pop sat me down Sunday. THE talk. The restaurant, the keys, my name on the thing. I ordered more napkins. He noticed.",
+      "Everyone's got an opinion about my life this month. What's yours? No — wait. Actually, I'm asking.",
+    ]},
+    { cond:{ arc:'partial' }, lines:[
+      "We signed it: me and Pop, partners. Half the keys, half the yelling. Rosa says it's the first smart thing the family's done since the sauce.",
+    ]},
+    { cond:{ arc:'took_over' }, lines:[
+      "It's mine now. The whole thing. I cried in the walk-in, which is traditional.",
+    ]},
+    { cond:{ arc:'refused' }, lines:[
+      "I said no. Pop took it... okay. Rosa took it better. Somebody else's name on Bellini's — still hurts to say. But it was the honest answer.",
+    ]},
+  ],
+  priya: [
+    { cond:{ arc:'notice' }, lines:[
+      "The redevelopment notice is real. South Point, mixed-use, the whole file. This is the part where the neighborhood decides what it is. Come to the meeting.",
+    ]},
+    { cond:{ arc:'construction' }, lines:[
+      "Construction phase. Everyone hates me at the community board and I've never been more sure the details matter.",
+    ]},
+    { cond:{ arc:'done' }, lines:[
+      "Walk the new waterfront and tell me what you notice. Not the buildings — the benches. I fought for the benches.",
+    ]},
+  ],
+};
+
+/* merge arc dialogue into the cast */
+for (const id of Object.keys(ARC_POOLS)) {
+  CS.DIALOGUE[id].pools.push(...ARC_POOLS[id]);
+}
+
+Object.assign(CS.DIALOGUE, {
+  ava: {
+    intro: "\"Oh — you're the farm person! I'm Ava. I volunteer at Harbor House, I'm sixteen, and I have opinions about everything, sorry in advance. Sofia says you're okay, which from Sofia is a five-star review.\"",
+    pools: [
+      { cond:{}, lines:[
+        "\"Everyone keeps asking what I want to be. I want to be TWENTY-FIVE and settled, skip the middle part.\"",
+        "\"Nia catalogued nine island cats this month. Nine. We do not have a cat.\"",
+        "\"Harbor House kids drew your farm again. You're basically a folk hero to the under-tens.\"",
+      ]},
+      { cond:{ arc:'apps' }, lines:[
+        "\"College apps. Seven essays about 'a challenge I overcame.' The challenge is the essays.\"",
+        "\"Sofia read my personal statement and cried. Good sign or bad sign? Don't answer.\"",
+      ]},
+      { cond:{ arc:'accepted' }, lines:[
+        "\"I GOT IN. Upstate, full aid. I leave in the fall and I keep hugging strangers, consider yourself warned.\"",
+      ]},
+      { cond:{ minTier:2 }, lines:[
+        "\"Real talk? I'm scared to leave and scared to stay. Sofia says that's just called being a person.\"",
+      ]},
+    ],
+  },
+  nia: {
+    intro: "A kid materializes beside you at the fence. \"Are you the farmer? I'm Nia. Do you have farm cats? You should have farm cats. I know several candidates.\"",
+    pools: [
+      { cond:{}, lines:[
+        "\"The grey cat by the tram is named Conductor. I named him. It's official.\"",
+        "\"Malik lets me water one row. ONE. I'm building trust.\"",
+        "\"When I grow up I'm going to be a vet. Or a ferry captain. There's time.\"",
+      ]},
+      { cond:{ arc:'nia14' }, lines:[
+        "\"I'm FOURTEEN now, you can stop talking to me like I'm Nia-from-before.\"",
+        "\"Ava calls every Sunday from college. I act busy. I am never busy on Sundays.\"",
+      ]},
+      { cond:{ arc:'nia16' }, lines:[
+        "\"Sixteen. Ava's age when you moved here. That's so weird to say out loud.\"",
+        "\"I got the Harbor House volunteer spot. Ava's old one. Sofia cried, obviously.\"",
+      ]},
+    ],
+  },
+});
+
+/* ---------------- family & children ---------------- */
+CS.FAMILY = {
+  babyNames: ['Rio', 'Wren', 'Kai', 'June', 'Theo Jr.', 'Marisol'],
+  arrival: {
+    bio: "The call comes at 4 AM, because of course it does. Hours later there's a whole new person in the studio — furious, tiny, perfect. The radiator hisses a lullaby.",
+    adopt: "The agency's final visit ends with paperwork and then, suddenly, with a person. Small hands, serious eyes, and a home that was ready before you knew it was.",
+  },
+};
+CS.BABY_LINES = [
+  "\"The baby slept four hours straight. FOUR. We are unstoppable. We are also going back to bed.\"",
+  "They're doing the tiny-sock inventory again. Nobody knows where the socks go. The socks know.",
+  "\"Your kid smiled at the tram today. Full smile. The conductor waved back. This island, honestly.\"",
+];
+CS.TODDLER_LINES = [
+  "\"We taught them to say 'lettuce.' It comes out 'yettuce.' We are NOT correcting it.\"",
+  "The toddler's current loves: the cat, the window, one specific spoon. The spoon is non-negotiable.",
+  "\"They walked the whole waterfront today on their own feet. Slowest, best walk of my life.\"",
+];
+
+/* ---------------- pet moments (random wake events) ---------------- */
+CS.PET_MOMENTS = {
+  cat: [
+    "{name} has arranged themselves on your clean laundry with the confidence of a museum installation.",
+    "{name} spent the night guarding the window from a moth. The moth escaped. The vigil continues.",
+    "You wake to find {name} exactly one centimeter from your face, purring like a small engine. Good morning.",
+  ],
+  dog: [
+    "{name} brings you the leash before you're fully awake. Negotiations begin.",
+    "{name} made a friend through the fence yesterday — a corgi named Biscuit, apparently a big deal.",
+    "{name} dreamed all night — paws paddling, tiny woofs. Wherever they were running, they won.",
+  ],
+  fish: [
+    "{name} greets the morning by patrolling the tank perimeter. All is well in the small nation.",
+    "The morning light hits the tank and {name} turns briefly golden. Free art, daily.",
+  ],
+  dogFind: "{name} proudly delivers something found on the waterfront: ",
+};
+
+/* ---------------- cohabitation lines ---------------- */
+CS.COHAB_LINES = [
+  "Two toothbrushes in the cup. Neither of you has mentioned it. Both of you have noticed.",
+  "\"I fixed the radiator rattle while you were out. It only took three curses. We live here.\"",
+  "Their books colonized the second shelf this week. You reorganized nothing. It looks right.",
+];
 
 })();
