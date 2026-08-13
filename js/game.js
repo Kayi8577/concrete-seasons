@@ -567,6 +567,8 @@
     const speed = 0.16 * dt; // px per ms
     const gx = tx * E().TILE, gy = ty * E().TILE;
     const dx = gx - p.px, dy = gy - p.py;
+    if (Math.abs(dx) > Math.abs(dy)) p.facing = dx > 0 ? 'right' : 'left';
+    else if (Math.abs(dy) > 0.5) p.facing = dy > 0 ? 'down' : 'up';
     const dist = Math.hypot(dx, dy);
     if (dist <= speed) {
       p.px = gx; p.py = gy; p.x = tx; p.y = ty;
@@ -1171,6 +1173,9 @@
         const gx = tx * E().TILE, gy = ty * E().TILE;
         const speed = 0.07 * dt;
         const dx = gx - rt.px, dy = gy - rt.py;
+        if (Math.abs(dx) > Math.abs(dy)) rt.facing = dx > 0 ? 'right' : 'left';
+        else if (Math.abs(dy) > 0.5) rt.facing = dy > 0 ? 'down' : 'up';
+        else rt.facing = 'down';
         const dist = Math.hypot(dx, dy);
         rt.moving = true;
         if (dist <= speed) { rt.px = gx; rt.py = gy; rt.x = tx; rt.y = ty; rt.walkTo = null; rt.moving = false; }
@@ -1259,6 +1264,13 @@
     const npc = CS.NPCS[id];
     const r = S.npcs[id];
     const D = CS.DIALOGUE[id];
+    const rt = S.npcRT[id], p = S.playerRT;
+    if (rt) {
+      rt.facing = Math.abs(p.x - rt.x) > Math.abs(p.y - rt.y)
+        ? (p.x > rt.x ? 'right' : 'left') : (p.y >= rt.y ? 'down' : 'up');
+      p.facing = Math.abs(p.x - rt.x) > Math.abs(p.y - rt.y)
+        ? (p.x > rt.x ? 'left' : 'right') : (p.y >= rt.y ? 'up' : 'down');
+    }
     if (!r.met) {
       r.met = true; r.fam = 1;
       if (!npc.decorative) r.friend += 5;

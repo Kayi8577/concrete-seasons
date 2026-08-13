@@ -315,13 +315,19 @@
           case 'o': A.planter(ctx, sx, sy, TILE); break;
           case 'E': A.doorMat(ctx, sx, sy, TILE); break;
           case 'K': A.stove(ctx, sx, sy, TILE); break;
-          case 'W': A.windowTile(ctx, sx, sy, TILE, night, state.weather.today === 'rain'); break;
+          case 'W': if (!A.tileDraw(ctx, 'winarch', sx, sy, TILE, 0)) A.windowTile(ctx, sx, sy, TILE, night, state.weather.today === 'rain'); break;
           case 't': A.table(ctx, sx, sy, TILE); break;
-          case '=': A.shelf(ctx, sx, sy, TILE); break;
-          case 'O': A.oven(ctx, sx, sy, TILE); break;
-          case 'd': A.display(ctx, sx, sy, TILE); break;
-          case 'U': A.counter(ctx, sx, sy, TILE); break;
-          case 'b': A.bed(ctx, sx, sy, TILE, E.tileAt(scene, x, y - 1) === 'b' ? 1 : 0); break;
+          case '=': if (!A.tileDraw(ctx, 'shelf', sx, sy, TILE, hash)) A.shelf(ctx, sx, sy, TILE); break;
+          case 'O': if (!A.tileDraw(ctx, 'oven', sx, sy, TILE, 0)) A.oven(ctx, sx, sy, TILE); break;
+          case 'd': if (!A.tileDraw(ctx, 'display', sx, sy, TILE, 0)) A.display(ctx, sx, sy, TILE); break;
+          case 'U': if (!A.tileDraw(ctx, 'counter', sx, sy, TILE, 0)) A.counter(ctx, sx, sy, TILE); break;
+          case 'b': {
+            const isTop = E.tileAt(scene, x, y - 1) !== 'b';
+            if (!A.tileDraw(ctx, isTop ? 'bedtop' : 'bedbot', sx, sy, TILE, 0)) {
+              A.bed(ctx, sx, sy, TILE, isTop ? 0 : 1);
+            }
+            break;
+          }
           case 'q': {
             const S = CS.game.state();
             if (!(S && S.pet && S.pet.type === 'fish')) A.aquariumShelf(ctx, sx, sy, TILE);
@@ -371,10 +377,10 @@
       const rt = state.npcRT[id];
       if (rt.scene !== scene) continue;
       entities.push({ b: rt.py + TILE, d: () =>
-        CS.art.character(ctx, rt.px - E.camX, rt.py - E.camY, TILE, CS.NPCS[id].look, state.animT, rt.moving) });
+        CS.art.character(ctx, rt.px - E.camX, rt.py - E.camY, TILE, CS.NPCS[id].look, state.animT, rt.moving, rt.facing) });
     }
     entities.push({ b: p.py + TILE, pl: true, d: () =>
-      CS.art.character(ctx, p.px - E.camX, p.py - E.camY, TILE, E.resolveLook(state.player.look), state.animT, p.path.length > 0) });
+      CS.art.character(ctx, p.px - E.camX, p.py - E.camY, TILE, E.resolveLook(state.player.look), state.animT, p.path.length > 0, p.facing) });
 
     entities.sort((a, b2) => a.b - b2.b || (a.pl ? 1 : 0) - (b2.pl ? 1 : 0));
     for (const e of entities) e.d();

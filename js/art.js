@@ -21,6 +21,13 @@
     wood:   [[0, 25], [1, 25], [0, 26], [1, 26]],
     wallin: [[14, 15]],
     fence:  [[37, 8]],
+    bedtop: [[15, 1]],
+    bedbot: [[15, 2]],
+    shelf:  [[44, 12], [45, 12], [46, 12]],
+    counter:[[40, 12]],
+    oven:   [[13, 0]],
+    display:[[16, 6]],
+    winarch:[[46, 2]],
   };
   A.atlasReady = false;
   const atlasImg = new Image();
@@ -853,8 +860,9 @@
     ctx.beginPath(); ctx.arc(cx, cy + r * .42, r * .16, Math.PI * .15, Math.PI * .85); ctx.stroke();
   }
 
-  A.character = function (ctx, sx, sy, T, opts, t, moving) {
-    // opts: {skin, hair, style, outfit} — chibi: big head, small body, real legs
+  A.character = function (ctx, sx, sy, T, opts, t, moving, facing) {
+    // opts: {skin, hair, style, outfit} — chibi with 4-way facing
+    facing = facing || 'down';
     const cx = sx + T / 2;
     const feetY = sy + T - 3;
     const walk = moving ? Math.sin(t / 85) : 0;
@@ -883,8 +891,32 @@
     // head
     const hr = 9, hy = bodyY - hr + 2.5;
     circle(ctx, cx, hy - 1, hr + 1.2, 'rgba(45,35,28,.3)'); // rim
-    A.head(ctx, cx, hy, hr, opts.skin, opts.hair, opts.style);
-    face(ctx, cx, hy, hr);
+    if (facing === 'up') {
+      // seen from behind: hair covers everything, no face
+      circle(ctx, cx, hy, hr, opts.skin);
+      ctx.fillStyle = opts.hair;
+      ctx.beginPath(); ctx.arc(cx, hy + hr * .04, hr * 1.02, 0, Math.PI * 2); ctx.fill();
+      if (opts.style === 'bun') circle(ctx, cx, hy - hr * .9, hr * .48, opts.hair);
+      if (opts.style === 'cap') { ctx.fillStyle = shade(opts.hair, 20); rr(ctx, cx - hr, hy - hr * .3, hr * 2, hr * .34, hr * .15, shade(opts.hair, 20)); }
+      if (opts.style === 'long') { rr(ctx, cx - hr * .55, hy, hr * 1.1, hr * 1.7, hr * .3, opts.hair); }
+      ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(cx - hr * .1, hy - hr * .2, hr * .6, Math.PI * 1.15, Math.PI * 1.6); ctx.stroke();
+    } else if (facing === 'left' || facing === 'right') {
+      const dir = facing === 'left' ? -1 : 1;
+      A.head(ctx, cx, hy, hr, opts.skin, opts.hair, opts.style);
+      // profile: one eye toward the walking direction
+      const ex = cx + dir * hr * .5, ey = hy + hr * .12;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.ellipse(ex, ey, hr * .15, hr * .19, 0, 0, Math.PI * 2); ctx.fill();
+      circle(ctx, ex + dir * hr * .03, ey + hr * .03, hr * .1, '#3a2e24');
+      ctx.fillStyle = 'rgba(220,120,110,.28)';
+      ctx.beginPath(); ctx.ellipse(cx + dir * hr * .2, hy + hr * .38, hr * .14, hr * .08, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(90,60,50,.6)'; ctx.lineWidth = Math.max(1, hr * .07); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(cx + dir * hr * .45, hy + hr * .42, hr * .1, Math.PI * .2, Math.PI * .8); ctx.stroke();
+    } else {
+      A.head(ctx, cx, hy, hr, opts.skin, opts.hair, opts.style);
+      face(ctx, cx, hy, hr);
+    }
   };
 
   A.portrait = function (canvas, opts) {
