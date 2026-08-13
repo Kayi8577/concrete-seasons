@@ -7,6 +7,36 @@
 (function () {
   const A = CS.art = {};
 
+  /* ---- CC0 pixel tile atlas (Kenney Roguelike/RPG pack, see assets/CREDITS.txt)
+     16px tiles on a 17px stride; drawn 2× with smoothing off. Terrain uses
+     these; characters, buildings and props stay procedural. If the image
+     hasn't loaded yet (or ever), everything falls back to flat color. ---- */
+  const ATLAS = {
+    grass:  [[0, 15], [1, 15], [0, 16], [1, 16]],
+    water:  [[0, 0], [1, 0], [0, 1], [1, 1]],
+    path:   [[8, 0], [8, 1]],
+    pave:   [[3, 25], [4, 25], [4, 26]],
+    soil:   [[6, 0], [6, 1]],
+    tilled: [[0, 18], [1, 18], [0, 19], [1, 19]],
+    wood:   [[0, 25], [1, 25], [0, 26], [1, 26]],
+    wallin: [[14, 15]],
+    fence:  [[37, 8]],
+  };
+  A.atlasReady = false;
+  const atlasImg = new Image();
+  atlasImg.onload = () => { A.atlasReady = true; };
+  atlasImg.onerror = () => { A.atlasReady = false; };
+  A.loadAtlas = function () { atlasImg.src = 'assets/roguelike.png'; };
+  // draw one atlas tile; returns false if the sheet isn't available
+  A.tileDraw = function (ctx, name, sx, sy, T, seed) {
+    if (!A.atlasReady) return false;
+    const v = ATLAS[name];
+    if (!v) return false;
+    const [c, r] = v[(seed || 0) % v.length];
+    ctx.drawImage(atlasImg, c * 17, r * 17, 16, 16, sx, sy, T, T);
+    return true;
+  };
+
   A.PAL = {
     leafDark: '#54713e', leaf: '#729043', leafLight: '#adc685', leafPale: '#cfe0b4',
     wood: '#7b6855', woodLight: '#958270', woodDark: '#5d4e40',
@@ -420,8 +450,12 @@
   };
 
   A.table = function (ctx, sx, sy, T) {
-    rr(ctx, sx + 3, sy + 6, T - 6, T - 12, 4, '#a3785a');
-    rr(ctx, sx + 3, sy + 6, T - 6, 5, 4, '#b78a68');
+    sh(ctx, sx + T / 2, sy + T - 5, T * .4, 3);
+    rr(ctx, sx + 2, sy + 5, T - 4, T - 10, 4, '#6e4a30');
+    rr(ctx, sx + 4, sy + 7, T - 8, T - 14, 3, '#8a5f3e');
+    rr(ctx, sx + 4, sy + 7, T - 8, 4, 3, '#a3785a');
+    ctx.fillStyle = 'rgba(255,255,255,.12)';
+    ctx.fillRect(sx + 6, sy + 9, T - 12, 2);
   };
 
   A.shelf = function (ctx, sx, sy, T) {

@@ -938,9 +938,15 @@
       ctx.fillRect(sx + 8, sy + 10, 4, 3); ctx.fillRect(sx + 18, sy + 20, 4, 3);
       return;
     }
-    ctx.fillStyle = pl.watered ? '#5e4430' : '#7a5a3e';
-    ctx.fillRect(sx + 3, sy + 3, T - 6, T - 6);
-    ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.strokeRect(sx + 3, sy + 3, T - 6, T - 6);
+    if (!CS.art.tileDraw(ctx, 'tilled', sx, sy, T, (x * 7 + y) % 4)) {
+      ctx.fillStyle = '#7a5a3e';
+      ctx.fillRect(sx + 3, sy + 3, T - 6, T - 6);
+      ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.strokeRect(sx + 3, sy + 3, T - 6, T - 6);
+    }
+    if (pl.watered) { // damp earth
+      ctx.fillStyle = 'rgba(60,40,25,.32)';
+      ctx.fillRect(sx + 2, sy + 2, T - 4, T - 4);
+    }
     if (pl.crop) {
       CS.art.crop(ctx, pl.crop, Math.min(1, pl.days / CS.CROPS[pl.crop].days), sx, sy, T, pl.dead);
     }

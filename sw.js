@@ -1,7 +1,7 @@
 /* Concrete Seasons — service worker.
    Cache-first so the game is fully playable offline / in airplane mode.
    Bump CACHE_VERSION on every release so clients pick up new files. */
-const CACHE_VERSION = 'cs-v10';
+const CACHE_VERSION = 'cs-v11';
 const ASSETS = [
   './',
   './index.html',
@@ -24,6 +24,7 @@ const ASSETS = [
   './icon-192.png',
   './icon-512.png',
   './apple-touch-icon.png',
+  './assets/roguelike.png',
 ];
 
 self.addEventListener('install', (e) => {

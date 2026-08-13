@@ -4,7 +4,7 @@
    ========================================================================= */
 (function () {
   const E = CS.engine = {};
-  const TILE = 34;
+  const TILE = 32; // 2x the atlas's 16px tiles — integer scale keeps pixels crisp
 
   let canvas, ctx, dpr = 1;
   E.viewW = 0; E.viewH = 0;
@@ -14,8 +14,10 @@
     E.viewW = canvas.clientWidth; E.viewH = canvas.clientHeight;
     canvas.width = E.viewW * dpr; canvas.height = E.viewH * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false; // pixel art stays pixel art
   }
   E.init = function () {
+    CS.art.loadAtlas();
     canvas = document.getElementById('game-canvas');
     ctx = canvas.getContext('2d');
     window.addEventListener('resize', resize);
@@ -181,16 +183,19 @@
         const hash = (x * 73 + y * 151) % 97;
 
         if (ch === '#') {
-          if (!isOut) { // interior wall: warm paneling
-            ctx.fillStyle = '#a08a74';
-            ctx.fillRect(sx, sy, TILE, TILE);
-            ctx.fillStyle = 'rgba(0,0,0,.08)';
+          if (!isOut) { // interior wall
+            if (!A0.tileDraw(ctx, 'wallin', sx, sy, TILE, 0)) {
+              ctx.fillStyle = '#a08a74';
+              ctx.fillRect(sx, sy, TILE, TILE);
+            }
+            ctx.fillStyle = 'rgba(0,0,0,.10)';
             ctx.fillRect(sx, sy + TILE - 5, TILE, 5);
-            ctx.fillStyle = 'rgba(255,255,255,.07)';
-            ctx.fillRect(sx, sy, TILE, 3);
           } else if (covered.has(x + ',' + y)) {
-            ctx.fillStyle = groundBase; // a real building will be drawn over this
-            ctx.fillRect(sx, sy, TILE, TILE);
+            // a real building will be drawn over this
+            if (!A0.tileDraw(ctx, isCity ? 'pave' : 'grass', sx, sy, TILE, hash)) {
+              ctx.fillStyle = groundBase;
+              ctx.fillRect(sx, sy, TILE, TILE);
+            }
           } else { // city street facade (borders of hub maps)
             ctx.fillStyle = '#9a8874';
             ctx.fillRect(sx, sy, TILE, TILE);
@@ -211,27 +216,34 @@
           continue;
         }
 
-        let base = isOut ? (TC[ch] || groundBase) : INTERIOR_FLOOR;
-        if (!isOut && TC[ch] && ch !== '.') base = INTERIOR_FLOOR;
-        ctx.fillStyle = base;
-        ctx.fillRect(sx, sy, TILE, TILE);
-
-        if (!isOut) { // interior: plank floor
-          ctx.strokeStyle = 'rgba(120,95,70,.13)'; ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.moveTo(sx, sy + TILE / 2); ctx.lineTo(sx + TILE, sy + TILE / 2); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(sx, sy + TILE); ctx.lineTo(sx + TILE, sy + TILE); ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(sx + ((hash % 2) ? TILE * .3 : TILE * .7), sy + TILE / 2);
-          ctx.lineTo(sx + ((hash % 2) ? TILE * .3 : TILE * .7), sy + TILE);
-          ctx.stroke();
+        // pick the atlas tile for this ground type (fallback: flat color)
+        let atlasName = null;
+        if (!isOut) atlasName = 'wood';
+        else if (ch === '~') atlasName = 'water';
+        else if (ch === '-') atlasName = 'path';
+        else if (ch === '_' || ch === 'P' || ch === 'D' || ch === 'l') atlasName = 'pave';
+        else if (ch === 's' || ch === 'g' || ch === 'X') atlasName = 'soil';
+        else if (isCity) atlasName = 'pave';
+        else atlasName = 'grass'; // '.', doors, fences, props sit on grass
+        if ('ACBMGSRLHQ'.includes(ch)) atlasName = isCity ? 'pave' : 'grass';
+        const usedAtlas = A0.tileDraw(ctx, atlasName, sx, sy, TILE, hash);
+        if (!usedAtlas) {
+          let base = isOut ? (TC[ch] || groundBase) : INTERIOR_FLOOR;
+          if (!isOut && TC[ch] && ch !== '.') base = INTERIOR_FLOOR;
+          ctx.fillStyle = base;
+          ctx.fillRect(sx, sy, TILE, TILE);
+          if (!isOut) { // fallback plank lines
+            ctx.strokeStyle = 'rgba(120,95,70,.13)'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(sx, sy + TILE / 2); ctx.lineTo(sx + TILE, sy + TILE / 2); ctx.stroke();
+          }
         }
 
         if (ch === '.' && isOut && !isCity) { // grass with life in it
-          if (hash < 26) { // mottled darker patch
+          if (!usedAtlas && hash < 26) { // mottled darker patch
             ctx.fillStyle = 'rgba(70,110,60,.18)';
             ctx.fillRect(sx + (hash % 4) * 6, sy + (hash % 3) * 8, 14, 12);
           }
-          if (hash % 9 === 0) { // grass tuft
+          if (!usedAtlas && hash % 9 === 0) { // grass tuft
             ctx.strokeStyle = 'rgba(60,100,50,.5)'; ctx.lineWidth = 1.3; ctx.lineCap = 'round';
             const tx = sx + 8 + (hash % 5) * 3, ty = sy + 12 + (hash % 4) * 4;
             ctx.beginPath(); ctx.moveTo(tx, ty + 5); ctx.lineTo(tx - 2, ty); ctx.stroke();
@@ -276,9 +288,11 @@
           if (g[y][x + 1] !== ch && g[y][x + 1] !== '#') ctx.fillRect(sx + TILE - 2, sy, 2, TILE);
         }
         if (ch === 'F') {
-          ctx.fillStyle = '#6e5741';
-          ctx.fillRect(sx + TILE/2 - 2, sy + 4, 4, TILE - 8);
-          ctx.fillRect(sx, sy + TILE/2 - 2, TILE, 4);
+          if (!A0.tileDraw(ctx, 'fence', sx, sy, TILE, 0)) {
+            ctx.fillStyle = '#6e5741';
+            ctx.fillRect(sx + TILE/2 - 2, sy + 4, 4, TILE - 8);
+            ctx.fillRect(sx, sy + TILE/2 - 2, TILE, 4);
+          }
         }
         if (ch === 'P') CS.art.tramPlatform(ctx, sx, sy, TILE);
         if (ch === 's' || ch === 'g') {

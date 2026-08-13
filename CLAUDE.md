@@ -24,7 +24,7 @@ Load order in `index.html` matters: core → world → economy → npcs → sche
 
 ## Hard rules
 
-- **No emoji as art, ever.** All visuals are vector drawings in `art.js`; UI icons are inline SVG. (User feedback — non-negotiable.)
+- **No emoji as art, ever.** (User feedback — non-negotiable.) Visuals are procedural canvas in `art.js` plus the CC0 pixel tile atlas in `assets/` (terrain only; see `assets/CREDITS.txt`). UI icons are inline SVG. Any new asset must be CC0/public-domain — the repo is public.
 - **Offline-first**: no network calls in gameplay. Assets must stay self-contained.
 - **Save compatibility**: never break old saves. New state fields get defaults in `game.js → G.start()` migration block; `SAVE_VERSION` lives in `data/core.js`.
 - **NPCs live without the player**: prefer observable behavior over UI numbers.
