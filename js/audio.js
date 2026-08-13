@@ -124,6 +124,40 @@
     ambGain.gain.linearRampToValueAtTime(amb, t + 1.2);
   };
 
+  /* tiny one-shot effects (all synthesized) */
+  function fxReady() {
+    const S = CS.game.state();
+    return ctx && unlocked && S && S.settings.sound !== false;
+  }
+  AU.step = function () {
+    if (!fxReady()) return;
+    // a soft, low tick — shoes on ground
+    const o = ctx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = 95 + Math.random() * 25;
+    const g = ctx.createGain();
+    const t = ctx.currentTime;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.030, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + 0.1);
+  };
+  AU.blip = function () {
+    if (!fxReady()) return;
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(660, ctx.currentTime);
+    o.frequency.linearRampToValueAtTime(880, ctx.currentTime + 0.07);
+    const g = ctx.createGain();
+    const t = ctx.currentTime;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.035, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + 0.4);
+  };
+
   AU.unlock = function () {
     if (unlocked) return;
     ensure();

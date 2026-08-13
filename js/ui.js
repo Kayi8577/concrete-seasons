@@ -117,6 +117,7 @@
   };
 
   U.toast = function (text, cls) {
+    if (CS.audio && CS.audio.blip) CS.audio.blip();
     const area = $('toast-area');
     const t = document.createElement('div');
     t.className = 'toast' + (cls ? ' ' + cls : '');

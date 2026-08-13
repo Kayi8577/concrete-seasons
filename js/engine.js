@@ -227,6 +227,22 @@
         else atlasName = 'grass'; // '.', doors, fences, props sit on grass
         if ('ACBMGSRLHQ'.includes(ch)) atlasName = isCity ? 'pave' : 'grass';
         const usedAtlas = A0.tileDraw(ctx, atlasName, sx, sy, TILE, hash);
+        // the season repaints the ground: golden fall, snowed-in winter
+        if (isOut && ch !== '~') {
+          if (state.time.seasonIndex === 2) {
+            ctx.fillStyle = 'rgba(205,145,55,.14)';
+            ctx.fillRect(sx, sy, TILE, TILE);
+          } else if (state.time.seasonIndex === 3) {
+            ctx.fillStyle = 'rgba(238,243,247,.55)';
+            ctx.fillRect(sx, sy, TILE, TILE);
+            if (hash % 4 === 0) { // drifted clumps
+              ctx.fillStyle = 'rgba(250,252,255,.8)';
+              ctx.beginPath();
+              ctx.ellipse(sx + (hash % 5) * 6 + 5, sy + (hash % 3) * 9 + 7, 7, 4, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
         if (!usedAtlas) {
           let base = isOut ? (TC[ch] || groundBase) : INTERIOR_FLOOR;
           if (!isOut && TC[ch] && ch !== '.') base = INTERIOR_FLOOR;
@@ -304,8 +320,8 @@
         const A = CS.art;
         const night = state.time.minutes >= 1140 || state.time.minutes < 390;
         switch (ch) {
-          case 'T': entities.push({ b: (y + 1) * TILE, d: () => A.tree(ctx, sx, sy, TILE, x * 31 + y * 17) }); break;
-          case 'c': entities.push({ b: (y + 1) * TILE, d: () => A.cherryTree(ctx, sx, sy, TILE, x * 31 + y * 17) }); break;
+          case 'T': entities.push({ b: (y + 1) * TILE, d: () => A.tree(ctx, sx, sy, TILE, x * 31 + y * 17, state.time.seasonIndex) }); break;
+          case 'c': entities.push({ b: (y + 1) * TILE, d: () => A.cherryTree(ctx, sx, sy, TILE, x * 31 + y * 17, state.time.seasonIndex) }); break;
           case 'i': entities.push({ b: (y + 1) * TILE, d: () => A.lighthouse(ctx, sx, sy, TILE) }); break;
           case 'l': entities.push({ b: (y + 1) * TILE, d: () => A.lantern(ctx, sx, sy, TILE, state.animT) }); break;
           case 'k': entities.push({ b: (y + 1) * TILE, d: () => A.stall(ctx, sx, sy, TILE, !!(CS.game.currentFestival && CS.game.currentFestival())) }); break;

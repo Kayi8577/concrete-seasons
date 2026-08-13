@@ -229,14 +229,40 @@
     ctx.fillRect(cx + T * .18, cy1 + T * .12, 3, 3);
     ctx.fillRect(cx - T * .05, cy1 + T * .3, 3, 3);
   }
-  A.tree = function (ctx, sx, sy, T, seed) {
+  A.tree = function (ctx, sx, sy, T, seed, season) {
+    if (season === 2) { // fall: each tree turns its own shade
+      const warm = [
+        ['#a54a2a', '#c9713a', '#e0a04a', '#7a3a20'],
+        ['#b3542e', '#d98e4a', '#e8c96b', '#8a4224'],
+        ['#8a5a2a', '#b07a2a', '#d9b06c', '#6b4520'],
+      ][seed % 3];
+      bigTree(ctx, sx, sy, T, seed, warm[0], warm[1], warm[2], warm[3]);
+      ctx.fillStyle = 'rgba(217,142,74,.85)'; // a falling leaf
+      ctx.fillRect(sx + T * .25 + (seed % 5) * 2, sy + T * .55, 2.5, 2.5);
+      return;
+    }
+    if (season === 3) { // winter: muted evergreen under snow
+      bigTree(ctx, sx, sy, T, seed, '#4a5c50', '#5d7263', '#eef3f6', '#39463d');
+      const cx = sx + T / 2, cy1 = sy + T - 3 - T * .95;
+      circle(ctx, cx, cy1 - T * .3, T * .3, '#f4f8fa'); // snow cap
+      circle(ctx, cx - T * .28, cy1 + T * .08, T * .16, '#f4f8fa');
+      return;
+    }
     bigTree(ctx, sx, sy, T, seed, P.leafDark, P.leaf, P.leafLight, '#41582f');
   };
-  A.cherryTree = function (ctx, sx, sy, T, seed) {
-    bigTree(ctx, sx, sy, T, seed, '#c07f95', '#dba7b8', '#f0d0da', '#9c6478');
-    // drifting petal
-    ctx.fillStyle = 'rgba(240,208,218,.8)';
-    ctx.fillRect(sx + T * .2 + (seed % 5) * 2, sy + T * .5, 2.5, 2.5);
+  A.cherryTree = function (ctx, sx, sy, T, seed, season) {
+    if (season === undefined || season === 0) { // spring: full bloom
+      bigTree(ctx, sx, sy, T, seed, '#c07f95', '#dba7b8', '#f0d0da', '#9c6478');
+      ctx.fillStyle = 'rgba(240,208,218,.8)';
+      ctx.fillRect(sx + T * .2 + (seed % 5) * 2, sy + T * .5, 2.5, 2.5);
+      return;
+    }
+    if (season === 3) { // winter: snowy like everything else
+      A.tree(ctx, sx, sy, T, seed, 3);
+      return;
+    }
+    // summer/fall: an ordinary green (or turning) tree the rest of the year
+    A.tree(ctx, sx, sy, T, seed, season);
   };
 
   A.lighthouse = function (ctx, sx, sy, T) {

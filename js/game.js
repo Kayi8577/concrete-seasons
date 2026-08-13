@@ -587,6 +587,7 @@
     const p = S.playerRT;
     const map = CS.MAPS[p.scene];
     const ch = E().tileAt(p.scene, x, y);
+    if (CS.audio && CS.audio.step) CS.audio.step();
     // outdoor door → interior (a few doors have history)
     if (map.outdoor && map.doors[ch]) {
       const target = map.doors[ch];
