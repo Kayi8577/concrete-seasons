@@ -2,7 +2,7 @@
 
 A cozy, fully-offline life-simulation game set in **Harbor Point**, a fictional East River island neighborhood in New York City. You take over a neglected community farm plot and slowly build a life: growing crops, learning your neighbors' routines, finding hidden events, and adopting a pet.
 
-**Play it in any browser — no server, no account, no internet needed after first load.**
+**Play now: https://kayi8577.github.io/concrete-seasons/** — open it once, add to home screen, then it works fully offline.
 
 ## Run it
 
