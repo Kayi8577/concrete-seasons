@@ -34,6 +34,24 @@
   atlasImg.onload = () => { A.atlasReady = true; };
   atlasImg.onerror = () => { A.atlasReady = false; };
   A.loadAtlas = function () { atlasImg.src = 'assets/roguelike.png'; };
+
+  /* ---- Building facade sprites (assets/buildings/*.png, chroma-keyed;
+     generated for this project, CC0). Loaded lazily alongside the atlas;
+     any sprite that fails to load falls back to the procedural facade. ---- */
+  const BIMG = {};
+  A.buildingImg = (name) => {
+    const e = BIMG[name];
+    return e && e.ready ? e.img : null;
+  };
+  A.loadBuildings = function () {
+    for (const n of ['bakery', 'cafe', 'market', 'pub', 'thrift', 'glasshouse',
+                     'apartment', 'harborhouse', 'greenhouse', 'labs']) {
+      const img = new Image();
+      const e = BIMG[n] = { img, ready: false };
+      img.onload = () => { e.ready = true; };
+      img.src = 'assets/buildings/' + n + '.png';
+    }
+  };
   // draw one atlas tile; returns false if the sheet isn't available
   A.tileDraw = function (ctx, name, sx, sy, T, seed) {
     if (!A.atlasReady) return false;
@@ -394,6 +412,20 @@
   /* ================= buildings (drawn whole, over their '#' tiles) ================= */
   // spec: {x,y,w,h in tiles, style:'shop'|'block'|'glass', wall, roof}
   A.building = function (ctx, px, py, w, h, spec, T, night) {
+    // generated facade sprite, if this building has one and it's loaded
+    const im = spec.img && A.buildingImg(spec.img);
+    if (im) {
+      const eave = T * .6;                 // roof overhang past the footprint
+      const dw = w + eave;
+      let dh = dw * im.height / im.width;
+      const cap = h + T * 2.2;             // don't tower over the row behind
+      if (dh > cap) dh = cap;
+      const prev = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = true;    // sprites are hi-res, downscaled
+      ctx.drawImage(im, px - eave / 2, py + h - dh, dw, dh);
+      ctx.imageSmoothingEnabled = prev;
+      return;
+    }
     const wall = spec.wall || '#d8cbb2', roof = spec.roof || '#8a5a3b';
     if (spec.style === 'glass') { // greenhouse
       ctx.fillStyle = 'rgba(150,195,180,.85)';
@@ -797,6 +829,11 @@
     rr(ctx, sx + 7, sy + 5, T - 14, T - 9, 2, accent || '#8a5a3b');
     rr(ctx, sx + 9, sy + 7, (T - 18) / 2 - 1, T - 13, 1.5, 'rgba(255,255,255,.07)');
     circle(ctx, sx + T - 12, sy + T / 2, 1.8, P.yellow);
+  };
+
+  A.doormat = function (ctx, sx, sy, T, accent) { // welcome mat under a sprite facade's door
+    rr(ctx, sx + 6, sy + 4, T - 12, T * .38, 2.5, accent || '#8a5a3b');
+    rr(ctx, sx + 8, sy + 6, T - 16, T * .38 - 4, 1.5, 'rgba(255,244,220,.4)');
   };
 
   A.doorMat = function (ctx, sx, sy, T) { // interior exit

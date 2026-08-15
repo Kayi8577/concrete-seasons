@@ -345,16 +345,16 @@ CS.INTERIOR_SPAWNS = { apartment:[5,6], cafe:[6,6], bakery:[4,5], market:[5,5], 
    'block' (brick + parapet), 'glass' (greenhouse). */
 CS.BUILDINGS = {
   outdoor: [
-    { x:6,  y:11, w:7,  h:5, style:'block', wall:'#c09a72', roof:'#6e5f55' },  // Harbor Studios
-    { x:5,  y:17, w:8,  h:6, style:'block', wall:'#c07f62', roof:'#5d4e40' },  // Harbor House
-    { x:24, y:11, w:5,  h:4, style:'glass' },                                  // Greenhouse
-    { x:19, y:21, w:7,  h:3, style:'shop',  wall:'#e0d3b8', roof:'#5c8a6f' },  // Juniper Café
-    { x:19, y:25, w:6,  h:3, style:'shop',  wall:'#e6d2ae', roof:'#b07a2a' },  // Moonrise
-    { x:19, y:29, w:7,  h:3, style:'shop',  wall:'#d8cbb2', roof:'#4a6fa5' },  // Corner Market
-    { x:19, y:33, w:7,  h:3, style:'shop',  wall:'#b8a48c', roof:'#8a3b4a' },  // The Anchor
-    { x:9,  y:25, w:6,  h:3, style:'shop',  wall:'#cbb9a0', roof:'#7d5ba6' },  // Second Life
-    { x:9,  y:33, w:6,  h:3, style:'shop',  wall:'#cfd8d2', roof:'#37535e' },  // Glasshouse
-    { x:10, y:47, w:14, h:5, style:'block', wall:'#a7b2b6', roof:'#5b8aa6' },  // Pier Labs
+    { x:6,  y:11, w:7,  h:5, style:'block', wall:'#c09a72', roof:'#6e5f55', img:'apartment' },   // Harbor Studios
+    { x:5,  y:17, w:8,  h:6, style:'block', wall:'#c07f62', roof:'#5d4e40', img:'harborhouse' }, // Harbor House
+    { x:24, y:11, w:5,  h:4, style:'glass', img:'greenhouse' },                                  // Greenhouse
+    { x:19, y:21, w:7,  h:3, style:'shop',  wall:'#e0d3b8', roof:'#5c8a6f', img:'cafe' },        // Juniper Café
+    { x:19, y:25, w:6,  h:3, style:'shop',  wall:'#e6d2ae', roof:'#b07a2a', img:'bakery' },      // Moonrise
+    { x:19, y:29, w:7,  h:3, style:'shop',  wall:'#d8cbb2', roof:'#4a6fa5', img:'market' },      // Corner Market
+    { x:19, y:33, w:7,  h:3, style:'shop',  wall:'#b8a48c', roof:'#8a3b4a', img:'pub' },         // The Anchor
+    { x:9,  y:25, w:6,  h:3, style:'shop',  wall:'#cbb9a0', roof:'#7d5ba6', img:'thrift' },      // Second Life
+    { x:9,  y:33, w:6,  h:3, style:'shop',  wall:'#cfd8d2', roof:'#37535e', img:'glasshouse' },  // Glasshouse
+    { x:10, y:47, w:14, h:5, style:'block', wall:'#a7b2b6', roof:'#5b8aa6', img:'labs' },        // Pier Labs
   ],
   astoria: [
     { x:6,  y:2, w:12, h:3, style:'shop', wall:'#d8c4a4', roof:'#8a3b4a' },

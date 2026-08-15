@@ -18,6 +18,7 @@
   }
   E.init = function () {
     CS.art.loadAtlas();
+    CS.art.loadBuildings();
     canvas = document.getElementById('game-canvas');
     ctx = canvas.getContext('2d');
     window.addEventListener('resize', resize);
@@ -398,8 +399,12 @@
           tx2 >= b.x && tx2 < b.x + b.w && ty2 >= b.y && ty2 < b.y + b.h);
         entities.push({ b: (b.y + b.h) * TILE, d: () => {
           A0.building(ctx, bx, by, b.w * TILE, b.h * TILE, b, TILE, nightWin);
+          const hasSprite = b.img && A0.buildingImg(b.img);
           for (const [tx2, , ch2] of myDoors) {
-            A0.doorOut(ctx, tx2 * TILE - E.camX, (b.y + b.h - 1) * TILE - E.camY, TILE, DOOR_ACCENT[ch2]);
+            // sprite facades bake in their own door art — just mark the
+            // tappable tile with a doormat instead of a second door
+            if (hasSprite) A0.doormat(ctx, tx2 * TILE - E.camX, (b.y + b.h) * TILE - E.camY, TILE, DOOR_ACCENT[ch2]);
+            else A0.doorOut(ctx, tx2 * TILE - E.camX, (b.y + b.h - 1) * TILE - E.camY, TILE, DOOR_ACCENT[ch2]);
           }
         }});
       }

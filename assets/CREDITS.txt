@@ -1,3 +1,6 @@
 Pixel tile atlas: "Roguelike/RPG pack" by Kenney (kenney.nl)
 License: CC0 1.0 Universal (public domain) — https://creativecommons.org/publicdomain/zero/1.0/
 Source: https://opengameart.org/content/roguelikerpg-pack-1700-tiles
+
+assets/buildings/*.png — building facade sprites generated for this project
+(AI-generated, chroma-keyed & processed). Released CC0 / public domain.
