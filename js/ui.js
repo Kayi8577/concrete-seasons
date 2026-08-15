@@ -21,7 +21,8 @@
     if (!S) return;
     $('hud-date').textContent = G().dateText() + ` · Y${S.time.year}`;
     $('hud-time').innerHTML = `${G().clockText()} <span id="hud-weather">${CS.art.weatherSVG(S.weather.today)}</span>`;
-    $('hud-money').textContent = '$' + S.player.money;
+    const m = S.player.money;
+    $('hud-money').textContent = '$' + (Number.isInteger(m) ? m : m.toFixed(2));
     $('hud-energy').style.width = Math.max(0, S.player.energy) + '%';
     $('hud-energy').style.background = S.player.energy < 25 ? '#c74f6d' : '';
     const unread = G().unreadTotal ? G().unreadTotal() : 0;

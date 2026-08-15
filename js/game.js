@@ -676,7 +676,9 @@
       }
     };
     if (ch === 'i') return () => CS.ui.narrate("The old lighthouse. Decommissioned for decades, still the most reliable thing on the island. Locals say if you're here at the right moment, you'll understand why people stay.");
-    if (ch === 'P') return () => travelMenu();
+    if (ch === 'P') return () => (scene === 'outdoor' ? stationMenu('tram') : returnMenu());
+    if (ch === 'V') return () => stationMenu('subway');
+    if (ch === 'w') return () => stationMenu('ferry');
     if (ch === 'U' && scene === 'teahouse') return () => CS.ui.buyPrompt('tea', 5, "Mrs. Woo's oolong. +20 energy.");
     if (ch === 'U' && scene === 'bellinis') return () => bellinisMenu();
     if (ch === 'U' && scene === 'foodcourt') return () => foodcourtMenu();
@@ -685,40 +687,68 @@
     return null;
   }
 
-  /* ---- travel ---- */
-  function travelMenu() {
-    const here = S.playerRT.scene;
+  /* ---- transit: three real modes, like the real island ---- */
+  const RIDE_MINUTES = { tram: 8, subway: 22, ferry: 28 };
+  const MODE_NAMES = { tram: 'the tram', subway: 'the F train', ferry: 'the ferry' };
+
+  function stationMenu(mode) {
     const opts = [];
-    if (here === 'outdoor') {
-      for (const dest of Object.keys(CS.TRAVEL)) {
-        const d = CS.TRAVEL[dest];
-        if (S.flags[d.unlockFlag]) {
-          opts.push({ label: `${d.name} — $${d.cost}`, fn: () => travelTo(dest) });
-        }
-      }
-      if (!opts.length) {
-        CS.ui.narrate("The tram sways off toward Manhattan. Trips into the city open up once you know people who'd want you to visit. For now, Harbor Point is plenty.");
-        return;
-      }
-    } else {
-      opts.push({ label: 'Back to Harbor Point — $3', fn: () => travelTo('harbor') });
-    }
-    opts.push({ label: 'Stay put', fn: () => {} });
-    CS.ui.choose(here === 'outdoor' ? 'Where to?' : 'The subway rattles in.', opts);
-  }
-  function travelTo(dest) {
-    const cost = 3;
-    if (S.player.money < cost) { CS.ui.toast('Not enough for the fare.'); return; }
-    S.player.money -= cost;
-    S.time.minutes += 45;
-    if (dest === 'harbor') {
-      enterScene('outdoor', 4, 14);
-    } else {
+    const fare = CS.FARES[mode];
+    for (const dest of Object.keys(CS.TRAVEL)) {
       const d = CS.TRAVEL[dest];
-      enterScene(dest, d.spawn[0], d.spawn[1]);
+      if (d.modes.includes(mode) && S.flags[d.unlockFlag]) {
+        opts.push({ label: `${d.name} — $${fare.toFixed(2)}`, fn: () => ride(mode, dest) });
+      }
     }
-    refreshNPCs(true);
+    const prompts = {
+      tram: 'The cabin hangs at the platform, doors open, Manhattan waiting across the water.',
+      subway: 'Warm air rises up the stairwell. Somewhere below, an F train sighs.',
+      ferry: 'The ferry knocks gently against the pier, engine idling.',
+    };
+    if (!opts.length) {
+      const noneYet = {
+        tram: 'The tram swings off toward Manhattan without you. Trips open up once you know people over there.',
+        subway: 'You could ride the F anywhere — once you know where anyone is. Meet more people.',
+        ferry: 'The deckhand nods, but you have nowhere across the water to be. Yet.',
+      };
+      CS.ui.narrate(noneYet[mode]);
+      return;
+    }
+    opts.push({ label: 'Stay on the island', fn: () => {} });
+    CS.ui.choose(prompts[mode], opts);
+  }
+
+  function ride(mode, dest) {
+    const fare = CS.FARES[mode];
+    if (S.player.money < fare) { CS.ui.toast('Not enough for the fare.'); return; }
+    S.player.money = Math.round((S.player.money - fare) * 100) / 100;
+    S.time.minutes += RIDE_MINUTES[mode];
     CS.ui.refreshHUD();
+    CS.ui.narrate(CS.RIDE_FLAVOR[mode], () => {
+      if (dest === 'harbor') enterScene('outdoor', mode === 'ferry' ? 9 : 4, mode === 'ferry' ? 36 : 14);
+      else {
+        const d = CS.TRAVEL[dest];
+        enterScene(dest, d.spawn[0], d.spawn[1]);
+      }
+      refreshNPCs(true);
+      CS.ui.refreshHUD();
+    });
+  }
+
+  // each hub goes home by the modes that really serve it
+  const HUB_RETURN = {
+    chinatown: ['subway'], flushing: ['subway'],
+    astoria: ['ferry', 'subway'], williamsburg: ['ferry', 'subway'],
+  };
+  function returnMenu() {
+    const here = S.playerRT.scene;
+    const modes = HUB_RETURN[here] || ['subway'];
+    const opts = modes.map(m => ({
+      label: `${MODE_NAMES[m][0].toUpperCase() + MODE_NAMES[m].slice(1)} home — $${CS.FARES[m].toFixed(2)}`,
+      fn: () => ride(m, 'harbor'),
+    }));
+    opts.push({ label: 'Stay a while', fn: () => {} });
+    CS.ui.choose('Heading back to the island?', opts);
   }
 
   function foodcourtMenu() {
@@ -2074,7 +2104,7 @@
     return {
       name: d.player.name,
       date: `${CS.SEASONS[d.time.seasonIndex]} ${d.time.day}, Year ${d.time.year}`,
-      money: d.player.money,
+      money: Number.isInteger(d.player.money) ? d.player.money : d.player.money.toFixed(2),
       pet: d.pet ? d.pet.name : '',
     };
   };

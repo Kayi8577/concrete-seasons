@@ -9,7 +9,7 @@
           A/C/B/M/G door tiles (apartment/cafe/bakery/market/greenhouse)  E interior exit
           K kitchen  b bed  t table  W window  = shelf  O oven  d display  U counter  q aquarium spot
 */
-CS.WALKABLE = new Set(['.', '-', '_', 'r', 's', 'g', 'P', 'A', 'C', 'B', 'M', 'G', 'E', 'S', 'R', 'L', 'H', 'D', 'Q']);
+CS.WALKABLE = new Set(['.', '-', '_', 'r', 's', 'g', 'P', 'V', 'w', 'A', 'C', 'B', 'M', 'G', 'E', 'S', 'R', 'L', 'H', 'D', 'Q']);
 
 function _grid(w, h, fill) {
   const g = [];
@@ -51,8 +51,10 @@ function buildOutdoor() {
   _rect(g, 39, 5, 6, 4, 's');                 // 24 soil plots
   g[10][39] = 'X'; g[10][46] = 'N';
   for (let y = 12; y <= 15; y++) { g[y][44] = 'r'; g[y][45] = 'r'; }
-  // tram platform
+  // tram platform (west side — swings over the river to Manhattan)
   _rect(g, 2, 13, 4, 2, 'P');
+  // F-train entrance, mid-island like the real one
+  g[15][26] = 'V'; g[15][27] = 'V';
   // main street: two lanes of honest NYC asphalt
   _rect(g, 1, 16, 54, 2, 'r');
   // street furniture: planters, market stalls, streetlights, a hydrant or two
@@ -80,6 +82,8 @@ function buildOutdoor() {
   // waterfront promenade
   _rect(g, 1, 34, 54, 2, '-');
   [12, 28, 45].forEach(x => { g[36][x] = 'h'; });
+  // ferry pier reaching into the East River
+  for (let y = 36; y <= 39; y++) { g[y][8] = 'w'; g[y][9] = 'w'; }
   // scattered trees
   [[24,10],[34,13],[13,10],[52,13],[8,24],[42,24],[6,30],[41,32]].forEach(([x,y]) => {
     if (g[y][x] === '.') g[y][x] = 'T';
@@ -154,7 +158,9 @@ CS.MAPS = {
       { x:26, y:1,    text:'Harbor House' },
       { x:40, y:1,    text:'Community Farm' },
       { x:47, y:2.4,  text:'Greenhouse' },
-      { x:2,  y:12,   text:'Tram' },
+      { x:2,  y:12,   text:'Tram → Manhattan' },
+      { x:25.5, y:14.2, text:'F Train' },
+      { x:6.5,  y:37,  text:'NYC Ferry' },
       { x:3,  y:20.4, text:'Second Life' },
       { x:12, y:20.4, text:'Juniper Café' },
       { x:22, y:20.4, text:'Moonrise' },
@@ -353,10 +359,17 @@ CS.BUILDINGS = {
   ],
 };
 
-/* Tram/subway destinations. `unlockFlag` is set by story/text triggers. */
+/* Transit, the Roosevelt-Island way: three real modes, real fares.
+   `modes` says which station can take you there. */
+CS.FARES = { tram: 2.90, subway: 2.90, ferry: 4.50 };
 CS.TRAVEL = {
-  astoria:   { name:"Astoria — Bellini's", cost:3, unlockFlag:'travelAstoria',  spawn:[5,7] },
-  chinatown: { name:'Chinatown — Mott St', cost:3, unlockFlag:'travelChinatown', spawn:[5,7] },
+  chinatown: { name:'Chinatown — Mott St', modes:['tram','subway'], unlockFlag:'travelChinatown', spawn:[5,7] },
+  astoria:   { name:"Astoria — Bellini's", modes:['ferry'],          unlockFlag:'travelAstoria',  spawn:[5,7] },
+};
+CS.RIDE_FLAVOR = {
+  tram: 'The cabin sways off the platform and climbs — the river drops away underneath, the bridge slides past at eye level, and for ninety seconds the whole city is yours.',
+  subway: 'Down the stairs, tap through, and the F rattles you under the river. Someone is playing a saxophone two cars down. It is, somehow, good.',
+  ferry: 'The ferry pulls off the pier with that low diesel hum. Wind, spray, skyline. The best commute money can buy.',
 };
 
 /* ---------------- Named spots for NPC schedules ---------------- */
@@ -529,8 +542,8 @@ Object.assign(CS.SPOTS, {
 });
 
 Object.assign(CS.TRAVEL, {
-  flushing:     { name:'Flushing — Golden Mall', cost:3, unlockFlag:'travelFlushing', spawn:[5,7] },
-  williamsburg: { name:'Williamsburg — the Flea', cost:3, unlockFlag:'travelWilliamsburg', spawn:[5,7] },
+  flushing:     { name:'Flushing — Golden Mall', modes:['subway'], unlockFlag:'travelFlushing', spawn:[5,7] },
+  williamsburg: { name:'Williamsburg — the Flea', modes:['ferry','subway'], unlockFlag:'travelWilliamsburg', spawn:[5,7] },
 });
 
 })();

@@ -128,7 +128,7 @@
     'A': '#6e5741', 'C': '#6e5741', 'B': '#6e5741', 'M': '#6e5741', 'G': '#88a89b',
     'S': '#6e5741', 'R': '#6e5741', 'L': '#88a89b', 'H': '#6e5741', 'E': '#b09a7d',
     'c': '#7fae6d', 'i': '#7fae6d', 'k': '#7fae6d', '_': '#b3aa9c', 'D': '#b3aa9c', 'l': '#b3aa9c',
-    'Q': '#6e5741', 'r': '#5a5c60', 'y': '#7fae6d', 'j': '#7fae6d',
+    'Q': '#6e5741', 'r': '#5a5c60', 'y': '#7fae6d', 'j': '#7fae6d', 'V': '#7fae6d', 'w': '#9a7a54',
     'K': '#d8cfc0', 'b': '#d8cfc0', 't': '#d8cfc0', 'W': '#d8cfc0', '=': '#d8cfc0',
     'O': '#d8cfc0', 'd': '#d8cfc0', 'U': '#d8cfc0', 'q': '#d8cfc0',
   };
@@ -223,9 +223,12 @@
         // everything else comes from the atlas (flat-color fallback)
         let usedAtlas = false;
         const grassy = isOut && !isCity &&
-          ('.TchXNokyjF'.includes(ch) || 'ACBMGSRLHQ'.includes(ch));
+          ('.TchXNokyjFV'.includes(ch) || 'ACBMGSRLHQ'.includes(ch));
         if (ch === 'r') {
           A0.roadTile(ctx, sx, sy, TILE, x, y, g);
+          usedAtlas = true;
+        } else if (ch === 'w') {
+          A0.pierTile(ctx, sx, sy, TILE, y);
           usedAtlas = true;
         } else if (grassy) {
           A0.grassTile(ctx, sx, sy, TILE, x, y);
@@ -343,6 +346,14 @@
           case 'N': entities.push({ b: (y + 1) * TILE, d: () => A.board(ctx, sx, sy, TILE) }); break;
           case 'o': A.planter(ctx, sx, sy, TILE); break;
           case 'y': entities.push({ b: (y + 1) * TILE, d: () => A.streetlight(ctx, sx, sy, TILE, nightWin) }); break;
+          case 'V':
+            if (g[y][x - 1] !== 'V') entities.push({ b: (y + 1) * TILE, d: () => A.subwayEntrance(ctx, sx, sy, TILE) });
+            break;
+          case 'w':
+            if (y === 38 && g[y][x + 1] !== 'w') { // boat moored alongside the pier
+              entities.push({ b: (y + 2) * TILE, d: () => A.ferryBoat(ctx, sx + TILE * .8, sy, TILE, state.animT) });
+            }
+            break;
           case 'j': entities.push({ b: (y + 1) * TILE, d: () => A.hydrant(ctx, sx, sy, TILE) }); break;
           case 'E': A.doorMat(ctx, sx, sy, TILE); break;
           case 'K': A.stove(ctx, sx, sy, TILE); break;
@@ -435,6 +446,13 @@
         ctx.fillStyle = '#f7efe2';
         ctx.fillText(L.text, sx, sy + 1);
       }
+    }
+
+    // the tramway crosses the river, over everything
+    if (scene === 'outdoor') {
+      A0.tramway(ctx,
+        4 * TILE - E.camX, 13 * TILE - E.camY,
+        -3 * TILE - E.camX, 41 * TILE - E.camY, state.animT);
     }
 
     // Pride bunting hangs over everything on Main Street

@@ -122,6 +122,96 @@
     if (up && dn && rt && !lf && gy % 2 === 0) ctx.fillRect(sx + T - 1.5, sy + 5, 2.5, T - 12);
   };
 
+  /* ---- Roosevelt Island transit ---- */
+  A.subwayEntrance = function (ctx, sx, sy, T) {
+    // green iron stair kiosk with the classic globe lamp
+    sh(ctx, sx + T, sy + T - 3, T * .7, 3.5);
+    // stairwell hole
+    ctx.fillStyle = '#1c1a18';
+    ctx.fillRect(sx + 5, sy + 8, T * 2 - 10, T - 12);
+    ctx.fillStyle = 'rgba(255,255,255,.08)';
+    for (let i = 1; i < 4; i++) ctx.fillRect(sx + 5, sy + 8 + i * (T - 12) / 4, T * 2 - 10, 2);
+    // railings
+    ctx.strokeStyle = '#1f4d33'; ctx.lineWidth = 3;
+    ctx.strokeRect(sx + 3, sy + 5, T * 2 - 6, T - 8);
+    ctx.lineWidth = 1.6;
+    for (let i = 1; i < 8; i++) {
+      const rx = sx + 3 + i * (T * 2 - 6) / 8;
+      ctx.beginPath(); ctx.moveTo(rx, sy + 5); ctx.lineTo(rx, sy + T - 3); ctx.stroke();
+    }
+    // globe lamp post
+    ctx.fillStyle = '#1f4d33';
+    ctx.fillRect(sx + T * 2 - 8, sy - T * .55, 3.5, T * .6);
+    circle(ctx, sx + T * 2 - 6, sy - T * .6, 5, '#3fae5c');
+    circle(ctx, sx + T * 2 - 7.5, sy - T * .62, 1.8, 'rgba(255,255,255,.5)');
+  };
+
+  A.pierTile = function (ctx, sx, sy, T, gy) {
+    ctx.fillStyle = '#9a7a54';
+    ctx.fillRect(sx, sy, T, T);
+    ctx.strokeStyle = 'rgba(60,42,26,.4)'; ctx.lineWidth = 1.5;
+    for (let i = 0; i <= 3; i++) {
+      ctx.beginPath(); ctx.moveTo(sx, sy + i * T / 3); ctx.lineTo(sx + T, sy + i * T / 3); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.08)';
+    ctx.fillRect(sx, sy + 1, T, 2);
+    // edge piles
+    ctx.fillStyle = '#6b4f37';
+    ctx.fillRect(sx - 1, sy + 3, 3, 6);
+    ctx.fillRect(sx + T - 2, sy + 3, 3, 6);
+  };
+
+  A.ferryBoat = function (ctx, sx, sy, T, t) {
+    const bob = Math.sin(t / 900) * 2;
+    const y = sy + bob;
+    // hull
+    ctx.fillStyle = '#f0ede6';
+    ctx.beginPath();
+    ctx.moveTo(sx, y + T * .5);
+    ctx.lineTo(sx + T * 2.6, y + T * .5);
+    ctx.quadraticCurveTo(sx + T * 3.1, y + T * .62, sx + T * 2.6, y + T * .95);
+    ctx.lineTo(sx + T * .2, y + T * .95);
+    ctx.quadraticCurveTo(sx - T * .2, y + T * .7, sx, y + T * .5);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#2b6fa8'; // NYC-ferry blue stripe
+    ctx.fillRect(sx + T * .05, y + T * .78, T * 2.7, 5);
+    // cabin
+    ctx.fillStyle = '#e0dcd2';
+    rr(ctx, sx + T * .45, y + T * .12, T * 1.8, T * .42, 4, '#e0dcd2');
+    ctx.fillStyle = '#35404a';
+    for (let i = 0; i < 5; i++) rr(ctx, sx + T * .58 + i * T * .34, y + T * .2, T * .22, T * .2, 2, '#35404a');
+    // wheelhouse + stack
+    rr(ctx, sx + T * 1.9, y - T * .1, T * .5, T * .26, 3, '#d8d2c6');
+    ctx.fillStyle = '#c9553e';
+    ctx.fillRect(sx + T * 1.55, y - T * .12, 6, T * .26);
+    // wake
+    ctx.strokeStyle = 'rgba(235,245,250,.5)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(sx - 6, y + T * .9); ctx.lineTo(sx + T * .3, y + T * .98); ctx.stroke();
+  };
+
+  /* the tramway: two cables + a little red cabin gliding over the river */
+  A.tramway = function (ctx, x0, y0, x1, y1, t) {
+    ctx.strokeStyle = 'rgba(40,40,44,.65)'; ctx.lineWidth = 1.6;
+    for (const off of [-3, 3]) {
+      ctx.beginPath();
+      ctx.moveTo(x0 + off, y0);
+      ctx.quadraticCurveTo((x0 + x1) / 2 + off, (y0 + y1) / 2 + 26, x1 + off, y1);
+      ctx.stroke();
+    }
+    // cabin position swings back and forth on a slow loop
+    const ph = (Math.sin(t / 9000) + 1) / 2; // 0..1
+    const qx = (x0 + x1) / 2, qy = (y0 + y1) / 2 + 26;
+    const cx = (1 - ph) * (1 - ph) * x0 + 2 * (1 - ph) * ph * qx + ph * ph * x1;
+    const cy = (1 - ph) * (1 - ph) * y0 + 2 * (1 - ph) * ph * qy + ph * ph * y1;
+    // hanger + cabin
+    ctx.strokeStyle = '#2d2a26'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy + 7); ctx.stroke();
+    rr(ctx, cx - 11, cy + 7, 22, 15, 4, '#c9382e');
+    rr(ctx, cx - 8, cy + 10, 16, 6, 2, '#bcd8e8');
+    ctx.fillStyle = 'rgba(255,255,255,.25)';
+    ctx.fillRect(cx - 11, cy + 7, 22, 3);
+  };
+
   A.streetlight = function (ctx, sx, sy, T, night) {
     const cx = sx + T / 2;
     sh(ctx, cx, sy + T - 3, T * .2, 2.5);
