@@ -24,7 +24,8 @@ Load order in `index.html` matters: core → world → economy → npcs → sche
 
 ## Hard rules
 
-- **No emoji as art, ever.** (User feedback — non-negotiable.) Visuals are procedural canvas in `art.js` plus the CC0 pixel tile atlas in `assets/` (terrain only; see `assets/CREDITS.txt`). UI icons are inline SVG. Any new asset must be CC0/public-domain — the repo is public.
+- **No emoji as art, ever.** (User feedback — non-negotiable.) Visuals are procedural canvas in `art.js` plus the CC0 pixel tile atlas in `assets/` (terrain only) and the generated facade sprites in `assets/buildings/` (chroma-keyed PNGs; see `assets/CREDITS.txt`). UI icons are inline SVG. Any new asset must be CC0/public-domain — the repo is public.
+- **Building sprites**: a `CS.BUILDINGS` entry with `img:'name'` draws `assets/buildings/name.png` (loaded by `A.loadBuildings`); no `img`, or a failed load, falls back to the procedural facade — so sprites are safe to add/remove per building. Sprite buildings mark their tappable door with `A.doormat` (the sprite bakes in its own door art). New sprites: generate on a magenta background, flood-fill-key from the borders, crop, ≤480px wide.
 - **Offline-first**: no network calls in gameplay. Assets must stay self-contained.
 - **Save compatibility**: never break old saves. New state fields get defaults in `game.js → G.start()` migration block; `SAVE_VERSION` lives in `data/core.js`.
 - **NPCs live without the player**: prefer observable behavior over UI numbers.
