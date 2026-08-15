@@ -166,3 +166,6 @@ Object.assign(CS.NPCS, {
     loved:['strawberry'], liked:['tulip'],
   },
 });
+
+// each def knows its own id (portrait sprites & lookups need it)
+for (const k in CS.NPCS) CS.NPCS[k].id = k;

@@ -58,7 +58,7 @@
         const pc = document.createElement('canvas');
         pc.width = pc.height = 72;
         pc.className = 'thread-avatar';
-        CS.art.portrait(pc, CS.NPCS[id].look);
+        CS.art.portrait(pc, CS.NPCS[id].look, id);
         row.appendChild(pc);
       } else {
         row.insertAdjacentHTML('beforeend', '<div class="thread-avatar hp-avatar">HP</div>');
@@ -139,7 +139,7 @@
 
   U.dialogue = function (npc, lines, done) {
     const pc = $('dlg-portrait');
-    if (npc) CS.art.portrait(pc, npc.look); else CS.art.narratorPortrait(pc);
+    if (npc) CS.art.portrait(pc, npc.look, npc.id); else CS.art.narratorPortrait(pc);
     $('dlg-name').textContent = npc ? npc.name : '';
     $('dlg-name').style.display = npc ? '' : 'none';
     dialogueQueue = [...lines];
@@ -479,7 +479,7 @@
           const pc = document.createElement('canvas');
           pc.width = pc.height = 72;
           pc.style.cssText = 'width:36px;height:36px;border-radius:9px;float:left;margin-right:10px';
-          CS.art.portrait(pc, npc.look);
+          CS.art.portrait(pc, npc.look, npc.id);
           card.appendChild(pc);
           const rel = S.npcs[id].romance === 'seeing' ? tier + ' · Seeing each other' : tier;
           card.insertAdjacentHTML('beforeend', `<div class="res-name">${npc.name}</div>

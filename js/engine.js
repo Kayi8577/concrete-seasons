@@ -19,6 +19,7 @@
   E.init = function () {
     CS.art.loadAtlas();
     CS.art.loadBuildings();
+    CS.art.loadPortraits();
     canvas = document.getElementById('game-canvas');
     ctx = canvas.getContext('2d');
     window.addEventListener('resize', resize);

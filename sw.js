@@ -1,7 +1,7 @@
 /* Concrete Seasons — service worker.
    Cache-first so the game is fully playable offline / in airplane mode.
    Bump CACHE_VERSION on every release so clients pick up new files. */
-const CACHE_VERSION = 'cs-v21';
+const CACHE_VERSION = 'cs-v22';
 const ASSETS = [
   './',
   './index.html',
@@ -42,6 +42,28 @@ const ASSETS = [
   './assets/buildings/boba.png',
   './assets/buildings/wcafe.png',
   './assets/buildings/wflea.png',
+  './assets/portraits/maya.png',
+  './assets/portraits/daniel.png',
+  './assets/portraits/lena.png',
+  './assets/portraits/nico.png',
+  './assets/portraits/grace.png',
+  './assets/portraits/malik.png',
+  './assets/portraits/joan.png',
+  './assets/portraits/rosa.png',
+  './assets/portraits/mrs_woo.png',
+  './assets/portraits/sofia.png',
+  './assets/portraits/gabriel.png',
+  './assets/portraits/theo.png',
+  './assets/portraits/avery.png',
+  './assets/portraits/naomi.png',
+  './assets/portraits/arjun.png',
+  './assets/portraits/priya.png',
+  './assets/portraits/jordan.png',
+  './assets/portraits/mei_lin.png',
+  './assets/portraits/mateo.png',
+  './assets/portraits/ava.png',
+  './assets/portraits/nia.png',
+  './assets/portraits/claire.png',
 ];
 
 self.addEventListener('install', (e) => {

@@ -53,6 +53,23 @@
       img.src = 'assets/buildings/' + n + '.png';
     }
   };
+
+  /* ---- NPC portrait sprites (assets/portraits/<id>.png, same pipeline).
+     Any missing/unloaded portrait falls back to the drawn chibi face. ---- */
+  const PIMG = {};
+  A.portraitImg = (id) => {
+    const e = PIMG[id];
+    return e && e.ready ? e.img : null;
+  };
+  A.loadPortraits = function () {
+    for (const id in CS.NPCS) {
+      if (id === 'fish') continue;
+      const img = new Image();
+      const e = PIMG[id] = { img, ready: false };
+      img.onload = () => { e.ready = true; };
+      img.src = 'assets/portraits/' + id + '.png';
+    }
+  };
   // draw one atlas tile; returns false if the sheet isn't available
   A.tileDraw = function (ctx, name, sx, sy, T, seed) {
     if (!A.atlasReady) return false;
@@ -1333,7 +1350,7 @@
     }
   };
 
-  A.portrait = function (canvas, opts) {
+  A.portrait = function (canvas, opts, id) {
     const c = canvas.getContext('2d');
     const S = canvas.width;
     c.clearRect(0, 0, S, S);
@@ -1342,6 +1359,18 @@
     c.beginPath(); c.roundRect(0, 0, S, S, S * .24); c.fill();
     c.fillStyle = 'rgba(92,138,111,.12)';
     c.beginPath(); c.roundRect(0, S * .55, S, S * .45, S * .24); c.fill();
+    // generated portrait sprite, when this NPC has one loaded
+    const pim = id && A.portraitImg(id);
+    if (pim) {
+      c.save();
+      c.beginPath(); c.roundRect(0, 0, S, S, S * .24); c.clip();
+      const prev = c.imageSmoothingEnabled;
+      c.imageSmoothingEnabled = true;
+      c.drawImage(pim, 0, S * .04, S, S);
+      c.imageSmoothingEnabled = prev;
+      c.restore();
+      return;
+    }
     const cx = S / 2, hy = S * .44, r = S * .28;
     // shoulders
     c.fillStyle = opts.outfit;
