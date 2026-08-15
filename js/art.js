@@ -45,7 +45,8 @@
   };
   A.loadBuildings = function () {
     for (const n of ['bakery', 'cafe', 'market', 'pub', 'thrift', 'glasshouse',
-                     'apartment', 'harborhouse', 'greenhouse', 'labs']) {
+                     'apartment', 'harborhouse', 'greenhouse', 'labs',
+                     'bellinis', 'teahouse', 'mott', 'foodcourt', 'boba', 'wcafe', 'wflea']) {
       const img = new Image();
       const e = BIMG[n] = { img, ready: false };
       img.onload = () => { e.ready = true; };

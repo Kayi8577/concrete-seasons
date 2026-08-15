@@ -357,19 +357,19 @@ CS.BUILDINGS = {
     { x:10, y:47, w:14, h:5, style:'block', wall:'#a7b2b6', roof:'#5b8aa6', img:'labs' },        // Pier Labs
   ],
   astoria: [
-    { x:6,  y:2, w:12, h:3, style:'shop', wall:'#d8c4a4', roof:'#8a3b4a' },
+    { x:6,  y:2, w:12, h:3, style:'shop', wall:'#d8c4a4', roof:'#8a3b4a', img:'bellinis' },
   ],
   chinatown: [
-    { x:4,  y:2, w:9, h:3, style:'shop', wall:'#c9553e', roof:'#3f4f3a' },
-    { x:16, y:2, w:8, h:3, style:'shop', wall:'#d8b48a', roof:'#b3542e' },
+    { x:4,  y:2, w:9, h:3, style:'shop', wall:'#c9553e', roof:'#3f4f3a', img:'teahouse' },
+    { x:16, y:2, w:8, h:3, style:'shop', wall:'#d8b48a', roof:'#b3542e', img:'mott' },
   ],
   flushing: [
-    { x:3,  y:2, w:12, h:3, style:'shop', wall:'#d8c4a4', roof:'#c9553e' },
-    { x:17, y:2, w:7,  h:3, style:'shop', wall:'#c9b694', roof:'#5b8aa6' },
+    { x:3,  y:2, w:12, h:3, style:'shop', wall:'#d8c4a4', roof:'#c9553e', img:'foodcourt' },
+    { x:17, y:2, w:7,  h:3, style:'shop', wall:'#c9b694', roof:'#5b8aa6', img:'boba' },
   ],
   williamsburg: [
-    { x:3,  y:2, w:8,  h:3, style:'block', wall:'#a8846a', roof:'#6b5b4c' },
-    { x:14, y:2, w:10, h:3, style:'block', wall:'#9a8a7a', roof:'#5d4e40' },
+    { x:3,  y:2, w:8,  h:3, style:'block', wall:'#a8846a', roof:'#6b5b4c', img:'wcafe' },
+    { x:14, y:2, w:10, h:3, style:'block', wall:'#9a8a7a', roof:'#5d4e40', img:'wflea' },
   ],
 };
 
