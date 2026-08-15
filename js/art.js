@@ -74,6 +74,133 @@
     ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill();
   }
 
+  /* ================= FoMT-style ground & NYC street furniture ================= */
+  // Mineral Town grass: a soft two-tone checker with sparse blade details
+  A.grassTile = function (ctx, sx, sy, T, gx, gy) {
+    const light = (gx + gy) % 2 === 0;
+    ctx.fillStyle = light ? '#79bd4a' : '#6fb443';
+    ctx.fillRect(sx, sy, T, T);
+    const h = (gx * 73 + gy * 151) % 97;
+    ctx.fillStyle = 'rgba(255,255,255,.10)';
+    ctx.fillRect(sx, sy, T, 2);
+    if (h % 3 === 0) { // blade tufts, FoMT's little V marks
+      ctx.strokeStyle = 'rgba(64,122,36,.75)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+      const tx = sx + 6 + (h % 5) * 4, ty = sy + 8 + (h % 4) * 5;
+      ctx.beginPath(); ctx.moveTo(tx, ty + 4); ctx.lineTo(tx - 2, ty); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(tx, ty + 4); ctx.lineTo(tx + 2, ty); ctx.stroke();
+    }
+    if (h % 11 === 0) {
+      ctx.fillStyle = 'rgba(64,122,36,.5)';
+      ctx.fillRect(sx + (h % 6) * 4 + 3, sy + (h % 3) * 8 + 6, 3, 2);
+    }
+  };
+
+  A.roadTile = function (ctx, sx, sy, T, gx, gy, grid) {
+    ctx.fillStyle = '#5a5c60';
+    ctx.fillRect(sx, sy, T, T);
+    const h = (gx * 31 + gy * 17) % 13;
+    if (h < 3) { ctx.fillStyle = 'rgba(255,255,255,.04)'; ctx.fillRect(sx + h * 7, sy + h * 5, 9, 7); }
+    const up = grid[gy - 1] && grid[gy - 1][gx] === 'r';
+    const dn = grid[gy + 1] && grid[gy + 1][gx] === 'r';
+    const lf = grid[gy][gx - 1] === 'r';
+    const rt = grid[gy][gx + 1] === 'r';
+    // curb line against anything that isn't road
+    ctx.fillStyle = '#c9c4ba';
+    if (!up) ctx.fillRect(sx, sy, T, 2.5);
+    if (!dn) ctx.fillRect(sx, sy + T - 2.5, T, 2.5);
+    if (!lf) ctx.fillRect(sx, sy, 2.5, T);
+    if (!rt) ctx.fillRect(sx + T - 2.5, sy, 2.5, T);
+    // a true junction (road on all four sides) gets the crosswalk zebra
+    if (up && dn && lf && rt) {
+      ctx.fillStyle = 'rgba(240,238,230,.85)';
+      for (let i = 0; i < 4; i++) ctx.fillRect(sx + 3 + i * 8, sy + 3, 4, T - 6);
+      return;
+    }
+    // dashed center line along the avenue's seam (top row only, every other tile)
+    ctx.fillStyle = '#d9c25a';
+    if (lf && rt && dn && !up && gx % 2 === 0) ctx.fillRect(sx + 5, sy + T - 1.5, T - 12, 2.5);
+    if (up && dn && rt && !lf && gy % 2 === 0) ctx.fillRect(sx + T - 1.5, sy + 5, 2.5, T - 12);
+  };
+
+  A.streetlight = function (ctx, sx, sy, T, night) {
+    const cx = sx + T / 2;
+    sh(ctx, cx, sy + T - 3, T * .2, 2.5);
+    ctx.fillStyle = '#2e3a34';
+    ctx.fillRect(cx - 2, sy - T * .5, 4, T * 1.4);
+    ctx.beginPath(); ctx.moveTo(cx - 2, sy - T * .5);
+    ctx.quadraticCurveTo(cx + 8, sy - T * .62, cx + 12, sy - T * .5);
+    ctx.lineTo(cx + 12, sy - T * .4); ctx.quadraticCurveTo(cx + 8, sy - T * .5, cx + 2, sy - T * .4);
+    ctx.closePath(); ctx.fill();
+    circle(ctx, cx + 12, sy - T * .42, 4, night ? '#f5d87a' : '#d8d2c0');
+    if (night) {
+      const gl = ctx.createRadialGradient(cx + 12, sy - T * .42, 2, cx + 12, sy - T * .42, T * .8);
+      gl.addColorStop(0, 'rgba(245,216,122,.35)'); gl.addColorStop(1, 'rgba(245,216,122,0)');
+      ctx.fillStyle = gl;
+      ctx.beginPath(); ctx.arc(cx + 12, sy - T * .42, T * .8, 0, Math.PI * 2); ctx.fill();
+    }
+  };
+
+  A.hydrant = function (ctx, sx, sy, T) {
+    const cx = sx + T / 2;
+    sh(ctx, cx, sy + T - 4, T * .18, 2.5);
+    rr(ctx, cx - 4.5, sy + T * .38, 9, T * .5, 3, '#c9382e');
+    circle(ctx, cx, sy + T * .34, 5, '#c9382e');
+    circle(ctx, cx, sy + T * .27, 2.5, '#a02c24');
+    rr(ctx, cx - 7, sy + T * .5, 4, 4.5, 1.5, '#a02c24');
+    rr(ctx, cx + 3, sy + T * .5, 4, 4.5, 1.5, '#a02c24');
+    circle(ctx, cx - 2, sy + T * .42, 1.4, 'rgba(255,255,255,.4)');
+  };
+
+  /* Manhattan across the river: silhouette skyline + a Queensboro-ish
+     bridge drawn over the far half of the southern water. */
+  A.skyline = function (ctx, x0, y0, w, T, night, t) {
+    const base = y0 + T * 4; // towers rise from the map's far edge
+    // haze
+    const hz = ctx.createLinearGradient(0, base - T * 3, 0, base);
+    hz.addColorStop(0, night ? 'rgba(24,32,48,0)' : 'rgba(160,180,195,0)');
+    hz.addColorStop(1, night ? 'rgba(24,32,48,.5)' : 'rgba(160,180,195,.45)');
+    ctx.fillStyle = hz;
+    ctx.fillRect(x0, base - T * 3, w, T * 3);
+    // towers (deterministic skyline)
+    ctx.fillStyle = night ? '#232c3e' : '#69798a';
+    let bx = x0 - 20;
+    let i = 0;
+    while (bx < x0 + w + 20) {
+      const bw = 18 + ((i * 37) % 26);
+      const bh = T * (0.7 + ((i * 53) % 100) / 72);
+      ctx.fillRect(bx, base - bh, bw, bh);
+      if ((i % 4) === 1) ctx.fillRect(bx + bw * .3, base - bh - 6, bw * .18, 6); // spire
+      // windows
+      if (night) {
+        ctx.fillStyle = 'rgba(245,216,122,.7)';
+        for (let wy = base - bh + 5; wy < base - 6; wy += 7) {
+          for (let wx = bx + 3; wx < bx + bw - 3; wx += 6) {
+            if (((wx * 7 + wy * 13) | 0) % 5 < 2) ctx.fillRect(wx, wy, 2, 3);
+          }
+        }
+        ctx.fillStyle = '#232c3e';
+      }
+      bx += bw + 6 + ((i * 29) % 12);
+      i++;
+    }
+    // the bridge: towers + deck + swooping cables
+    const bY = base - T * 1.5, x1 = x0 + w * .12, x2 = x0 + w * .52;
+    ctx.strokeStyle = night ? '#1b2230' : '#4d5a68';
+    ctx.fillStyle = night ? '#1b2230' : '#4d5a68';
+    ctx.lineWidth = 3;
+    ctx.fillRect(x1, bY, (x2 - x1), 4); // deck
+    for (const tx of [x1 + (x2 - x1) * .25, x1 + (x2 - x1) * .75]) {
+      ctx.fillRect(tx - 3, bY - T * .8, 6, T * .8 + 4);
+      ctx.fillRect(tx - 6, bY - T * .8, 12, 4);
+    }
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(x1, bY);
+    ctx.quadraticCurveTo(x1 + (x2 - x1) * .25, bY - T * .75, x1 + (x2 - x1) * .5, bY);
+    ctx.quadraticCurveTo(x1 + (x2 - x1) * .75, bY - T * .75, x2, bY);
+    ctx.stroke();
+  };
+
   /* ================= buildings (drawn whole, over their '#' tiles) ================= */
   // spec: {x,y,w,h in tiles, style:'shop'|'block'|'glass', wall, roof}
   A.building = function (ctx, px, py, w, h, spec, T, night) {
@@ -132,32 +259,47 @@
       ctx.fillStyle = shade(roof, 22);
       ctx.fillRect(px + w * .18, py - roofRise + 6, T * .32, 3.5);
       ctx.fillRect(px + w * .42, py - roofRise + 6, T * .2, 3.5);
-    } else { // shop: shingle roof above the facade, wide eaves
+    } else { // shop: Mineral-Town cottage — front gable, chimney, dark outline
+      const peak = py - roofRise - T * .35;
       ctx.fillStyle = shade(roof, -22); // eave underside
       ctx.fillRect(px - 5, py + 1, w + 10, 4);
+      // gabled roof face
       ctx.fillStyle = roof;
       ctx.beginPath();
       ctx.moveTo(px - 5, py + 2);
-      ctx.lineTo(px + T * .3, py - roofRise);
-      ctx.lineTo(px + w - T * .3, py - roofRise);
+      ctx.lineTo(px + w / 2, peak);
       ctx.lineTo(px + w + 5, py + 2);
       ctx.closePath(); ctx.fill();
-      // shingle courses
-      ctx.strokeStyle = 'rgba(0,0,0,.15)'; ctx.lineWidth = 1.2;
-      for (let i = 1; i <= 2; i++) {
-        const f = i / 3;
-        const yy = py - roofRise + (roofRise + 2) * f;
+      // shingle courses following the slope
+      ctx.strokeStyle = 'rgba(0,0,0,.16)'; ctx.lineWidth = 1.2;
+      for (let i = 1; i <= 3; i++) {
+        const f = i / 4;
+        const yy = peak + (py + 2 - peak) * f;
         ctx.beginPath();
-        ctx.moveTo(px + T * .3 - (T * .3 + 5) * f, yy);
-        ctx.lineTo(px + w - T * .3 + (T * .3 + 5) * f, yy);
+        ctx.moveTo(px + (w / 2 + 5) * (1 - f) - 5 + w / 2 * 0, yy);
+        ctx.moveTo(px + w / 2 - (w / 2 + 5) * f, yy);
+        ctx.lineTo(px + w / 2 + (w / 2 + 5) * f, yy);
         ctx.stroke();
       }
-      // ridge highlight
-      ctx.fillStyle = 'rgba(255,255,255,.18)';
-      ctx.fillRect(px + T * .3, py - roofRise, w - T * .6, 3);
+      // chimney on the right slope
+      const chx = px + w * .72;
+      ctx.fillStyle = shade(wall, -30);
+      ctx.fillRect(chx, peak + (py - peak) * .35 - T * .5, T * .28, T * .55);
+      ctx.fillStyle = shade(wall, -48);
+      ctx.fillRect(chx - 2, peak + (py - peak) * .35 - T * .56, T * .28 + 4, 4);
+      // ridge cap + outline
+      ctx.strokeStyle = '#4a382a'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(px - 5, py + 2);
+      ctx.lineTo(px + w / 2, peak);
+      ctx.lineTo(px + w + 5, py + 2);
+      ctx.stroke();
       // eave shadow on the wall
       ctx.fillStyle = 'rgba(0,0,0,.15)';
       ctx.fillRect(px, py + 4, w, 5);
+      // wall outline
+      ctx.strokeStyle = '#4a382a'; ctx.lineWidth = 2;
+      ctx.strokeRect(px, py + 2, w, h - 2);
     }
     // windows (never on the bottom/door row)
     const glassDay = '#b8d4de', glassNight = '#f0d489';
@@ -869,13 +1011,14 @@
   };
 
   function face(ctx, cx, cy, r) {
-    // eyes: white + pupil + glint
+    // Mineral-Town eyes: big, tall, glossy
     for (const s of [-1, 1]) {
-      const ex = cx + s * r * .38, ey = cy + r * .12;
+      const ex = cx + s * r * .36, ey = cy + r * .14;
       ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.ellipse(ex, ey, r * .17, r * .21, 0, 0, Math.PI * 2); ctx.fill();
-      circle(ctx, ex, ey + r * .03, r * .11, '#3a2e24');
-      circle(ctx, ex - r * .04, ey - r * .04, r * .045, '#fff');
+      ctx.beginPath(); ctx.ellipse(ex, ey, r * .21, r * .3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3a2e24';
+      ctx.beginPath(); ctx.ellipse(ex, ey + r * .04, r * .14, r * .22, 0, 0, Math.PI * 2); ctx.fill();
+      circle(ctx, ex - r * .05, ey - r * .08, r * .06, '#fff');
     }
     // blush
     ctx.fillStyle = 'rgba(220,120,110,.28)';
@@ -903,9 +1046,9 @@
     ctx.fillStyle = '#4a3b2d';
     rr(ctx, cx - 5.4, feetY - 2.4 + Math.max(0, -walk * 2), 5, 2.6, 1.2, '#4a3b2d');
     rr(ctx, cx + 0.4, feetY - 2.4 + Math.max(0, walk * 2), 5, 2.6, 1.2, '#4a3b2d');
-    // torso (with a soft dark rim so sprites pop from the ground)
+    // torso with a true dark outline, FoMT-style
     const bodyY = feetY - 16 + bob;
-    rr(ctx, cx - 8, bodyY - 1, 16, 13, 6, 'rgba(45,35,28,.35)');
+    rr(ctx, cx - 8.5, bodyY - 1.5, 17, 14, 6.5, '#3a2a1e');
     rr(ctx, cx - 7, bodyY, 14, 11, 5, opts.outfit);
     rr(ctx, cx - 7, bodyY, 14, 4, 5, 'rgba(255,255,255,.16)'); // collar light
     // arms with swing
@@ -914,9 +1057,9 @@
     rr(ctx, cx + 6.2, bodyY + 1.5 - walk * 1.6, 3.4, 7.5, 1.7, opts.outfit);
     circle(ctx, cx - 7.9, bodyY + 9.6 + walk * 1.6, 1.7, opts.skin); // hands
     circle(ctx, cx + 7.9, bodyY + 9.6 - walk * 1.6, 1.7, opts.skin);
-    // head
-    const hr = 9, hy = bodyY - hr + 2.5;
-    circle(ctx, cx, hy - 1, hr + 1.2, 'rgba(45,35,28,.3)'); // rim
+    // head — Mineral Town proportions: the head IS the character
+    const hr = 10.5, hy = bodyY - hr + 3;
+    circle(ctx, cx, hy - .5, hr + 1.4, '#3a2a1e'); // solid outline
     if (facing === 'up') {
       // seen from behind: hair covers everything, no face
       circle(ctx, cx, hy, hr, opts.skin);

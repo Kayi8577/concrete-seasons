@@ -128,7 +128,7 @@
     'A': '#6e5741', 'C': '#6e5741', 'B': '#6e5741', 'M': '#6e5741', 'G': '#88a89b',
     'S': '#6e5741', 'R': '#6e5741', 'L': '#88a89b', 'H': '#6e5741', 'E': '#b09a7d',
     'c': '#7fae6d', 'i': '#7fae6d', 'k': '#7fae6d', '_': '#b3aa9c', 'D': '#b3aa9c', 'l': '#b3aa9c',
-    'Q': '#6e5741',
+    'Q': '#6e5741', 'r': '#5a5c60', 'y': '#7fae6d', 'j': '#7fae6d',
     'K': '#d8cfc0', 'b': '#d8cfc0', 't': '#d8cfc0', 'W': '#d8cfc0', '=': '#d8cfc0',
     'O': '#d8cfc0', 'd': '#d8cfc0', 'U': '#d8cfc0', 'q': '#d8cfc0',
   };
@@ -192,9 +192,12 @@
             ctx.fillRect(sx, sy + TILE - 5, TILE, 5);
           } else if (covered.has(x + ',' + y)) {
             // a real building will be drawn over this
-            if (!A0.tileDraw(ctx, isCity ? 'pave' : 'grass', sx, sy, TILE, hash)) {
-              ctx.fillStyle = groundBase;
-              ctx.fillRect(sx, sy, TILE, TILE);
+            if (isCity) {
+              if (!A0.tileDraw(ctx, 'pave', sx, sy, TILE, hash)) {
+                ctx.fillStyle = groundBase; ctx.fillRect(sx, sy, TILE, TILE);
+              }
+            } else {
+              A0.grassTile(ctx, sx, sy, TILE, x, y);
             }
           } else { // city street facade (borders of hub maps)
             ctx.fillStyle = '#9a8874';
@@ -216,17 +219,27 @@
           continue;
         }
 
-        // pick the atlas tile for this ground type (fallback: flat color)
-        let atlasName = null;
-        if (!isOut) atlasName = 'wood';
-        else if (ch === '~') atlasName = 'water';
-        else if (ch === '-') atlasName = 'path';
-        else if (ch === '_' || ch === 'P' || ch === 'D' || ch === 'l') atlasName = 'pave';
-        else if (ch === 's' || ch === 'g' || ch === 'X') atlasName = 'soil';
-        else if (isCity) atlasName = 'pave';
-        else atlasName = 'grass'; // '.', doors, fences, props sit on grass
-        if ('ACBMGSRLHQ'.includes(ch)) atlasName = isCity ? 'pave' : 'grass';
-        const usedAtlas = A0.tileDraw(ctx, atlasName, sx, sy, TILE, hash);
+        // ground: FoMT checker grass & NYC asphalt are procedural;
+        // everything else comes from the atlas (flat-color fallback)
+        let usedAtlas = false;
+        const grassy = isOut && !isCity &&
+          ('.TchXNokyjF'.includes(ch) || 'ACBMGSRLHQ'.includes(ch));
+        if (ch === 'r') {
+          A0.roadTile(ctx, sx, sy, TILE, x, y, g);
+          usedAtlas = true;
+        } else if (grassy) {
+          A0.grassTile(ctx, sx, sy, TILE, x, y);
+          usedAtlas = true;
+        } else {
+          let atlasName = null;
+          if (!isOut) atlasName = 'wood';
+          else if (ch === '~') atlasName = 'water';
+          else if (ch === '-') atlasName = 'path';
+          else if (ch === '_' || ch === 'P' || ch === 'D' || ch === 'l') atlasName = 'pave';
+          else if (ch === 's' || ch === 'g') atlasName = 'soil';
+          else atlasName = 'pave';
+          usedAtlas = A0.tileDraw(ctx, atlasName, sx, sy, TILE, hash);
+        }
         // the season repaints the ground: golden fall, snowed-in winter
         if (isOut && ch !== '~') {
           if (state.time.seasonIndex === 2) {
@@ -329,6 +342,8 @@
           case 'X': entities.push({ b: (y + 1) * TILE, d: () => A.bin(ctx, sx, sy, TILE) }); break;
           case 'N': entities.push({ b: (y + 1) * TILE, d: () => A.board(ctx, sx, sy, TILE) }); break;
           case 'o': A.planter(ctx, sx, sy, TILE); break;
+          case 'y': entities.push({ b: (y + 1) * TILE, d: () => A.streetlight(ctx, sx, sy, TILE, nightWin) }); break;
+          case 'j': entities.push({ b: (y + 1) * TILE, d: () => A.hydrant(ctx, sx, sy, TILE) }); break;
           case 'E': A.doorMat(ctx, sx, sy, TILE); break;
           case 'K': A.stove(ctx, sx, sy, TILE); break;
           case 'W': if (!A.tileDraw(ctx, 'winarch', sx, sy, TILE, 0)) A.windowTile(ctx, sx, sy, TILE, night, state.weather.today === 'rain'); break;
@@ -352,6 +367,11 @@
         }
         if ('ACBMGSRLHDQ'.includes(ch) && isOut) doorTiles.push([x, y, ch]);
       }
+    }
+
+    // the city across the river (drawn over the far water, behind everything)
+    if (scene === 'outdoor' && (38 * TILE - E.camY) < E.viewH) {
+      A0.skyline(ctx, -E.camX, 38 * TILE - E.camY, 56 * TILE, TILE, nightWin, state.animT);
     }
 
     // buildings join the y-sorted pass (baseline = their footprint's bottom

@@ -9,7 +9,7 @@
           A/C/B/M/G door tiles (apartment/cafe/bakery/market/greenhouse)  E interior exit
           K kitchen  b bed  t table  W window  = shelf  O oven  d display  U counter  q aquarium spot
 */
-CS.WALKABLE = new Set(['.', '-', '_', 's', 'g', 'P', 'A', 'C', 'B', 'M', 'G', 'E', 'S', 'R', 'L', 'H', 'D', 'Q']);
+CS.WALKABLE = new Set(['.', '-', '_', 'r', 's', 'g', 'P', 'A', 'C', 'B', 'M', 'G', 'E', 'S', 'R', 'L', 'H', 'D', 'Q']);
 
 function _grid(w, h, fill) {
   const g = [];
@@ -39,10 +39,10 @@ function buildOutdoor() {
   g[6][10] = 'h';
   // apartment building (Harbor Studios)
   _rect(g, 16, 2, 8, 5, '#'); g[6][19] = 'A';
-  for (let y = 7; y <= 15; y++) g[y][19] = '-';
+  for (let y = 7; y <= 15; y++) g[y][19] = 'r';
   // Harbor House community center
   _rect(g, 26, 2, 10, 6, '#'); g[7][30] = 'H';
-  for (let y = 8; y <= 15; y++) g[y][30] = '-';
+  for (let y = 8; y <= 15; y++) g[y][30] = 'r';
   // farm fence + interior (NE)
   for (let x = 38; x <= 54; x++) { g[2][x] = 'F'; g[11][x] = 'F'; }
   for (let y = 2; y <= 11; y++) { g[y][38] = 'F'; g[y][54] = 'F'; }
@@ -50,14 +50,17 @@ function buildOutdoor() {
   _rect(g, 47, 3, 6, 4, '#'); g[6][49] = 'G'; // greenhouse
   _rect(g, 39, 5, 6, 4, 's');                 // 24 soil plots
   g[10][39] = 'X'; g[10][46] = 'N';
-  for (let y = 12; y <= 15; y++) { g[y][44] = '-'; g[y][45] = '-'; }
+  for (let y = 12; y <= 15; y++) { g[y][44] = 'r'; g[y][45] = 'r'; }
   // tram platform
   _rect(g, 2, 13, 4, 2, 'P');
-  // main street
-  _rect(g, 1, 16, 54, 2, '-');
-  // street furniture: planters + market stalls
+  // main street: two lanes of honest NYC asphalt
+  _rect(g, 1, 16, 54, 2, 'r');
+  // street furniture: planters, market stalls, streetlights, a hydrant or two
   [10, 37, 49].forEach(x => { g[18][x] = 'o'; });
   g[18][20] = 'k'; g[18][28] = 'k';
+  [7, 23, 37, 51].forEach(x => { if (g[15][x] === '.') g[15][x] = 'y'; });
+  [13, 41].forEach(x => { if (g[18][x] === '.') g[18][x] = 'j'; });
+  [12, 27, 40].forEach(x => { if (g[24][x] === '.') g[24][x] = 'y'; });
   // storefronts south of street — doors face the shopfront promenade below
   // (SoS/Stardew convention: entrances at the facade's bottom edge)
   _rect(g, 3, 19, 7, 4, '#');  g[22][6]  = 'S'; // Second Life thrift
