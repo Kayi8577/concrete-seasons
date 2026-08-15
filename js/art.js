@@ -78,8 +78,12 @@
   // Mineral Town grass: a soft two-tone checker with sparse blade details
   A.grassTile = function (ctx, sx, sy, T, gx, gy) {
     const light = (gx + gy) % 2 === 0;
-    ctx.fillStyle = light ? '#79bd4a' : '#6fb443';
+    ctx.fillStyle = light ? '#7ec84e' : '#73bd45';
     ctx.fillRect(sx, sy, T, T);
+    // GBA-style dither specks in the corners
+    ctx.fillStyle = light ? 'rgba(115,189,69,.8)' : 'rgba(126,200,78,.8)';
+    ctx.fillRect(sx + 2, sy + 2, 3, 3);
+    ctx.fillRect(sx + T - 5, sy + T - 5, 3, 3);
     const h = (gx * 73 + gy * 151) % 97;
     ctx.fillStyle = 'rgba(255,255,255,.10)';
     ctx.fillRect(sx, sy, T, 2);
@@ -445,47 +449,61 @@
       ctx.fillStyle = shade(roof, 22);
       ctx.fillRect(px + w * .18, py - roofRise + 6, T * .32, 3.5);
       ctx.fillRect(px + w * .42, py - roofRise + 6, T * .2, 3.5);
-    } else { // shop: Mineral-Town cottage — front gable, chimney, dark outline
-      const peak = py - roofRise - T * .35;
-      ctx.fillStyle = shade(roof, -22); // eave underside
-      ctx.fillRect(px - 5, py + 1, w + 10, 4);
-      // gabled roof face
+    } else { // shop: Mineral-Town cottage — big rounded-tile roof over plaster & beams
+      const roofTop = py - roofRise - T * .3;
+      const roofBot = py + T * .28;
+      const inset = T * .22; // roof narrows slightly toward the ridge
+      // roof slab
       ctx.fillStyle = roof;
       ctx.beginPath();
-      ctx.moveTo(px - 5, py + 2);
-      ctx.lineTo(px + w / 2, peak);
-      ctx.lineTo(px + w + 5, py + 2);
+      ctx.moveTo(px - 6, roofBot);
+      ctx.lineTo(px + inset, roofTop);
+      ctx.lineTo(px + w - inset, roofTop);
+      ctx.lineTo(px + w + 6, roofBot);
       ctx.closePath(); ctx.fill();
-      // shingle courses following the slope
-      ctx.strokeStyle = 'rgba(0,0,0,.16)'; ctx.lineWidth = 1.2;
-      for (let i = 1; i <= 3; i++) {
-        const f = i / 4;
-        const yy = peak + (py + 2 - peak) * f;
-        ctx.beginPath();
-        ctx.moveTo(px + (w / 2 + 5) * (1 - f) - 5 + w / 2 * 0, yy);
-        ctx.moveTo(px + w / 2 - (w / 2 + 5) * f, yy);
-        ctx.lineTo(px + w / 2 + (w / 2 + 5) * f, yy);
-        ctx.stroke();
+      // rounded tile courses (the FoMT scallops)
+      const courses = 3;
+      for (let i = 0; i <= courses; i++) {
+        const f = i / courses;
+        const yy = roofTop + (roofBot - roofTop) * f;
+        const xl = px + inset * (1 - f) - 6 * f;
+        const xr = px + w - inset * (1 - f) + 6 * f;
+        const nTiles = Math.max(4, Math.round((xr - xl) / 9));
+        const tw = (xr - xl) / nTiles;
+        ctx.fillStyle = shade(roof, i % 2 ? -14 : 8);
+        for (let k = 0; k < nTiles; k++) {
+          ctx.beginPath();
+          ctx.arc(xl + tw * (k + .5), yy, tw * .52, Math.PI, 0);
+          ctx.fill();
+        }
       }
-      // chimney on the right slope
-      const chx = px + w * .72;
-      ctx.fillStyle = shade(wall, -30);
-      ctx.fillRect(chx, peak + (py - peak) * .35 - T * .5, T * .28, T * .55);
-      ctx.fillStyle = shade(wall, -48);
-      ctx.fillRect(chx - 2, peak + (py - peak) * .35 - T * .56, T * .28 + 4, 4);
-      // ridge cap + outline
+      // ridge cap
+      ctx.fillStyle = shade(roof, 20);
+      rr(ctx, px + inset - 3, roofTop - 3, w - inset * 2 + 6, 5, 2.5, shade(roof, 20));
+      // chimney
+      ctx.fillStyle = '#8a6a52';
+      ctx.fillRect(px + w * .72, roofTop + 2, T * .26, T * .5);
+      ctx.fillStyle = '#6b4a2e';
+      ctx.fillRect(px + w * .72 - 2, roofTop, T * .26 + 4, 4);
+      // eave shadow on the wall
+      ctx.fillStyle = 'rgba(0,0,0,.18)';
+      ctx.fillRect(px, roofBot, w, 5);
+      // plaster wall repaint + dark wood beams (FoMT cottage bones)
+      ctx.fillStyle = '#f2e8d0';
+      ctx.fillRect(px, roofBot + 5, w, py + h - roofBot - 5);
+      ctx.fillStyle = '#6b4a2e';
+      ctx.fillRect(px, roofBot + 5, 4, py + h - roofBot - 5);        // corner posts
+      ctx.fillRect(px + w - 4, roofBot + 5, 4, py + h - roofBot - 5);
+      ctx.fillRect(px, py + h - T - 3, w, 3);                          // sill beam
+      // outline around it all
       ctx.strokeStyle = '#4a382a'; ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(px - 5, py + 2);
-      ctx.lineTo(px + w / 2, peak);
-      ctx.lineTo(px + w + 5, py + 2);
+      ctx.moveTo(px - 6, roofBot);
+      ctx.lineTo(px + inset, roofTop);
+      ctx.lineTo(px + w - inset, roofTop);
+      ctx.lineTo(px + w + 6, roofBot);
       ctx.stroke();
-      // eave shadow on the wall
-      ctx.fillStyle = 'rgba(0,0,0,.15)';
-      ctx.fillRect(px, py + 4, w, 5);
-      // wall outline
-      ctx.strokeStyle = '#4a382a'; ctx.lineWidth = 2;
-      ctx.strokeRect(px, py + 2, w, h - 2);
+      ctx.strokeRect(px, roofBot + 2, w, py + h - roofBot - 2);
     }
     // windows (never on the bottom/door row)
     const glassDay = '#b8d4de', glassNight = '#f0d489';
@@ -498,11 +516,15 @@
         if (wy + 14 > py + h - T * .9) continue;
         // deterministic "someone's home" flicker
         const lit = night && ((cxI * 7 + ry * 13 + Math.round(px)) % 3 !== 0);
-        rr(ctx, wx - 1.5, wy - 1.5, 13, 14, 2, '#e8e0d0');
+        rr(ctx, wx - 1.5, wy - 1.5, 13, 14, 2, spec.style === 'shop' ? '#6b4a2e' : '#e8e0d0');
         rr(ctx, wx, wy, 10, 11, 1.5, night ? (lit ? glassNight : '#3a4456') : glassDay);
         if (!night) { ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fillRect(wx + 1.5, wy + 1.5, 3, 4); }
         ctx.strokeStyle = 'rgba(90,75,60,.4)'; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(wx + 5, wy); ctx.lineTo(wx + 5, wy + 11); ctx.stroke();
+        if (spec.style === 'shop') { // little shutters in the roof's color
+          rr(ctx, wx - 5.5, wy - .5, 3.5, 12, 1, shade(spec.roof || '#8a5a3b', -6));
+          rr(ctx, wx + 12, wy - .5, 3.5, 12, 1, shade(spec.roof || '#8a5a3b', -6));
+        }
         rr(ctx, wx - 2, wy + 11.5, 14, 2.4, 1, shade(wall, -24)); // sill
       }
     }
@@ -576,7 +598,7 @@
       circle(ctx, cx - T * .28, cy1 + T * .08, T * .16, '#f4f8fa');
       return;
     }
-    bigTree(ctx, sx, sy, T, seed, P.leafDark, P.leaf, P.leafLight, '#41582f');
+    bigTree(ctx, sx, sy, T, seed, '#3f7a2c', '#59a63c', '#8ed05e', '#2e5c20');
   };
   A.cherryTree = function (ctx, sx, sy, T, seed, season) {
     if (season === undefined || season === 0) { // spring: full bloom
@@ -1197,14 +1219,13 @@
   };
 
   function face(ctx, cx, cy, r) {
-    // Mineral-Town eyes: big, tall, glossy
+    // Mineral-Town eyes: big dark rounds, one confident glint
     for (const s of [-1, 1]) {
-      const ex = cx + s * r * .36, ey = cy + r * .14;
-      ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.ellipse(ex, ey, r * .21, r * .3, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#3a2e24';
-      ctx.beginPath(); ctx.ellipse(ex, ey + r * .04, r * .14, r * .22, 0, 0, Math.PI * 2); ctx.fill();
-      circle(ctx, ex - r * .05, ey - r * .08, r * .06, '#fff');
+      const ex = cx + s * r * .36, ey = cy + r * .16;
+      ctx.fillStyle = '#2d1f14';
+      ctx.beginPath(); ctx.ellipse(ex, ey, r * .17, r * .21, 0, 0, Math.PI * 2); ctx.fill();
+      circle(ctx, ex - r * .06, ey - r * .08, r * .07, '#fff');
+      circle(ctx, ex + r * .05, ey + r * .08, r * .035, 'rgba(255,255,255,.55)');
     }
     // blush
     ctx.fillStyle = 'rgba(220,120,110,.28)';

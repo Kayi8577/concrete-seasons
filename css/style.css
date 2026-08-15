@@ -136,13 +136,19 @@ h2 { color:#3d3229; font-size:28px; }
 
 /* Dialogue */
 #dialogue { position:absolute; inset:0; z-index:60; display:flex; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.15); }
+/* Mineral-Town dialogue frame: parchment in a chunky wood border */
 .dlg-box {
   width:min(560px, calc(100% - 20px)); margin-bottom:calc(14px + env(safe-area-inset-bottom, 0));
-  background:#fffdf8; border-radius:18px; padding:14px 18px 12px;
-  box-shadow:0 6px 24px rgba(0,0,0,.35); border:2px solid #e0cdb4;
+  background:#fdf6e3; border-radius:12px; padding:14px 18px 12px;
+  box-shadow:0 6px 24px rgba(0,0,0,.35), inset 0 0 0 2px #e8d5b0;
+  border:4px solid #5a3e28;
 }
 .dlg-head { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
-#dlg-portrait { width:40px; height:40px; border-radius:10px; flex-shrink:0; }
+#dlg-portrait { width:44px; height:44px; border-radius:8px; flex-shrink:0; border:2px solid #5a3e28; }
+#dlg-name {
+  background:#5a3e28; color:#fdf6e3 !important; padding:3px 12px; border-radius:8px;
+  font-size:14px; letter-spacing:.5px;
+}
 .hud-btn { display:flex; align-items:center; justify-content:center; }
 .inv-cell canvas, .shop-row canvas { display:block; }
 #dlg-name { font-weight:800; color:#5c8a6f; font-size:16px; }
