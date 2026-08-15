@@ -725,7 +725,7 @@
     S.time.minutes += RIDE_MINUTES[mode];
     CS.ui.refreshHUD();
     CS.ui.narrate(CS.RIDE_FLAVOR[mode], () => {
-      if (dest === 'harbor') enterScene('outdoor', mode === 'ferry' ? 9 : 4, mode === 'ferry' ? 36 : 14);
+      if (dest === 'harbor') enterScene('outdoor', mode === 'ferry' ? 5 : (mode === 'tram' ? 7 : 14), mode === 'ferry' ? 24 : (mode === 'tram' ? 45 : 30));
       else {
         const d = CS.TRAVEL[dest];
         enterScene(dest, d.spawn[0], d.spawn[1]);
@@ -1697,7 +1697,7 @@
     if (pet.type === 'dog' && !pet.walkedToday && S.playerRT.scene === 'apartment') {
       opts.push({ label: `Take ${pet.name} for a walk`, fn: () => {
         pet.walkedToday = true; pet.affection += 4;
-        enterScene('outdoor', 19, 7);
+        enterScene('outdoor', 9, 16);
         CS.ui.toast(`${pet.name} trots along beside you`);
         if (!S.flags.dogWalkEvent && S.npcRT.malik) {
           S.flags.dogWalkEvent = true;
@@ -1750,9 +1750,9 @@
         holiday_market: `Holiday Market, Year ${S.time.year}. String lights, cold hands, warm cider, Main Street at its kindest.`,
         lunar_new_year: `Lunar New Year on Mott Street, Year ${S.time.year}. Drums, lions, lanterns — and Mrs. Woo's line around the block.`,
       };
-      const onSite = (['cherry', 'movie_night'].includes(fest.key) && p.scene === 'outdoor' && p.y >= 23)
-                  || (['night_market', 'street_food', 'holiday_market', 'pride', 'halloween', 'open_streets', 'marathon'].includes(fest.key) && p.scene === 'outdoor' && p.y >= 14 && p.y <= 20)
-                  || (['harbor_lights', 'nye'].includes(fest.key) && p.scene === 'outdoor' && p.y >= 32)
+      const onSite = (['cherry', 'movie_night'].includes(fest.key) && p.scene === 'outdoor' && p.y >= 52)
+                  || (['night_market', 'street_food', 'holiday_market', 'pride', 'halloween', 'open_streets', 'marathon'].includes(fest.key) && p.scene === 'outdoor' && p.x >= 13 && p.x <= 20 && p.y >= 20 && p.y <= 40)
+                  || (['harbor_lights', 'nye'].includes(fest.key) && p.scene === 'outdoor' && p.y >= 52)
                   || (fest.key === 'lunar_new_year' && p.scene === 'chinatown')
                   || (fest.key === 'friendsgiving' && p.scene === 'harbor_house');
       if (onSite) {
@@ -1774,7 +1774,7 @@
     }
 
     // Movie night, late on the lawn, someone beside you
-    if (fest && fest.key === 'movie_night' && S.date && p.scene === 'outdoor' && p.y >= 23
+    if (fest && fest.key === 'movie_night' && S.date && p.scene === 'outdoor' && p.y >= 52
         && S.time.minutes >= 1200 && !S.flags['movie_moment_' + S.time.year]) {
       S.flags['movie_moment_' + S.time.year] = true;
       const first = CS.NPCS[S.date.npc].name.split(' ')[0];
@@ -1789,7 +1789,7 @@
     // Saturday dog park hour at Lighthouse Park
     if (trigger === 'enter' && S.pet && S.pet.type === 'dog' && S.pet.walkedToday
         && S.time.weekdayIndex === 5 && S.time.minutes >= 480 && S.time.minutes < 660
-        && p.scene === 'outdoor' && p.x <= 13 && p.y <= 11
+        && p.scene === 'outdoor' && p.y <= 8
         && S.flags.dogparkWeek !== Math.floor(G.totalDay() / 7)) {
       S.flags.dogparkWeek = Math.floor(G.totalDay() / 7);
       S.pet.affection += 5;
@@ -1803,7 +1803,7 @@
     }
 
     // Midnight on New Year's Eve, on the promenade
-    if (fest && fest.key === 'nye' && S.time.minutes >= 1440 && p.scene === 'outdoor' && p.y >= 32
+    if (fest && fest.key === 'nye' && S.time.minutes >= 1440 && p.scene === 'outdoor' && p.y >= 52
         && !S.flags['midnight_' + S.time.year]) {
       S.flags['midnight_' + S.time.year] = true;
       const withSomeone = S.spouse ? CS.NPCS[S.spouse].name.split(' ')[0]
@@ -1818,7 +1818,7 @@
     }
 
     // Harbor Lights + a date = the scene the whole year quietly builds toward
-    if (fest && fest.key === 'harbor_lights' && S.date && p.scene === 'outdoor' && p.y >= 32
+    if (fest && fest.key === 'harbor_lights' && S.date && p.scene === 'outdoor' && p.y >= 52
         && !S.flags['lights_moment_' + S.time.year]) {
       S.flags['lights_moment_' + S.time.year] = true;
       const first = CS.NPCS[S.date.npc].name.split(' ')[0];
@@ -1849,7 +1849,7 @@
     // NPC wedding attendance — show up and it becomes part of your story too
     if (trigger === 'enter' && S.npcWedding && S.npcWedding.day === G.totalDay()
         && S.time.minutes >= 570 && S.time.minutes < 780
-        && p.scene === 'outdoor' && p.x <= 13 && p.y <= 11
+        && p.scene === 'outdoor' && p.y <= 8
         && !S.flags['attended_' + S.npcWedding.a + S.npcWedding.b]) {
       const { a, b } = S.npcWedding;
       S.flags['attended_' + a + b] = true;
@@ -1864,7 +1864,7 @@
     // Your wedding — Lighthouse Park, mid-morning
     if (trigger === 'enter' && S.weddingDay === G.totalDay()
         && S.time.minutes >= 570 && S.time.minutes < 780
-        && p.scene === 'outdoor' && p.x <= 13 && p.y <= 11) {
+        && p.scene === 'outdoor' && p.y <= 8) {
       const id = Object.keys(S.npcs).find(n => S.npcs[n].romance === 'engaged');
       if (id) {
         const npc = CS.NPCS[id];
@@ -1901,7 +1901,7 @@
 
     // Garden introduction — first time entering the farm area
     if (trigger === 'enter' && !S.flags.gardenIntro && p.scene === 'outdoor'
-        && p.x >= 38 && p.x <= 54 && p.y >= 2 && p.y <= 12) {
+        && p.x >= 20 && p.x <= 30 && p.y >= 10 && p.y <= 20) {
       S.flags.gardenIntro = true;
       const malikHere = !!S.npcRT.malik && S.npcRT.malik.scene === 'outdoor';
       S.npcs.malik.met = true; S.npcs.malik.fam = Math.max(1, S.npcs.malik.fam); S.npcs.malik.friend += 10;

@@ -23,69 +23,79 @@ function _fromAscii(rows) {
   return rows.map(r => r.split(''));
 }
 
-/* Phase 2 map: 56×42. Zones — Lighthouse Park (NW), Harbor Studios,
-   Harbor House, Community Farm (NE), Main Street with five storefronts,
-   South Point lawn (festival ground), Pier Labs (SE), waterfront. */
+/* The real thing: a long, narrow island running north–south in the East
+   River — Manhattan rooftops across the west channel, Queens across the
+   east, the bridge overhead, Main Street down the spine. 36×64. */
 function buildOutdoor() {
-  const W = 56, H = 42;
+  const W = 36, H = 64;
   const g = _grid(W, H, '.');
-  for (let x = 0; x < W; x++) g[0][x] = 'T';
-  for (let y = 0; y < 37; y++) { g[y][0] = 'T'; g[y][W - 1] = 'T'; }
-  // water south
-  _rect(g, 0, 38, W, 4, '~');
-  // lighthouse park (NW): cherry trees + lighthouse + bench
-  [[7,3],[11,4],[8,8],[12,7],[3,8]].forEach(([x,y]) => { g[y][x] = 'c'; });
-  g[4][4] = 'i';
-  g[6][10] = 'h';
-  // apartment building (Harbor Studios)
-  _rect(g, 16, 2, 8, 5, '#'); g[6][19] = 'A';
-  for (let y = 7; y <= 15; y++) g[y][19] = 'r';
-  // Harbor House community center
-  _rect(g, 26, 2, 10, 6, '#'); g[7][30] = 'H';
-  for (let y = 8; y <= 15; y++) g[y][30] = 'r';
-  // farm fence + interior (NE)
-  for (let x = 38; x <= 54; x++) { g[2][x] = 'F'; g[11][x] = 'F'; }
-  for (let y = 2; y <= 11; y++) { g[y][38] = 'F'; g[y][54] = 'F'; }
-  g[11][44] = '.'; g[11][45] = '.'; // gate
-  _rect(g, 47, 3, 6, 4, '#'); g[6][49] = 'G'; // greenhouse
-  _rect(g, 39, 5, 6, 4, 's');                 // 24 soil plots
-  g[10][39] = 'X'; g[10][46] = 'N';
-  for (let y = 12; y <= 15; y++) { g[y][44] = 'r'; g[y][45] = 'r'; }
-  // tram platform (west side — swings over the river to Manhattan)
-  _rect(g, 2, 13, 4, 2, 'P');
-  // F-train entrance, mid-island like the real one
-  g[15][26] = 'V'; g[15][27] = 'V';
-  // main street: two lanes of honest NYC asphalt
-  _rect(g, 1, 16, 54, 2, 'r');
-  // street furniture: planters, market stalls, streetlights, a hydrant or two
-  [10, 37, 49].forEach(x => { g[18][x] = 'o'; });
-  g[18][20] = 'k'; g[18][28] = 'k';
-  [7, 23, 37, 51].forEach(x => { if (g[15][x] === '.') g[15][x] = 'y'; });
-  [13, 41].forEach(x => { if (g[18][x] === '.') g[18][x] = 'j'; });
-  [12, 27, 40].forEach(x => { if (g[24][x] === '.') g[24][x] = 'y'; });
-  // storefronts south of street — doors face the shopfront promenade below
-  // (SoS/Stardew convention: entrances at the facade's bottom edge)
-  _rect(g, 3, 19, 7, 4, '#');  g[22][6]  = 'S'; // Second Life thrift
-  _rect(g, 12, 19, 8, 4, '#'); g[22][15] = 'C'; // Juniper Café
-  _rect(g, 22, 19, 6, 4, '#'); g[22][24] = 'B'; // Moonrise Bakery
-  _rect(g, 30, 19, 7, 4, '#'); g[22][33] = 'M'; // Corner Market
-  _rect(g, 39, 19, 8, 4, '#'); g[22][42] = 'R'; // The Anchor bar
-  _rect(g, 48, 19, 6, 4, '#'); g[22][51] = 'Q'; // Glasshouse Coffee (opens Year 2)
-  _rect(g, 2, 23, 52, 1, '-'); // shopfront promenade
-  // south point lawn: cherries at the fringe
-  [[16,26],[22,25],[30,25],[38,26],[26,24]].forEach(([x,y]) => { g[y][x] = 'c'; });
-  // paths to waterfront
-  for (let y = 23; y <= 33; y++) { g[y][15] = '-'; g[y][33] = '-'; }
-  // Pier Labs (SE)
-  _rect(g, 44, 26, 9, 6, '#'); g[26][48] = 'L';
-  for (let y = 23; y <= 25; y++) g[y][48] = '-';
-  // waterfront promenade
-  _rect(g, 1, 34, 54, 2, '-');
-  [12, 28, 45].forEach(x => { g[36][x] = 'h'; });
-  // ferry pier reaching into the East River
-  for (let y = 36; y <= 39; y++) { g[y][8] = 'w'; g[y][9] = 'w'; }
-  // scattered trees
-  [[24,10],[34,13],[13,10],[52,13],[8,24],[42,24],[6,30],[41,32]].forEach(([x,y]) => {
+  // shores: Manhattan rooftops | west channel | island | east channel | Queens
+  for (let y = 0; y < H; y++) {
+    g[y][0] = '*'; g[y][1] = '*';
+    g[y][2] = '~'; g[y][3] = '~'; g[y][4] = '~';
+    g[y][31] = '~'; g[y][32] = '~'; g[y][33] = '~';
+    g[y][34] = '&'; g[y][35] = '&';
+  }
+  // the island tapers into the river at both tips
+  for (let x = 5; x <= 30; x++) { g[0][x] = '~'; g[1][x] = '~'; g[63][x] = '~'; g[62][x] = '~'; }
+  [[5,2],[6,2],[29,2],[30,2],[5,3],[30,3],[5,59],[30,59],[5,60],[6,60],[29,60],[30,60],[5,61],[6,61],[7,61],[8,61],[27,61],[28,61],[29,61],[30,61]].forEach(([x,y]) => { g[y][x] = '~'; });
+  // esplanades along both shores (the loop every islander walks)
+  for (let y = 4; y <= 58; y++) { if (g[y][5] === '.') g[y][5] = '-'; if (g[y][30] === '.') g[y][30] = '-'; }
+  // ---- north tip: Lighthouse Park (the real one) ----
+  g[3][17] = 'i';
+  [[12,4],[21,4],[9,6],[24,6],[14,7]].forEach(([x,y]) => { if (g[y][x] === '.') g[y][x] = 'c'; });
+  g[5][14] = 'h'; g[5][20] = 'h';
+  // ---- Main Street runs down the spine ----
+  for (let y = 9; y <= 46; y++) { g[y][16] = 'r'; g[y][17] = 'r'; }
+  // cross streets
+  for (let x = 6; x <= 15; x++) g[16][x] = 'r';   // to Harbor Studios
+  for (let x = 18; x <= 19; x++) g[15][x] = 'r';  // stub to the farm gate
+  for (let x = 6; x <= 15; x++) g[24][x] = 'r';   // to the ferry landing
+  for (let x = 6; x <= 15; x++) g[45][x] = 'r';   // to the tram
+  // ---- west side, north: Harbor Studios ----
+  _rect(g, 6, 11, 7, 5, '#'); g[15][9] = 'A';
+  // ---- west side: Harbor House ----
+  _rect(g, 5, 17, 8, 6, '#'); g[22][8] = 'H';
+  // ---- east side, north: Community Farm ----
+  for (let x = 20; x <= 30; x++) { g[10][x] = 'F'; g[20][x] = 'F'; }
+  for (let y = 10; y <= 20; y++) { g[y][20] = 'F'; g[y][30] = 'F'; }
+  g[15][20] = '.'; g[16][20] = '.'; // gate faces Main Street
+  _rect(g, 24, 11, 5, 4, '#'); g[14][26] = 'G'; // greenhouse
+  _rect(g, 21, 16, 6, 4, 's');                  // 24 plots
+  g[16][28] = 'X'; g[18][28] = 'N';
+  // ---- Main Street commercial strip, both sides ----
+  _rect(g, 19, 21, 7, 3, '#'); g[23][22] = 'C'; // Juniper Café (east)
+  for (let x = 18; x <= 26; x++) if (g[24][x] === '.') g[24][x] = '-';
+  _rect(g, 19, 25, 6, 3, '#'); g[27][21] = 'B'; // Moonrise
+  for (let x = 18; x <= 25; x++) if (g[28][x] === '.') g[28][x] = '-';
+  _rect(g, 19, 29, 7, 3, '#'); g[31][22] = 'M'; // Corner Market
+  for (let x = 18; x <= 26; x++) if (g[32][x] === '.') g[32][x] = '-';
+  _rect(g, 19, 33, 7, 3, '#'); g[35][22] = 'R'; // The Anchor
+  for (let x = 18; x <= 26; x++) if (g[36][x] === '.') g[36][x] = '-';
+  _rect(g, 9, 25, 6, 3, '#'); g[27][12] = 'S';  // Second Life (west)
+  for (let x = 8; x <= 15; x++) if (g[28][x] === '.') g[28][x] = '-';
+  _rect(g, 9, 33, 6, 3, '#'); g[35][12] = 'Q';  // Glasshouse (west)
+  for (let x = 8; x <= 15; x++) if (g[36][x] === '.') g[36][x] = '-';
+  // ---- transit, where it really is ----
+  g[29][14] = 'V'; g[29][15] = 'V';             // F train, mid-island
+  g[24][2] = 'w'; g[24][3] = 'w'; g[24][4] = 'w'; // NYC Ferry landing, west channel
+  _rect(g, 6, 44, 3, 2, 'P');                   // tram, west side by the bridge
+  // ---- south: Pier Labs campus (the Cornell Tech of this island) ----
+  _rect(g, 10, 47, 14, 5, '#'); g[51][12] = 'L';
+  // ---- Southpoint Park: lawn + the old ruin ----
+  g[54][22] = 'u';
+  [[9,54],[26,55],[13,56]].forEach(([x,y]) => { if (g[y][x] === '.') g[y][x] = 'c'; });
+  g[55][8] = 'h'; g[56][27] = 'h';
+  // ---- the memorial plaza at the very tip ----
+  for (let y = 58; y <= 60; y++) for (let x = 12; x <= 23; x++) { if (g[y][x] === '.') g[y][x] = '_'; }
+  [[11,58],[24,58],[11,59],[24,59]].forEach(([x,y]) => { if (g[y][x] === '.') g[y][x] = 'T'; });
+  // ---- street furniture ----
+  [[15,20],[18,26],[15,32],[18,40]].forEach(([x,y]) => { if (g[y][x] === '.') g[y][x] = 'o'; });
+  [[15,21],[18,25],[15,29],[18,33],[15,37],[18,43]].forEach(([x,y]) => { if (g[y][x] === '.') g[y][x] = 'y'; });
+  [[18,21],[15,35]].forEach(([x,y]) => { if (g[y][x] === '.') g[y][x] = 'j'; });
+  g[22][14] = 'k'; g[34][18] = 'k';
+  // trees where the island breathes
+  [[8,8],[25,8],[7,30],[27,38],[8,41],[26,43],[7,53],[19,53],[28,46]].forEach(([x,y]) => {
     if (g[y][x] === '.') g[y][x] = 'T';
   });
   return g;
@@ -153,29 +163,33 @@ CS.MAPS = {
     outdoor: true,
     grid: buildOutdoor(),
     labels: [
-      { x:2,  y:1,    text:'Lighthouse Park' },
-      { x:16, y:1,    text:'Harbor Studios' },
-      { x:26, y:1,    text:'Harbor House' },
-      { x:40, y:1,    text:'Community Farm' },
-      { x:47, y:2.4,  text:'Greenhouse' },
-      { x:2,  y:12,   text:'Tram → Manhattan' },
-      { x:25.5, y:14.2, text:'F Train' },
-      { x:6.5,  y:37,  text:'NYC Ferry' },
-      { x:3,  y:20.4, text:'Second Life' },
-      { x:12, y:20.4, text:'Juniper Café' },
-      { x:22, y:20.4, text:'Moonrise' },
-      { x:30, y:20.4, text:'Corner Market' },
-      { x:39, y:20.4, text:'The Anchor' },
-      { x:48, y:20.4, text:'For Lease', ifNotFlag:'glasshouseOpen' },
-      { x:48, y:20.4, text:'Glasshouse', ifFlag:'glasshouseOpen' },
-      { x:23, y:29,   text:'South Point' },
-      { x:44, y:27.4, text:'Pier Labs' },
-      { x:25, y:36.6, text:'East River' },
+      { x:13, y:1.2,  text:'Lighthouse Park' },
+      { x:6,  y:10,   text:'Harbor Studios' },
+      { x:21, y:9.4,  text:'Community Farm' },
+      { x:24, y:10.4, text:'Greenhouse' },
+      { x:5,  y:16,   text:'Harbor House' },
+      { x:19, y:22.2, text:'Juniper Café' },
+      { x:9,  y:26.2, text:'Second Life' },
+      { x:19, y:26.2, text:'Moonrise' },
+      { x:19, y:30.2, text:'Corner Market' },
+      { x:9,  y:34.2, text:'For Lease', ifNotFlag:'glasshouseOpen' },
+      { x:9,  y:34.2, text:'Glasshouse', ifFlag:'glasshouseOpen' },
+      { x:19, y:34.2, text:'The Anchor' },
+      { x:12.8, y:28.6, text:'F Train' },
+      { x:1.2,  y:23,  text:'NYC Ferry' },
+      { x:6,  y:43,   text:'Tram → Manhattan' },
+      { x:20, y:40.6, text:'Queensboro Bridge' },
+      { x:11, y:46,   text:'Pier Labs' },
+      { x:13, y:53.4, text:'Southpoint Park' },
+      { x:21, y:54.8, text:'the Ruin' },
+      { x:13.5, y:59, text:'Four Freedoms' },
+      { x:0.2,  y:31, text:'Manhattan' },
+      { x:34,   y:31, text:'Queens' },
     ],
     doors: { A:'apartment', C:'cafe', B:'bakery', M:'market', G:'greenhouse',
              S:'thrift', R:'bar', L:'labs', H:'harbor_house', Q:'glasshouse' },
-    doorSpawns: { A:[19,7], C:[15,23], B:[24,23], M:[33,23], G:[49,7],
-                  S:[6,23], R:[42,23], L:[48,25], H:[30,8], Q:[51,23] },
+    doorSpawns: { A:[9,16], C:[22,24], B:[21,28], M:[22,32], G:[26,15],
+                  S:[12,28], R:[22,36], L:[12,52], H:[8,23], Q:[12,36] },
   },
   apartment: {
     name: 'Your Studio', outdoor: false, exitTo: 'outdoor', exitKey: 'A',
@@ -331,30 +345,30 @@ CS.INTERIOR_SPAWNS = { apartment:[5,6], cafe:[6,6], bakery:[4,5], market:[5,5], 
    'block' (brick + parapet), 'glass' (greenhouse). */
 CS.BUILDINGS = {
   outdoor: [
-    { x:16, y:2,  w:8,  h:5, style:'block', wall:'#c09a72', roof:'#6e5f55' },  // Harbor Studios
-    { x:26, y:2,  w:10, h:6, style:'block', wall:'#c07f62', roof:'#5d4e40' },  // Harbor House
-    { x:47, y:3,  w:6,  h:4, style:'glass' },                                  // Greenhouse
-    { x:3,  y:19, w:7,  h:4, style:'shop',  wall:'#cbb9a0', roof:'#7d5ba6' },  // Second Life
-    { x:12, y:19, w:8,  h:4, style:'shop',  wall:'#e0d3b8', roof:'#5c8a6f' },  // Juniper Café
-    { x:22, y:19, w:6,  h:4, style:'shop',  wall:'#e6d2ae', roof:'#b07a2a' },  // Moonrise
-    { x:30, y:19, w:7,  h:4, style:'shop',  wall:'#d8cbb2', roof:'#4a6fa5' },  // Corner Market
-    { x:39, y:19, w:8,  h:4, style:'shop',  wall:'#b8a48c', roof:'#8a3b4a' },  // The Anchor
-    { x:48, y:19, w:6,  h:4, style:'shop',  wall:'#cfd8d2', roof:'#37535e' },  // Glasshouse
-    { x:44, y:26, w:9,  h:6, style:'block', wall:'#a7b2b6', roof:'#5b8aa6' },  // Pier Labs
+    { x:6,  y:11, w:7,  h:5, style:'block', wall:'#c09a72', roof:'#6e5f55' },  // Harbor Studios
+    { x:5,  y:17, w:8,  h:6, style:'block', wall:'#c07f62', roof:'#5d4e40' },  // Harbor House
+    { x:24, y:11, w:5,  h:4, style:'glass' },                                  // Greenhouse
+    { x:19, y:21, w:7,  h:3, style:'shop',  wall:'#e0d3b8', roof:'#5c8a6f' },  // Juniper Café
+    { x:19, y:25, w:6,  h:3, style:'shop',  wall:'#e6d2ae', roof:'#b07a2a' },  // Moonrise
+    { x:19, y:29, w:7,  h:3, style:'shop',  wall:'#d8cbb2', roof:'#4a6fa5' },  // Corner Market
+    { x:19, y:33, w:7,  h:3, style:'shop',  wall:'#b8a48c', roof:'#8a3b4a' },  // The Anchor
+    { x:9,  y:25, w:6,  h:3, style:'shop',  wall:'#cbb9a0', roof:'#7d5ba6' },  // Second Life
+    { x:9,  y:33, w:6,  h:3, style:'shop',  wall:'#cfd8d2', roof:'#37535e' },  // Glasshouse
+    { x:10, y:47, w:14, h:5, style:'block', wall:'#a7b2b6', roof:'#5b8aa6' },  // Pier Labs
   ],
   astoria: [
-    { x:6,  y:2, w:12, h:3, style:'shop', wall:'#d8c4a4', roof:'#8a3b4a' },    // Bellini's
+    { x:6,  y:2, w:12, h:3, style:'shop', wall:'#d8c4a4', roof:'#8a3b4a' },
   ],
   chinatown: [
-    { x:4,  y:2, w:9, h:3, style:'shop', wall:'#c9553e', roof:'#3f4f3a' },     // Jade Pavilion
-    { x:16, y:2, w:8, h:3, style:'shop', wall:'#d8b48a', roof:'#b3542e' },     // Golden Bowl row
+    { x:4,  y:2, w:9, h:3, style:'shop', wall:'#c9553e', roof:'#3f4f3a' },
+    { x:16, y:2, w:8, h:3, style:'shop', wall:'#d8b48a', roof:'#b3542e' },
   ],
   flushing: [
-    { x:3,  y:2, w:12, h:3, style:'shop', wall:'#d8c4a4', roof:'#c9553e' },    // Golden Mall
+    { x:3,  y:2, w:12, h:3, style:'shop', wall:'#d8c4a4', roof:'#c9553e' },
     { x:17, y:2, w:7,  h:3, style:'shop', wall:'#c9b694', roof:'#5b8aa6' },
   ],
   williamsburg: [
-    { x:3,  y:2, w:8,  h:3, style:'block', wall:'#a8846a', roof:'#6b5b4c' },   // warehouse
+    { x:3,  y:2, w:8,  h:3, style:'block', wall:'#a8846a', roof:'#6b5b4c' },
     { x:14, y:2, w:10, h:3, style:'block', wall:'#9a8a7a', roof:'#5d4e40' },
   ],
 };
@@ -374,22 +388,22 @@ CS.RIDE_FLAVOR = {
 
 /* ---------------- Named spots for NPC schedules ---------------- */
 CS.SPOTS = {
-  tram:            { scene:'outdoor', x:3,  y:14 },
-  mainstreet:      { scene:'outdoor', x:24, y:16 },
-  mainstreet_b:    { scene:'outdoor', x:40, y:17 },
-  farm_center:     { scene:'outdoor', x:41, y:4 },
-  farm_gate:       { scene:'outdoor', x:44, y:12 },
-  waterfront_a:    { scene:'outdoor', x:12, y:34 },
-  waterfront_b:    { scene:'outdoor', x:28, y:34 },
-  waterfront_c:    { scene:'outdoor', x:45, y:34 },
-  lighthouse_park: { scene:'outdoor', x:9,  y:6 },
-  lawn_a:          { scene:'outdoor', x:20, y:28 },
-  lawn_b:          { scene:'outdoor', x:26, y:29 },
-  lawn_c:          { scene:'outdoor', x:32, y:28 },
-  lawn_d:          { scene:'outdoor', x:24, y:26 },
-  lawn_e:          { scene:'outdoor', x:35, y:30 },
-  stall_a:         { scene:'outdoor', x:20, y:17 },
-  stall_b:         { scene:'outdoor', x:28, y:17 },
+  tram: { scene:'outdoor', x:7, y:45 },
+  mainstreet: { scene:'outdoor', x:16, y:26 },
+  mainstreet_b: { scene:'outdoor', x:17, y:40 },
+  farm_center: { scene:'outdoor', x:24, y:17 },
+  farm_gate: { scene:'outdoor', x:19, y:16 },
+  waterfront_a: { scene:'outdoor', x:5, y:12 },
+  waterfront_b: { scene:'outdoor', x:5, y:38 },
+  waterfront_c: { scene:'outdoor', x:30, y:30 },
+  lighthouse_park: { scene:'outdoor', x:17, y:6 },
+  lawn_a: { scene:'outdoor', x:12, y:54 },
+  lawn_b: { scene:'outdoor', x:17, y:55 },
+  lawn_c: { scene:'outdoor', x:25, y:56 },
+  lawn_d: { scene:'outdoor', x:14, y:57 },
+  lawn_e: { scene:'outdoor', x:20, y:53 },
+  stall_a: { scene:'outdoor', x:14, y:22 },
+  stall_b: { scene:'outdoor', x:18, y:34 },
   cafe_table_a:    { scene:'cafe', x:2,  y:4 },
   cafe_table_b:    { scene:'cafe', x:7,  y:4 },
   cafe_table_c:    { scene:'cafe', x:11, y:4 },

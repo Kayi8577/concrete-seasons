@@ -128,7 +128,7 @@
     'A': '#6e5741', 'C': '#6e5741', 'B': '#6e5741', 'M': '#6e5741', 'G': '#88a89b',
     'S': '#6e5741', 'R': '#6e5741', 'L': '#88a89b', 'H': '#6e5741', 'E': '#b09a7d',
     'c': '#7fae6d', 'i': '#7fae6d', 'k': '#7fae6d', '_': '#b3aa9c', 'D': '#b3aa9c', 'l': '#b3aa9c',
-    'Q': '#6e5741', 'r': '#5a5c60', 'y': '#7fae6d', 'j': '#7fae6d', 'V': '#7fae6d', 'w': '#9a7a54',
+    'Q': '#6e5741', 'r': '#5a5c60', 'y': '#7fae6d', 'j': '#7fae6d', 'V': '#7fae6d', 'w': '#9a7a54', '*': '#5d646e', '&': '#8a8578', 'u': '#7fae6d',
     'K': '#d8cfc0', 'b': '#d8cfc0', 't': '#d8cfc0', 'W': '#d8cfc0', '=': '#d8cfc0',
     'O': '#d8cfc0', 'd': '#d8cfc0', 'U': '#d8cfc0', 'q': '#d8cfc0',
   };
@@ -223,8 +223,11 @@
         // everything else comes from the atlas (flat-color fallback)
         let usedAtlas = false;
         const grassy = isOut && !isCity &&
-          ('.TchXNokyjFV'.includes(ch) || 'ACBMGSRLHQ'.includes(ch));
-        if (ch === 'r') {
+          ('.TchXNokyjFVu'.includes(ch) || 'ACBMGSRLHQ'.includes(ch));
+        if (ch === '*' || ch === '&') {
+          A0.rooftops(ctx, sx, sy, TILE, x, y, ch === '*' ? 'manhattan' : 'queens', nightWin);
+          usedAtlas = true;
+        } else if (ch === 'r') {
           A0.roadTile(ctx, sx, sy, TILE, x, y, g);
           usedAtlas = true;
         } else if (ch === 'w') {
@@ -350,9 +353,12 @@
             if (g[y][x - 1] !== 'V') entities.push({ b: (y + 1) * TILE, d: () => A.subwayEntrance(ctx, sx, sy, TILE) });
             break;
           case 'w':
-            if (y === 38 && g[y][x + 1] !== 'w') { // boat moored alongside the pier
-              entities.push({ b: (y + 2) * TILE, d: () => A.ferryBoat(ctx, sx + TILE * .8, sy, TILE, state.animT) });
+            if (g[y][x - 1] !== 'w') { // boat moored just south of the pier
+              entities.push({ b: (y + 3) * TILE, d: () => A.ferryBoat(ctx, sx - TILE * .4, sy + TILE * 1.1, TILE, state.animT) });
             }
+            break;
+          case 'u':
+            entities.push({ b: (y + 1) * TILE, d: () => A.ruin(ctx, sx, sy, TILE) });
             break;
           case 'j': entities.push({ b: (y + 1) * TILE, d: () => A.hydrant(ctx, sx, sy, TILE) }); break;
           case 'E': A.doorMat(ctx, sx, sy, TILE); break;
@@ -380,10 +386,6 @@
       }
     }
 
-    // the city across the river (drawn over the far water, behind everything)
-    if (scene === 'outdoor' && (38 * TILE - E.camY) < E.viewH) {
-      A0.skyline(ctx, -E.camX, 38 * TILE - E.camY, 56 * TILE, TILE, nightWin, state.animT);
-    }
 
     // buildings join the y-sorted pass (baseline = their footprint's bottom
     // edge), each drawing its own doors on the ground floor
@@ -405,10 +407,10 @@
 
     // world-state decorations: construction fencing / the new waterfront
     if (scene === 'outdoor' && state.flags.construction) {
-      for (let bx = 16; bx <= 40; bx += 3) CS.art.barrier(ctx, bx * TILE - E.camX, 24 * TILE - E.camY, TILE);
+      for (let bx = 8; bx <= 26; bx += 3) CS.art.barrier(ctx, bx * TILE - E.camX, 52 * TILE - E.camY, TILE);
     }
     if (scene === 'outdoor' && state.flags.newWaterfront) {
-      for (let bx = 18; bx <= 38; bx += 5) CS.art.planter(ctx, bx * TILE - E.camX, 33 * TILE - E.camY, TILE);
+      for (let bx = 8; bx <= 26; bx += 5) CS.art.planter(ctx, bx * TILE - E.camX, 53 * TILE - E.camY, TILE);
     }
 
     // pet, family, NPCs, and the player all join the y-sorted pass —
@@ -448,18 +450,22 @@
       }
     }
 
-    // the tramway crosses the river, over everything
+    // the tramway crosses the west channel, over everything (real routing)
     if (scene === 'outdoor') {
       A0.tramway(ctx,
-        4 * TILE - E.camX, 13 * TILE - E.camY,
-        -3 * TILE - E.camX, 41 * TILE - E.camY, state.animT);
+        7 * TILE - E.camX, 44 * TILE - E.camY,
+        -2 * TILE - E.camX, 44.5 * TILE - E.camY, state.animT);
+    }
+    // the Queensboro-style bridge passes overhead, island humming beneath it
+    if (scene === 'outdoor') {
+      A0.bridgeOver(ctx, -E.camX, -E.camY, TILE, nightWin);
     }
 
     // Pride bunting hangs over everything on Main Street
     const fest = CS.game.currentFestival && CS.game.currentFestival();
     if (fest && fest.key === 'pride' && scene === 'outdoor') {
-      for (let bx = 2; bx <= 52; bx += 4) {
-        CS.art.bunting(ctx, bx * TILE - E.camX, 15 * TILE - E.camY, TILE, bx);
+      for (let by = 20; by <= 40; by += 4) {
+        CS.art.bunting(ctx, 15 * TILE - E.camX, by * TILE - E.camY, TILE, by);
       }
     }
 

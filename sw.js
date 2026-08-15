@@ -1,7 +1,7 @@
 /* Concrete Seasons — service worker.
    Cache-first so the game is fully playable offline / in airplane mode.
    Bump CACHE_VERSION on every release so clients pick up new files. */
-const CACHE_VERSION = 'cs-v17';
+const CACHE_VERSION = 'cs-v18';
 const ASSETS = [
   './',
   './index.html',

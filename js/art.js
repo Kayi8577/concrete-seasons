@@ -189,6 +189,102 @@
     ctx.beginPath(); ctx.moveTo(sx - 6, y + T * .9); ctx.lineTo(sx + T * .3, y + T * .98); ctx.stroke();
   };
 
+  /* top-down rooftops across the channels: Manhattan dense & tall-feeling,
+     Queens lower and looser — honest bird's-eye geography */
+  A.rooftops = function (ctx, sx, sy, T, gx, gy, side, night) {
+    const man = side === 'manhattan';
+    const h = (gx * 73 + gy * 151) % 97;
+    const base = man ? ['#5d646e', '#525a64', '#68707a'] : ['#8a8578', '#7d7a6e', '#948f80'];
+    ctx.fillStyle = base[h % 3];
+    ctx.fillRect(sx, sy, T, T);
+    // parapet joints between roofs
+    ctx.strokeStyle = 'rgba(20,22,26,.35)'; ctx.lineWidth = 1.5;
+    if (h % 2 === 0) { ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + T, sy); ctx.stroke(); }
+    if (h % 3 === 0) { ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + T); ctx.stroke(); }
+    // rooftop clutter: tanks, AC units, skylights
+    if (h % 5 === 0) { // water tank
+      circle(ctx, sx + 8 + (h % 3) * 5, sy + 9 + (h % 4) * 4, 5, man ? '#4a4038' : '#6b5b4c');
+      circle(ctx, sx + 8 + (h % 3) * 5, sy + 9 + (h % 4) * 4, 2, 'rgba(0,0,0,.3)');
+    }
+    if (h % 7 === 1) { // AC / bulkhead
+      ctx.fillStyle = 'rgba(255,255,255,.14)';
+      ctx.fillRect(sx + 14, sy + 16, 8, 6);
+    }
+    if (night && h % 6 === 2) { // lit skylight
+      ctx.fillStyle = 'rgba(245,216,122,.5)';
+      ctx.fillRect(sx + 6 + (h % 4) * 4, sy + 18, 4, 4);
+    }
+  };
+
+  /* the old stone ruin at Southpoint (our Renwick) */
+  A.ruin = function (ctx, sx, sy, T) {
+    const cx = sx + T / 2;
+    sh(ctx, cx, sy + T - 3, T * .5, 4);
+    ctx.fillStyle = '#8a8578';
+    // broken walls
+    ctx.beginPath();
+    ctx.moveTo(sx + 2, sy + T - 4);
+    ctx.lineTo(sx + 2, sy - T * .3);
+    ctx.lineTo(sx + 8, sy - T * .45);
+    ctx.lineTo(sx + 10, sy + 2);
+    ctx.lineTo(sx + T - 10, sy);
+    ctx.lineTo(sx + T - 8, sy - T * .5);
+    ctx.lineTo(sx + T - 2, sy - T * .35);
+    ctx.lineTo(sx + T - 2, sy + T - 4);
+    ctx.closePath(); ctx.fill();
+    // gothic window arch
+    ctx.fillStyle = '#3a4238';
+    ctx.beginPath();
+    ctx.moveTo(cx - 5, sy + T - 8);
+    ctx.lineTo(cx - 5, sy + 4);
+    ctx.quadraticCurveTo(cx, sy - 4, cx + 5, sy + 4);
+    ctx.lineTo(cx + 5, sy + T - 8);
+    ctx.closePath(); ctx.fill();
+    // stone joints + ivy
+    ctx.strokeStyle = 'rgba(40,44,38,.35)'; ctx.lineWidth = 1;
+    for (let yy = sy - 4; yy < sy + T - 6; yy += 6) {
+      ctx.beginPath(); ctx.moveTo(sx + 3, yy); ctx.lineTo(sx + T - 3, yy); ctx.stroke();
+    }
+    circle(ctx, sx + 5, sy + 2, 4, 'rgba(95,140,80,.8)');
+    circle(ctx, sx + T - 6, sy + T * .4, 3.5, 'rgba(95,140,80,.8)');
+  };
+
+  /* the great bridge crossing the island overhead (deck at world rows 40–42) */
+  A.bridgeOver = function (ctx, ox, oy, T, night) {
+    const yTop = 40 * T + oy, deckH = T * 1.7;
+    const steel = night ? '#3a4148' : '#5d666e';
+    const dark = night ? '#2b3238' : '#4a525a';
+    // shadow the deck throws on the island
+    ctx.fillStyle = 'rgba(20,26,32,.22)';
+    ctx.fillRect(ox - T * 4, yTop + deckH, 44 * T, T * .8);
+    // deck
+    ctx.fillStyle = steel;
+    ctx.fillRect(ox - T * 4, yTop, 44 * T, deckH);
+    ctx.fillStyle = 'rgba(255,255,255,.07)';
+    ctx.fillRect(ox - T * 4, yTop, 44 * T, 4);
+    // lattice truss
+    ctx.strokeStyle = dark; ctx.lineWidth = 2;
+    for (let x = -4 * T; x < 40 * T; x += T) {
+      ctx.beginPath();
+      ctx.moveTo(ox + x, yTop + deckH); ctx.lineTo(ox + x + T, yTop);
+      ctx.moveTo(ox + x, yTop); ctx.lineTo(ox + x + T, yTop + deckH);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = dark; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(ox - T * 4, yTop + 2); ctx.lineTo(ox + 40 * T, yTop + 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox - T * 4, yTop + deckH - 2); ctx.lineTo(ox + 40 * T, yTop + deckH - 2); ctx.stroke();
+    // towers over each channel
+    for (const tx of [3 * T, 32 * T]) {
+      ctx.fillStyle = dark;
+      ctx.fillRect(ox + tx - 5, yTop - T * 1.6, 10, deckH + T * 1.6);
+      ctx.fillRect(ox + tx - 12, yTop - T * 1.6, 24, 6);
+      ctx.fillRect(ox + tx - 9, yTop - T * .8, 18, 5);
+      if (night) { // beacon
+        circle(ctx, ox + tx, yTop - T * 1.65, 2.5, '#e85a4a');
+      }
+    }
+  };
+
   /* the tramway: two cables + a little red cabin gliding over the river */
   A.tramway = function (ctx, x0, y0, x1, y1, t) {
     ctx.strokeStyle = 'rgba(40,40,44,.65)'; ctx.lineWidth = 1.6;
