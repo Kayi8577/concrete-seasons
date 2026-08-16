@@ -1406,6 +1406,29 @@
     ctx.clearRect(0, 0, S, S);
     const T = S; // treat icon box like a tile
     const item = CS.ITEMS[id];
+    if (id === 'rod') {
+      ctx.strokeStyle = P.woodDark; ctx.lineWidth = S * .07; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(S * .18, S * .85); ctx.lineTo(S * .72, S * .18); ctx.stroke();
+      ctx.strokeStyle = '#8a8a8a'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(S * .72, S * .18); ctx.quadraticCurveTo(S * .85, S * .45, S * .78, S * .68); ctx.stroke();
+      circle(ctx, S * .78, S * .72, S * .05, P.red);
+      circle(ctx, S * .3, S * .72, S * .06, '#6b5b4c');
+      return;
+    }
+    if (item && item.type === 'catch') {
+      const cols = { fish_herring: '#9fb6c4', fish_porgy: '#c4a86a', fish_bass: '#7a8f9e',
+                     fish_flounder: '#a08a6a', fish_sturgeon: '#5d6e60' };
+      const col = cols[id] || '#9fb6c4';
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.ellipse(S * .45, S * .5, S * .3, S * .17, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); // tail
+      ctx.moveTo(S * .72, S * .5); ctx.lineTo(S * .9, S * .36); ctx.lineTo(S * .9, S * .64); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.35)';
+      ctx.beginPath(); ctx.ellipse(S * .42, S * .44, S * .2, S * .07, -.2, 0, Math.PI * 2); ctx.fill();
+      circle(ctx, S * .28, S * .47, S * .035, '#26221e');
+      return;
+    }
     if (item && item.type === 'seed') {
       // seed packet with crop color band
       const bandCols = { lettuce: P.leafLight, radish: P.berry, strawberry: P.red, tulip: P.pink,

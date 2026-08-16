@@ -28,7 +28,7 @@ CS.NPCS = {
     name:'Nico Russo', color:'#b0653a', gender:'M', rom:['F','M','NB'],
     look:{ skin:'#e0aa78', hair:'#3a2c1e', style:'curly', outfit:'#b0653a' },
     bio:'Manages his family\'s restaurant in Queens. Warm, social, impulsive.',
-    loved:['basil','tomato'], liked:['meal_pasta','enamel_pot'],
+    loved:['basil','tomato'], liked:['meal_pasta','enamel_pot','fish_bass','fish_porgy'],
   },
   grace: {
     name:'Grace Okafor', color:'#b07a2a', gender:'F', rom:[],

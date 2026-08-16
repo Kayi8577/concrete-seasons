@@ -258,3 +258,14 @@ h2 { color:#3d3229; font-size:28px; }
   .inv-grid { grid-template-columns:repeat(4,1fr); }
   h1 { font-size:32px; }
 }
+
+/* FoMT-style friendship hearts in the dialogue name plate */
+.dlg-hearts { display:inline-flex; gap:2px; margin-left:8px; vertical-align:middle; }
+
+/* phone weather app row */
+.phone-forecast {
+  display:flex; align-items:center; gap:8px;
+  background:#efe6d2; border:2px solid #d8cbb2; border-radius:12px;
+  padding:9px 12px; margin-bottom:10px;
+  font-weight:700; color:#5d4e40; font-size:14px;
+}

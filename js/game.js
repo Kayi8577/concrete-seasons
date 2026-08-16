@@ -51,6 +51,12 @@
     S.family = S.family || null;          // {stage, mode, due, name, arrivedDay}
     S.farmUpgrades = S.farmUpgrades || {};
     S.housing = S.housing || 'studio';
+    S.player.maxEnergy = S.player.maxEnergy || 100;
+    S.bagels = S.bagels || [];
+    S.volunteerDays = S.volunteerDays || 0;
+    S.fishing = S.fishing || { casts: 0, caught: 0 };
+    S.weather.severeToday = S.weather.severeToday || false;
+    S.weather.severeTomorrow = S.weather.severeTomorrow || false;
     S.player.difficulty = S.player.difficulty || 'standard';
     applyHousing();
     applyHydro();
@@ -160,10 +166,17 @@
   G.dateText = () => `${CS.SEASONS[S.time.seasonIndex]} ${S.time.day} · ${CS.WEEKDAYS[S.time.weekdayIndex]}`;
 
   function rollWeather() {
-    const table = CS.WEATHER_TABLE[0];
+    const si = S ? S.time.seasonIndex : 0;
+    const table = CS.WEATHER_TABLE[si];
     let r = Math.random();
     for (const [w, p] of table) { if ((r -= p) <= 0) return w; }
     return 'sunny';
+  }
+  // FoMT-style typhoon/blizzard: a summer rain or winter snow occasionally turns severe
+  function rollSevere(weather) {
+    const si = S ? S.time.seasonIndex : 0;
+    return (weather === 'rain' && si === 1 && Math.random() < .18) ||
+           (weather === 'snow' && si === 3 && Math.random() < .18);
   }
 
   G.sleep = function (passedOut, early) {
@@ -177,9 +190,12 @@
     }
     S.time.weekdayIndex = G.weekdayIndex();
     S.time.minutes = passedOut ? 480 : (early ? 315 : 390);
-    S.player.energy = passedOut ? 65 : 100;
+    const maxE = S.player.maxEnergy || 100;
+    S.player.energy = passedOut ? Math.round(maxE * .65) : maxE;
     S.weather.today = S.weather.tomorrow;
+    S.weather.severeToday = S.weather.severeTomorrow || false;
     S.weather.tomorrow = rollWeather();
+    S.weather.severeTomorrow = rollSevere(S.weather.tomorrow);
 
     // crops grow; out-of-season outdoor plants wilt at the turn of the season
     for (const key of Object.keys(S.farm.plots)) {
@@ -194,10 +210,32 @@
         if (pl.watered || indoor || irrigated || (S.weather.today === 'rain' && !indoor)) {
           pl.days += 1;
           if (S.farmUpgrades.compost && Math.random() < .25) pl.days += 1; // rich soil
+        } else {
+          pl.stunted = true; // missed a day — no perfect-harvest bonus
+        }
+        // a severe storm soaks everything but roughs up whatever's outside
+        if (S.weather.severeToday && !indoor && Math.random() < .2) {
+          pl.days = Math.max(0, pl.days - 2);
+          pl.stormHit = true;
         }
         pl.watered = false;
         if (!indoor && (S.weather.today === 'rain' || irrigated)) pl.watered = true;
+        if (!indoor && S.volunteerDays > 0) pl.watered = true;
       }
+    }
+    if (S.volunteerDays > 0) {
+      S.volunteerDays -= 1;
+      G.addMsg('malik', S.volunteerDays > 0
+        ? `sent two Harbor House volunteers by your plot this morning. everything's watered. ${S.volunteerDays} more day${S.volunteerDays > 1 ? 's' : ''} on the sheet`
+        : 'volunteer crew finished their last morning at your plot. sign-up sheet is back on the board whenever');
+    }
+    if (S.totalEarned >= 5000 && !S.bagels.includes('hustle')) {
+      findBagel('hustle', 'Morning knock: Malik, holding a paper bag. "Five grand shipped out of one community plot. Whole board voted. This is the good stuff from Moonrise — Grace glazed it herself."');
+    }
+    if (S.weather.severeToday) {
+      const label = S.weather.today === 'snow' ? 'Blizzard warning' : 'Storm warning';
+      G.addMsg('hp', `${label}: Harbor Point is getting hit hard today. Check your plot when it clears, and stay off the esplanade railings.`);
+      CS.ui.toast(label + '!');
     }
     if (seasonChanged) {
       CS.ui.toast(`${CS.SEASONS[S.time.seasonIndex]} begins.`);
@@ -639,6 +677,55 @@
   }
   G.enterScene = enterScene;
 
+  /* ================= golden bagels (urban power berries) ================= */
+  const BAGELS = { till: 1, lighthouse: 1, ruin: 1, fish: 1, hustle: 1 };
+  function findBagel(id, flavor) {
+    if (!S.bagels) S.bagels = [];
+    if (S.bagels.includes(id)) return false;
+    S.bagels.push(id);
+    S.player.maxEnergy = (S.player.maxEnergy || 100) + 10;
+    S.player.energy += 10;
+    CS.ui.narrate(flavor + `\n\nA GOLDEN BAGEL. You feel sturdier. Max energy +10 (${S.bagels.length}/${Object.keys(BAGELS).length} found).`);
+    discover('bagel_' + id, `Found a golden bagel (${S.bagels.length} of ${Object.keys(BAGELS).length}). Max energy is now ${S.player.maxEnergy}.`);
+    CS.ui.refreshHUD();
+    return true;
+  }
+
+  /* ================= fishing (rod from the Corner Market) ================= */
+  function goFish(where) {
+    if (!S.inv.rod) { CS.ui.narrate('You mime casting a line. Without an actual rod, the river is unimpressed. The Corner Market sells secondhand rods.'); return; }
+    if (!spendEnergy(CS.COSTS.fish)) return;
+    S.time.minutes = Math.min(S.time.minutes + 30, 1439);
+    S.fishing = S.fishing || { casts: 0, caught: 0 };
+    S.fishing.casts += 1;
+    const r = Math.random();
+    if (r < .22) {
+      CS.ui.narrate(['A nibble, then nothing. The river keeps its secrets.',
+        'You reel in a very old sneaker. You put it back. Tradition.',
+        'Thirty minutes of pure calm. No fish, no regrets.'][Math.floor(Math.random() * 3)]);
+      return;
+    }
+    if (S.fishing.caught >= 12 && Math.random() < .04) {
+      S.fishing.caught += 1;
+      G.addItem('fish_sturgeon', 1);
+      CS.ui.narrate('The rod bends DOUBLE. Ten minutes of careful work later you are face to face with an Atlantic sturgeon — a living fossil, older than the bridge. Your hands are shaking.');
+      discover('sturgeon', `Caught an Atlantic sturgeon off ${where}. Nobody at The Anchor believed it.`);
+      return;
+    }
+    if (S.fishing.caught >= 15 && !S.bagels.includes('fish') && Math.random() < .12) {
+      findBagel('fish', 'Something heavy but wrong on the line... you reel in a waterlogged deli bag. Inside, impossibly dry:');
+      return;
+    }
+    const bySeason = ['fish_herring', 'fish_porgy', 'fish_bass', 'fish_flounder'][S.time.seasonIndex];
+    S.fishing.caught += 1;
+    G.addItem(bySeason, 1);
+    CS.ui.toast(`Caught a ${CS.ITEMS[bySeason].name}!`);
+    if (!S.flags.firstFish) {
+      S.flags.firstFish = true;
+      discover('first_fish', `First catch: a ${CS.ITEMS[bySeason].name}, pulled out of the East River like it was nothing.`);
+    }
+  }
+
   /* ================= interactions ================= */
   function interactionFor(scene, x, y, ch) {
     if (scene === 'apartment') {
@@ -675,14 +762,36 @@
         CS.ui.narrate("An empty market stall. On festival days these come alive.");
       }
     };
-    if (ch === 'i') return () => CS.ui.narrate("The old lighthouse. Decommissioned for decades, still the most reliable thing on the island. Locals say if you're here at the right moment, you'll understand why people stay.");
+    if (ch === 'i') return () => {
+      if (S.time.minutes >= 300 && S.time.minutes <= 420 && !S.bagels.includes('lighthouse')) {
+        findBagel('lighthouse', 'Dawn hits the lighthouse lens and scatters gold across the rocks. Wedged in the door frame, someone left a paper bag with a note: "for whoever shows up early enough."');
+        return;
+      }
+      CS.ui.narrate("The old lighthouse. Decommissioned for decades, still the most reliable thing on the island. Locals say if you're here at the right moment — early, when the light comes over Queens — you'll understand why people stay.");
+    };
+    if (ch === 'u') return () => {
+      if ((S.time.minutes >= 1290 || S.time.minutes < 300) && !S.bagels.includes('ruin')) {
+        findBagel('ruin', 'The ruin at night is all shadows and river sound. On the old stone sill, glinting under your phone light:');
+        return;
+      }
+      CS.ui.narrate('The smallpox hospital ruin. Gothic windows full of sky. It gets stranger and more beautiful after dark.');
+    };
     if (ch === 'P') return () => (scene === 'outdoor' ? stationMenu('tram') : returnMenu());
     if (ch === 'V') return () => stationMenu('subway');
     if (ch === 'w') return () => stationMenu('ferry');
     if (ch === 'U' && scene === 'teahouse') return () => CS.ui.buyPrompt('tea', 5, "Mrs. Woo's oolong. +20 energy.");
     if (ch === 'U' && scene === 'bellinis') return () => bellinisMenu();
     if (ch === 'U' && scene === 'foodcourt') return () => foodcourtMenu();
-    if (ch === 'h') return () => CS.ui.narrate("You sit for a moment. The river doesn't care about anyone's schedule. It's the most relaxing thing in New York.");
+    if (ch === 'h') return () => {
+      if (S.inv.rod) {
+        CS.ui.choose('The railing is right there and the river is doing its thing.', [
+          { label: 'Cast a line (30 min)', fn: () => goFish('the esplanade') },
+          { label: 'Just sit', fn: () => CS.ui.narrate("You sit for a moment. The river doesn't care about anyone's schedule. It's the most relaxing thing in New York.") },
+        ]);
+        return;
+      }
+      CS.ui.narrate("You sit for a moment. The river doesn't care about anyone's schedule. It's the most relaxing thing in New York.");
+    };
     if (ch === 's' || ch === 'g') return () => farmAction(scene, x, y);
     return null;
   }
@@ -693,6 +802,9 @@
 
   function stationMenu(mode) {
     const opts = [];
+    if (mode === 'ferry' && S.inv.rod) {
+      opts.push({ label: 'Fish off the pier (30 min)', fn: () => goFish('the pier') });
+    }
     const fare = CS.FARES[mode];
     for (const dest of Object.keys(CS.TRAVEL)) {
       const d = CS.TRAVEL[dest];
@@ -806,7 +918,7 @@
   function buyEnergy(price, energy, flavor) {
     if (S.player.money < price) { CS.ui.toast('Not enough money.'); return; }
     S.player.money -= price;
-    S.player.energy = Math.min(100, S.player.energy + energy);
+    S.player.energy = Math.min(S.player.maxEnergy || 100, S.player.energy + energy);
     CS.ui.refreshHUD();
     CS.ui.narrate(flavor);
   }
@@ -889,7 +1001,21 @@
         ]);
         return;
       }
-      CS.ui.narrate("Harbor House bulletin: after-school program schedules, a redevelopment community-input flyer (Priya's handwriting), and a sign-up sheet for the next neighborhood picnic.");
+      const vOpts = [
+        { label: 'Read the board', fn: () => CS.ui.narrate("Harbor House bulletin: after-school program schedules, a redevelopment community-input flyer (Priya's handwriting), and a sign-up sheet for the next neighborhood picnic.") },
+      ];
+      if (S.volunteerDays > 0) {
+        vOpts.unshift({ label: `Volunteer watering: ${S.volunteerDays} day(s) left`, fn: () => CS.ui.narrate('The sign-up sheet has your name on it. The crew will keep your plot watered.') });
+      } else {
+        vOpts.unshift({ label: 'Volunteer watering — $40 for 3 days', fn: () => {
+          if (S.player.money < 40) { CS.ui.toast('Not enough money.'); return; }
+          S.player.money -= 40;
+          S.volunteerDays = 3;
+          CS.ui.refreshHUD();
+          CS.ui.narrate('You add your plot to the watering rotation and drop $40 in the coffee fund. Starting tomorrow, Harbor House volunteers will water your outdoor crops for three mornings.');
+        }});
+      }
+      CS.ui.choose('The Harbor House notice board.', vOpts);
       return;
     }
     if (!S.pet && S.flags.gardenIntro && G.totalDay() >= 2) {
@@ -921,7 +1047,11 @@
     if (!pl || !pl.tilled) {
       if (!spendEnergy(CS.COSTS.till)) return;
       S.farm.plots[key] = { tilled: true, crop: null, days: 0, watered: false };
-      CS.ui.toast('Tilled the soil');
+      if (!S.bagels.includes('till') && Math.random() < .03) {
+        findBagel('till', 'Your trowel clinks against something. Buried a hand deep in the community plot, wrapped in wax paper from a deli that closed decades ago:');
+      } else {
+        CS.ui.toast('Tilled the soil');
+      }
       return;
     }
     if (pl.dead) {
@@ -955,8 +1085,10 @@
     const def = CS.CROPS[pl.crop];
     if (pl.days >= def.days) {
       if (!spendEnergy(CS.COSTS.harvest)) return;
-      G.addItem(pl.crop, 1);
-      CS.ui.toast(`Harvested ${def.name}!`);
+      const perfect = !pl.stunted && !pl.stormHit && Math.random() < .3;
+      G.addItem(pl.crop, perfect ? 2 : 1);
+      CS.ui.toast(perfect ? `Perfect ${def.name} — double harvest!` : `Harvested ${def.name}!`);
+      pl.stunted = false; pl.stormHit = false;
       if (def.regrow > 0) { pl.days = def.days - def.regrow; }
       else { pl.crop = null; pl.days = 0; }
       if (!S.flags.firstHarvest) {
@@ -1038,7 +1170,7 @@
     const def = CS.ITEMS[id];
     if (!def || !def.energy) return;
     if (!G.removeItem(id, 1)) return;
-    S.player.energy = Math.min(100, S.player.energy + def.energy);
+    S.player.energy = Math.min(S.player.maxEnergy || 100, S.player.energy + def.energy);
     CS.ui.toast(`${def.name}: +${def.energy} energy`);
     CS.ui.refreshHUD();
   };
@@ -2117,7 +2249,8 @@
     const npcByName = n => Object.keys(CS.NPCS).find(id => id.toUpperCase() === n || CS.NPCS[id].name.split(' ')[0].toUpperCase() === n);
     switch (cmd) {
       case 'MONEYPLEASE': S.player.money += 1000; CS.ui.refreshHUD(); return '+$1000';
-      case 'MAXENERGY': S.player.energy = 100; CS.ui.refreshHUD(); return 'energy restored';
+      case 'BAGELS': return `found: ${(S.bagels||[]).join(', ') || 'none'} — max energy ${S.player.maxEnergy||100}`;
+      case 'MAXENERGY': S.player.energy = S.player.maxEnergy || 100; CS.ui.refreshHUD(); return 'energy restored';
       case 'ALLSEEDS': for (const k of Object.keys(CS.ITEMS)) if (CS.ITEMS[k].type === 'seed') G.addItem(k, 5); return '+5 of every seed';
       case 'FASTGROW': {
         let n = 0;

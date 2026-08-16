@@ -28,6 +28,14 @@ CS.ITEMS = {
   radish:     { name:'Radish',     type:'crop', sell:22, energy:8,  desc:'Peppery and quick.' },
   strawberry: { name:'Strawberry', type:'crop', sell:48, energy:15, desc:'The good stuff.' },
   tulip:      { name:'Tulip',      type:'crop', sell:30, energy:0,  desc:'Not edible. Very sellable.' },
+
+  /* ---- fishing (rod from the Corner Market; fish change with the season) ---- */
+  rod:            { name:'Fishing Rod',     type:'tool',  sell:0,   desc:'A sturdy secondhand rod. The East River is full of surprises.' },
+  fish_herring:   { name:'River Herring',   type:'catch', sell:26,  energy:10, desc:'Runs up the river every spring. Quick and silver.' },
+  fish_porgy:     { name:'Porgy',           type:'catch', sell:34,  energy:12, desc:'Summer regular off the pier. Sweet, honest fish.' },
+  fish_bass:      { name:'Striped Bass',    type:'catch', sell:62,  energy:18, desc:'Fall migration royalty. Anglers cancel plans for these.' },
+  fish_flounder:  { name:'Winter Flounder', type:'catch', sell:44,  energy:14, desc:'Flat, patient, delicious. Winter is its season.' },
+  fish_sturgeon:  { name:'Atlantic Sturgeon', type:'catch', sell:250, energy:30, desc:'A living fossil. Nobody will believe you without a photo.' },
   tomato_seed:    { name:'Tomato Seeds',    type:'seed', crop:'tomato',    desc:'Summer star. Regrows. 7 days.' },
   basil_seed:     { name:'Basil Seeds',     type:'seed', crop:'basil',     desc:'Nico will find you. 5 days.' },
   cucumber_seed:  { name:'Cucumber Seeds',  type:'seed', crop:'cucumber',  desc:'Cool in every sense. 6 days.' },
@@ -69,6 +77,7 @@ CS.ITEMS = {
 
 /* Market stock — seeds filtered by current season at display time */
 CS.SHOP_MARKET = [
+  { item:'rod',             price:120, once:true },
   { item:'lettuce_seed',    price:12, season:0 },
   { item:'radish_seed',     price:9,  season:0 },
   { item:'strawberry_seed', price:34, season:0 },

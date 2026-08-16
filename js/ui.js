@@ -23,8 +23,9 @@
     $('hud-time').innerHTML = `${G().clockText()} <span id="hud-weather">${CS.art.weatherSVG(S.weather.today)}</span>`;
     const m = S.player.money;
     $('hud-money').textContent = '$' + (Number.isInteger(m) ? m : m.toFixed(2));
-    $('hud-energy').style.width = Math.max(0, S.player.energy) + '%';
-    $('hud-energy').style.background = S.player.energy < 25 ? '#c74f6d' : '';
+    const maxE = S.player.maxEnergy || 100;
+    $('hud-energy').style.width = Math.max(0, Math.min(100, S.player.energy / maxE * 100)) + '%';
+    $('hud-energy').style.background = S.player.energy < maxE * .25 ? '#c74f6d' : '';
     const unread = G().unreadTotal ? G().unreadTotal() : 0;
     $('phone-badge').style.display = unread > 0 ? 'flex' : 'none';
     $('phone-badge').textContent = unread > 9 ? '9+' : unread;
@@ -41,12 +42,16 @@
     $('phone-title').textContent = 'Messages';
     const body = $('phone-body');
     body.innerHTML = '';
+    const wLabel = { sunny: 'Sunny', cloudy: 'Cloudy', rain: 'Rain', snow: 'Snow' }[S.weather.tomorrow] || S.weather.tomorrow;
+    const severe = S.weather.severeTomorrow ? (S.weather.tomorrow === 'snow' ? ' — BLIZZARD WARNING' : ' — STORM WARNING') : '';
+    body.insertAdjacentHTML('beforeend',
+      `<div class="phone-forecast">${CS.art.weatherSVG(S.weather.tomorrow)} Tomorrow: ${wLabel}${severe}${S.weather.tomorrow === 'rain' ? ' · crops water themselves' : ''}</div>`);
     const ids = Object.keys(S.phone).sort((a, b) => {
       const la = S.phone[a].msgs.at(-1), lb = S.phone[b].msgs.at(-1);
       return (lb ? lb.day : 0) - (la ? la.day : 0);
     });
     if (!ids.length) {
-      body.innerHTML = '<div style="color:#8a7361;padding:20px;text-align:center">No messages yet. Get to know people — numbers get exchanged around Acquaintance.</div>';
+      body.insertAdjacentHTML('beforeend', '<div style="color:#8a7361;padding:20px;text-align:center">No messages yet. Get to know people — numbers get exchanged around Acquaintance.</div>');
       return;
     }
     for (const id of ids) {
@@ -141,6 +146,14 @@
     const pc = $('dlg-portrait');
     if (npc) CS.art.portrait(pc, npc.look, npc.id); else CS.art.narratorPortrait(pc);
     $('dlg-name').textContent = npc ? npc.name : '';
+    if (npc && npc.id && G().state().npcs[npc.id] && G().state().npcs[npc.id].met) {
+      const tier = G().tierOf(npc.id), maxT = CS.TIERS.length - 1;
+      let hearts = '';
+      for (let i = 0; i < maxT; i++) {
+        hearts += `<svg width="11" height="10" viewBox="0 0 12 11"><path d="M6 10 C2 7 0 5 0 3 A3 3 0 0 1 6 2 A3 3 0 0 1 12 3 C12 5 10 7 6 10 Z" fill="${i < tier ? '#e0704f' : 'rgba(253,246,227,.35)'}"/></svg>`;
+      }
+      $('dlg-name').insertAdjacentHTML('beforeend', `<span class="dlg-hearts">${hearts}</span>`);
+    }
     $('dlg-name').style.display = npc ? '' : 'none';
     dialogueQueue = [...lines];
     dialogueDone = done || null;
@@ -300,7 +313,7 @@
     $('shop-title').textContent = 'Corner Market';
     const list = $('shop-list');
     list.innerHTML = '';
-    const stock = CS.SHOP_MARKET.filter(r => r.season === undefined || r.season === S.time.seasonIndex);
+    const stock = CS.SHOP_MARKET.filter(r => (r.season === undefined || r.season === S.time.seasonIndex) && !(r.once && S.inv[r.item]));
     for (const row of stock) {
       const def = CS.ITEMS[row.item];
       const el = document.createElement('div');
