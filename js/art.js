@@ -64,10 +64,12 @@
   A.loadPortraits = function () {
     for (const id in CS.NPCS) {
       if (id === 'fish') continue;
-      const img = new Image();
-      const e = PIMG[id] = { img, ready: false };
-      img.onload = () => { e.ready = true; };
-      img.src = 'assets/portraits/' + id + '.png';
+      for (const tag of ['', '_happy']) {
+        const img = new Image();
+        const e = PIMG[id + tag] = { img, ready: false };
+        img.onload = () => { e.ready = true; };
+        img.src = 'assets/portraits/' + id + tag + '.png';
+      }
     }
   };
   // draw one atlas tile; returns false if the sheet isn't available
@@ -1292,62 +1294,105 @@
   }
 
   A.character = function (ctx, sx, sy, T, opts, t, moving, facing) {
-    // opts: {skin, hair, style, outfit} — chibi with 4-way facing
+    // FoMT-study rewrite: true pixel-grid sprite (16x20 units, 2 heads tall,
+    // 1px outline, two tones per material) instead of smooth vectors.
     facing = facing || 'down';
-    const cx = sx + T / 2;
-    const feetY = sy + T - 3;
+    const u = T / 16;
     const walk = moving ? Math.sin(t / 85) : 0;
-    const bob = moving ? Math.abs(Math.sin(t / 85)) * -1.2 : 0;
-    sh(ctx, cx, feetY, 8.5, 3);
-    const dark = shade(opts.outfit, -36);
-    // legs (alternating step)
-    ctx.fillStyle = dark;
-    rr(ctx, cx - 5, feetY - 7 + Math.max(0, -walk * 2.4), 4.2, 7 - Math.max(0, -walk * 2.4), 2, dark);
-    rr(ctx, cx + 0.8, feetY - 7 + Math.max(0, walk * 2.4), 4.2, 7 - Math.max(0, walk * 2.4), 2, dark);
-    // shoes
-    ctx.fillStyle = '#4a3b2d';
-    rr(ctx, cx - 5.4, feetY - 2.4 + Math.max(0, -walk * 2), 5, 2.6, 1.2, '#4a3b2d');
-    rr(ctx, cx + 0.4, feetY - 2.4 + Math.max(0, walk * 2), 5, 2.6, 1.2, '#4a3b2d');
-    // torso with a true dark outline, FoMT-style
-    const bodyY = feetY - 16 + bob;
-    rr(ctx, cx - 8.5, bodyY - 1.5, 17, 14, 6.5, '#3a2a1e');
-    rr(ctx, cx - 7, bodyY, 14, 11, 5, opts.outfit);
-    rr(ctx, cx - 7, bodyY, 14, 4, 5, 'rgba(255,255,255,.16)'); // collar light
-    // arms with swing
-    ctx.fillStyle = opts.outfit;
-    rr(ctx, cx - 9.6, bodyY + 1.5 + walk * 1.6, 3.4, 7.5, 1.7, opts.outfit);
-    rr(ctx, cx + 6.2, bodyY + 1.5 - walk * 1.6, 3.4, 7.5, 1.7, opts.outfit);
-    circle(ctx, cx - 7.9, bodyY + 9.6 + walk * 1.6, 1.7, opts.skin); // hands
-    circle(ctx, cx + 7.9, bodyY + 9.6 - walk * 1.6, 1.7, opts.skin);
-    // head — Mineral Town proportions: the head IS the character
-    const hr = 10.5, hy = bodyY - hr + 3;
-    circle(ctx, cx, hy - .5, hr + 1.4, '#3a2a1e'); // solid outline
-    if (facing === 'up') {
-      // seen from behind: hair covers everything, no face
-      circle(ctx, cx, hy, hr, opts.skin);
-      ctx.fillStyle = opts.hair;
-      ctx.beginPath(); ctx.arc(cx, hy + hr * .04, hr * 1.02, 0, Math.PI * 2); ctx.fill();
-      if (opts.style === 'bun') circle(ctx, cx, hy - hr * .9, hr * .48, opts.hair);
-      if (opts.style === 'cap') { ctx.fillStyle = shade(opts.hair, 20); rr(ctx, cx - hr, hy - hr * .3, hr * 2, hr * .34, hr * .15, shade(opts.hair, 20)); }
-      if (opts.style === 'long') { rr(ctx, cx - hr * .55, hy, hr * 1.1, hr * 1.7, hr * .3, opts.hair); }
-      ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.arc(cx - hr * .1, hy - hr * .2, hr * .6, Math.PI * 1.15, Math.PI * 1.6); ctx.stroke();
-    } else if (facing === 'left' || facing === 'right') {
-      const dir = facing === 'left' ? -1 : 1;
-      A.head(ctx, cx, hy, hr, opts.skin, opts.hair, opts.style);
-      // profile: one eye toward the walking direction
-      const ex = cx + dir * hr * .5, ey = hy + hr * .12;
-      ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.ellipse(ex, ey, hr * .15, hr * .19, 0, 0, Math.PI * 2); ctx.fill();
-      circle(ctx, ex + dir * hr * .03, ey + hr * .03, hr * .1, '#3a2e24');
-      ctx.fillStyle = 'rgba(220,120,110,.28)';
-      ctx.beginPath(); ctx.ellipse(cx + dir * hr * .2, hy + hr * .38, hr * .14, hr * .08, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = 'rgba(90,60,50,.6)'; ctx.lineWidth = Math.max(1, hr * .07); ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.arc(cx + dir * hr * .45, hy + hr * .42, hr * .1, Math.PI * .2, Math.PI * .8); ctx.stroke();
+    const step = walk > .3 ? 1 : walk < -.3 ? -1 : 0;   // -1/0/1 leg phase
+    const bob = step !== 0 ? -1 : 0;                    // 1px hop on steps
+    const H = opts.hair, HD = shade(opts.hair, -36), HL = shade(opts.hair, 32);
+    const SK = opts.skin, SKD = shade(opts.skin, -18);
+    const O = opts.outfit, OD = shade(opts.outfit, -24);
+    const PT = shade(opts.outfit, -46), BT = '#4a3527';
+    const EY = '#26180f', OL = '#33241a', BL = 'rgba(226,120,110,.55)';
+    const style = opts.style || 'short';
+    const mirror = facing === 'right';
+    const ox = sx, oy = sy + T - 20 * u + bob * u;
+    sh(ctx, sx + T / 2, sy + T - 2, 8.5, 3);
+    ctx.save();
+    if (mirror) { ctx.translate(sx + T, 0); ctx.scale(-1, 1); ctx.translate(-sx, 0); }
+    const spans = [];
+    const p = (x, y, w, h, c) => spans.push([x, y, w, h, c]);
+    const side = facing === 'left' || facing === 'right';
+
+    if (facing === 'down') {
+      // hair dome + curtains framing the face
+      p(4, 0, 8, 2, H); p(3, 1, 10, 2, H); p(2, 2, 12, 4, H);
+      p(2, 5, 2, 4, H); p(12, 5, 2, 4, H);
+      p(4, 1, 4, 1, HL); p(12, 2, 2, 4, HD); p(2, 5, 1, 4, HD);
+      // face: eyes low on the head, tiny and dark
+      p(4, 6, 8, 4, SK); p(4, 9, 8, 1, SKD);
+      p(5, 7, 1, 2, EY); p(10, 7, 1, 2, EY);
+      p(4, 8, 1, 1, BL); p(11, 8, 1, 1, BL);
+      // torso + stub arms
+      p(4, 10, 8, 5, O); p(10, 10, 2, 5, OD); p(6, 10, 4, 1, OD);
+      const aL = step === 1 ? 1 : 0, aR = step === -1 ? 1 : 0;
+      p(3, 10 + aL, 1, 3, O); p(3, 13 + aL, 1, 1, SK);
+      p(12, 10 + aR, 1, 3, O); p(12, 13 + aR, 1, 1, SK);
+      // legs: alternating stubby boots
+      const lL = step === 1 ? -1 : 0, lR = step === -1 ? -1 : 0;
+      p(5, 15, 3, 3 + lL, PT); p(8, 15, 3, 3 + lR, PT);
+      p(5, 17 + lL, 3, 2, BT); p(8, 17 + lR, 3, 2, BT);
+    } else if (facing === 'up') {
+      p(4, 0, 8, 2, H); p(3, 1, 10, 2, H); p(2, 2, 12, 8, H);
+      p(4, 1, 4, 1, HL); p(11, 2, 3, 8, HD);
+      p(5, 10, 6, 1, OD);
+      p(4, 10, 8, 5, O); p(10, 10, 2, 5, OD);
+      const aL = step === 1 ? 1 : 0, aR = step === -1 ? 1 : 0;
+      p(3, 10 + aL, 1, 3, O); p(12, 10 + aR, 1, 3, O);
+      const lL = step === 1 ? -1 : 0, lR = step === -1 ? -1 : 0;
+      p(5, 15, 3, 3 + lL, PT); p(8, 15, 3, 3 + lR, PT);
+      p(5, 17 + lL, 3, 2, BT); p(8, 17 + lR, 3, 2, BT);
     } else {
-      A.head(ctx, cx, hy, hr, opts.skin, opts.hair, opts.style);
-      face(ctx, cx, hy, hr);
+      // profile: face forward at the left, heavy back of head
+      p(4, 0, 8, 2, H); p(3, 1, 10, 2, H); p(2, 2, 12, 4, H);
+      p(7, 5, 7, 5, H); p(12, 2, 2, 7, HD); p(4, 1, 4, 1, HL);
+      p(2, 6, 5, 4, SK); p(1, 7, 1, 2, SK);   // nose bump
+      p(2, 9, 5, 1, SKD);
+      p(3, 7, 1, 2, EY); p(2, 8, 1, 1, BL);
+      p(4, 10, 8, 5, O); p(9, 10, 3, 5, OD);
+      const sw = step;                          // arm swings with the stride
+      p(6 - sw, 11, 2, 3, O); p(6 - sw, 14, 2, 1, SK);
+      const lF = step === 1 ? -1 : 0, lB = step === -1 ? -1 : 0;
+      p(4 - (step === 1 ? 1 : 0), 15, 3, 3 + lF, PT);
+      p(8 + (step === -1 ? 1 : 0), 15, 3, 3 + lB, PT);
+      p(4 - (step === 1 ? 1 : 0), 17 + lF, 3, 2, BT);
+      p(8 + (step === -1 ? 1 : 0), 17 + lB, 3, 2, BT);
     }
+
+    // hairstyle silhouettes on top of the base dome
+    if (style === 'long') {
+      if (facing === 'up') { p(2, 9, 12, 4, H); p(11, 9, 3, 4, HD); }
+      else if (side) { p(8, 8, 6, 6, H); p(12, 8, 2, 6, HD); }
+      else { p(1, 6, 2, 7, H); p(13, 6, 2, 7, H); p(14, 6, 1, 7, HD); }
+    } else if (style === 'bun') {
+      p(side ? 9 : 6, -2, 4, 2, H); p(side ? 11 : 8, -2, 2, 1, HD);
+    } else if (style === 'curly') {
+      p(0, 3, 2, 2, H); p(14, 3, 2, 2, H); p(1, 0, 2, 1, H); p(13, 0, 2, 1, H);
+      p(0, 6, 1, 1, H); p(15, 6, 1, 1, H); p(14, 4, 2, 1, HD);
+    } else if (style === 'wrap') {
+      p(2, 4, 12, 1, O); p(facing === 'up' ? 5 : 11, 0, 3, 2, HD);
+    } else if (style === 'cap') {
+      // ballcap in the outfit color, like the FoMT hero
+      p(4, 0, 8, 2, O); p(3, 1, 10, 2, O); p(2, 2, 12, 3, O);
+      p(4, 1, 4, 1, shade(opts.outfit, 26));
+      if (facing === 'down') p(1, 4, 8, 1, OD);
+      else if (side) p(0, 4, 6, 1, OD);
+      else p(5, 4, 6, 1, OD);
+      p(7, 0, 2, 1, OD);
+    }
+
+    // pass 1: 1px outline behind everything; pass 2: fills
+    for (const [x, y, w, h, c] of spans) {
+      ctx.fillStyle = OL;
+      ctx.fillRect(ox + (x - 1) * u, oy + (y - 1) * u, (w + 2) * u, (h + 2) * u);
+    }
+    for (const [x, y, w, h, c] of spans) {
+      ctx.fillStyle = c;
+      ctx.fillRect(ox + x * u, oy + y * u, w * u, h * u);
+    }
+    ctx.restore();
   };
 
   A.portrait = function (canvas, opts, id) {
@@ -1359,8 +1404,13 @@
     c.beginPath(); c.roundRect(0, 0, S, S, S * .24); c.fill();
     c.fillStyle = 'rgba(92,138,111,.12)';
     c.beginPath(); c.roundRect(0, S * .55, S, S * .45, S * .24); c.fill();
-    // generated portrait sprite, when this NPC has one loaded
-    const pim = id && A.portraitImg(id);
+    // generated portrait sprite, when this NPC has one loaded;
+    // close friends get the happy expression, like FoMT heart portraits
+    let pim = null;
+    if (id) {
+      const happy = CS.game && CS.game.tierOf && CS.game.tierOf(id) >= 3;
+      pim = (happy && A.portraitImg(id + '_happy')) || A.portraitImg(id);
+    }
     if (pim) {
       c.save();
       c.beginPath(); c.roundRect(0, 0, S, S, S * .24); c.clip();

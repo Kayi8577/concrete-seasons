@@ -1,7 +1,7 @@
 /* Concrete Seasons — service worker.
    Cache-first so the game is fully playable offline / in airplane mode.
    Bump CACHE_VERSION on every release so clients pick up new files. */
-const CACHE_VERSION = 'cs-v24';
+const CACHE_VERSION = 'cs-v25';
 const ASSETS = [
   './',
   './index.html',
@@ -64,6 +64,28 @@ const ASSETS = [
   './assets/portraits/ava.png',
   './assets/portraits/nia.png',
   './assets/portraits/claire.png',
+  './assets/portraits/maya_happy.png',
+  './assets/portraits/daniel_happy.png',
+  './assets/portraits/lena_happy.png',
+  './assets/portraits/nico_happy.png',
+  './assets/portraits/grace_happy.png',
+  './assets/portraits/malik_happy.png',
+  './assets/portraits/joan_happy.png',
+  './assets/portraits/rosa_happy.png',
+  './assets/portraits/mrs_woo_happy.png',
+  './assets/portraits/sofia_happy.png',
+  './assets/portraits/gabriel_happy.png',
+  './assets/portraits/theo_happy.png',
+  './assets/portraits/avery_happy.png',
+  './assets/portraits/naomi_happy.png',
+  './assets/portraits/arjun_happy.png',
+  './assets/portraits/priya_happy.png',
+  './assets/portraits/jordan_happy.png',
+  './assets/portraits/mei_lin_happy.png',
+  './assets/portraits/mateo_happy.png',
+  './assets/portraits/ava_happy.png',
+  './assets/portraits/nia_happy.png',
+  './assets/portraits/claire_happy.png',
 ];
 
 self.addEventListener('install', (e) => {
