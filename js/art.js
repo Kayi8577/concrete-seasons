@@ -1406,6 +1406,12 @@
     ctx.clearRect(0, 0, S, S);
     const T = S; // treat icon box like a tile
     const item = CS.ITEMS[id];
+    if (id === 'honey') {
+      rr(ctx, S * .28, S * .3, S * .44, S * .5, S * .1, '#d99a2b');
+      rr(ctx, S * .3, S * .38, S * .18, S * .3, S * .08, 'rgba(255,235,180,.5)');
+      rr(ctx, S * .24, S * .2, S * .52, S * .14, S * .05, P.woodDark);
+      return;
+    }
     if (id === 'rod') {
       ctx.strokeStyle = P.woodDark; ctx.lineWidth = S * .07; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(S * .18, S * .85); ctx.lineTo(S * .72, S * .18); ctx.stroke();

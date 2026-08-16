@@ -34,7 +34,7 @@ CS.NPCS = {
     name:'Grace Okafor', color:'#b07a2a', gender:'F', rom:[],
     look:{ skin:'#8d5a33', hair:'#b3542e', style:'wrap', outfit:'#b07a2a' },
     bio:'Owns Moonrise Bakery. The neighborhood runs on her ovens.',
-    loved:['strawberry'], liked:['tulip','meal_galette'],
+    loved:['strawberry','honey'], liked:['tulip','meal_galette'],
   },
   malik: {
     name:'Malik Johnson', color:'#5c8a6f', gender:'M', rom:[],

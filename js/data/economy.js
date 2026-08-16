@@ -36,6 +36,7 @@ CS.ITEMS = {
   fish_bass:      { name:'Striped Bass',    type:'catch', sell:62,  energy:18, desc:'Fall migration royalty. Anglers cancel plans for these.' },
   fish_flounder:  { name:'Winter Flounder', type:'catch', sell:44,  energy:14, desc:'Flat, patient, delicious. Winter is its season.' },
   fish_sturgeon:  { name:'Atlantic Sturgeon', type:'catch', sell:250, energy:30, desc:'A living fossil. Nobody will believe you without a photo.' },
+  honey:          { name:'Rooftop Honey',    type:'crop',  sell:45,  energy:20, desc:'Your bees worked the whole island for this. Tastes like linden and summer.' },
   tomato_seed:    { name:'Tomato Seeds',    type:'seed', crop:'tomato',    desc:'Summer star. Regrows. 7 days.' },
   basil_seed:     { name:'Basil Seeds',     type:'seed', crop:'basil',     desc:'Nico will find you. 5 days.' },
   cucumber_seed:  { name:'Cucumber Seeds',  type:'seed', crop:'cucumber',  desc:'Cool in every sense. 6 days.' },
@@ -121,6 +122,12 @@ CS.FARM_UPGRADES = {
     desc:'Rich soil: crops sometimes grow two days in one.' },
   hydro:      { name:'Hydroponic racks', cost:1500, needs:'irrigation',
     desc:'Eight more greenhouse beds, self-watering, season-proof. The future smells like basil.' },
+  wideCan:    { name:'Wide watering can', cost:300,
+    desc:'A broad brass rose: watering one plot splashes its neighbors too.' },
+  sharpTools: { name:'Sharpened tool set', cost:220,
+    desc:'Keen edges. Tilling and harvesting take less out of you.' },
+  beehive:    { name:'Rooftop beehive', cost:500,
+    desc:'A quiet box of coworkers. Honey every few days, spring through fall.' },
 };
 
 /* flea-market weekend stock: mostly the thrift pool at hipster prices,

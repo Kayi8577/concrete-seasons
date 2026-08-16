@@ -229,6 +229,14 @@
         ? `sent two Harbor House volunteers by your plot this morning. everything's watered. ${S.volunteerDays} more day${S.volunteerDays > 1 ? 's' : ''} on the sheet`
         : 'volunteer crew finished their last morning at your plot. sign-up sheet is back on the board whenever');
     }
+    if (S.farmUpgrades.beehive && S.time.seasonIndex !== 3 && G.totalDay() % 3 === 0) {
+      G.addItem('honey', 1);
+      CS.ui.toast('The hive left you a jar of honey.');
+      if (!S.flags.firstHoney) {
+        S.flags.firstHoney = true;
+        discover('first_honey', 'First jar of rooftop honey. The bees range the whole island — cherry blossoms, community garden, one confused geranium box in Queens.');
+      }
+    }
     if (S.totalEarned >= 5000 && !S.bagels.includes('hustle')) {
       findBagel('hustle', 'Morning knock: Malik, holding a paper bag. "Five grand shipped out of one community plot. Whole board voted. This is the good stuff from Moonrise — Grace glazed it herself."');
     }
@@ -677,6 +685,43 @@
   }
   G.enterScene = enterScene;
 
+  /* ================= marathon weekend: the neighborhood heat ================= */
+  function marathonStall() {
+    const opts = [{ label: 'Sell at the Cheer Station (1.4x)', fn: () => CS.ui.openSell(1.4, 'Cheer Station Stand') }];
+    if (!S.flags['bet' + G.totalDay()]) {
+      opts.push({ label: 'Neighborhood heat: place a $50 bet', fn: () => betMenu() });
+    }
+    opts.push({ label: 'Just cheer', fn: () => CS.ui.narrate('You clap until your hands sting. A runner in a hot-dog costume high-fives you at mile 19 pace.') });
+    CS.ui.choose('The Cheer Station is set up at the rail. A chalkboard lists the annual "neighborhood heat" — locals racing the last three miles for bragging rights.', opts);
+  }
+  function betMenu() {
+    const RUNNERS = [
+      { id: 'gabriel', name: 'Gabriel (the favorite)', odds: 1.8, w: .5 },
+      { id: 'jordan',  name: 'Jordan (steady diesel)', odds: 2.5, w: .3 },
+      { id: 'avery',   name: 'Avery (chaos entry)',    odds: 4,   w: .2 },
+    ];
+    CS.ui.choose('Fifty bucks on the neighborhood heat. Who takes it?', RUNNERS.map(r => ({
+      label: `${r.name} — pays ${r.odds}x`,
+      fn: () => {
+        if (S.player.money < 50) { CS.ui.toast('Not enough money.'); return; }
+        S.player.money -= 50;
+        S.flags['bet' + G.totalDay()] = true;
+        let roll = Math.random(), winner = RUNNERS[0];
+        for (const c of RUNNERS) { if ((roll -= c.w) <= 0) { winner = c; break; } }
+        const won = winner.id === r.id;
+        if (won) S.player.money += Math.round(50 * r.odds);
+        CS.ui.refreshHUD();
+        const finish = {
+          gabriel: 'Gabriel kicks at the bridge shadow and nobody answers — he crosses grinning like it was a warm-up.',
+          jordan: 'Jordan runs the same split three miles straight and grinds everyone down. Metronome legs.',
+          avery: 'Avery goes out way too fast, dies at mile two, and somehow finds a second life at the seawall to steal it at the line.',
+        }[winner.id];
+        CS.ui.narrate(`${finish}\n\n${won ? `Your ticket pays $${Math.round(50 * r.odds)}. The chalkboard guy salutes you.` : 'Your ticket is now a bookmark. There is always next year.'}`);
+        if (won) discover('heat_win', `Called the neighborhood heat: ${winner.id} took it and the ticket paid ${r.odds}x.`);
+      },
+    })).concat([{ label: 'Keep your money', fn: () => marathonStall() }]));
+  }
+
   /* ================= golden bagels (urban power berries) ================= */
   const BAGELS = { till: 1, lighthouse: 1, ruin: 1, fish: 1, hustle: 1 };
   function findBagel(id, flavor) {
@@ -720,6 +765,7 @@
     S.fishing.caught += 1;
     G.addItem(bySeason, 1);
     CS.ui.toast(`Caught a ${CS.ITEMS[bySeason].name}!`);
+    discover('memo_' + bySeason, `Fish memo: ${CS.ITEMS[bySeason].name} — ${CS.ITEMS[bySeason].desc}`);
     if (!S.flags.firstFish) {
       S.flags.firstFish = true;
       discover('first_fish', `First catch: a ${CS.ITEMS[bySeason].name}, pulled out of the East River like it was nothing.`);
@@ -757,7 +803,8 @@
       const stallFests = { night_market: 1.5, street_food: 1.5, holiday_market: 1.5, lunar_new_year: 1.5, marathon: 1.4 };
       const rightPlace = fest && ((fest.where || 'outdoor') === scene);
       if (fest && stallFests[fest.key] && rightPlace) {
-        CS.ui.openSell(stallFests[fest.key], fest.key === 'marathon' ? 'Cheer Station Stand' : fest.name + ' Stall');
+        if (fest.key === 'marathon') { marathonStall(); return; }
+        CS.ui.openSell(stallFests[fest.key], fest.name + ' Stall');
       } else {
         CS.ui.narrate("An empty market stall. On festival days these come alive.");
       }
@@ -1045,7 +1092,7 @@
     const P = S.player;
 
     if (!pl || !pl.tilled) {
-      if (!spendEnergy(CS.COSTS.till)) return;
+      if (!spendEnergy(S.farmUpgrades.sharpTools ? 2 : CS.COSTS.till)) return;
       S.farm.plots[key] = { tilled: true, crop: null, days: 0, watered: false };
       if (!S.bagels.includes('till') && Math.random() < .03) {
         findBagel('till', 'Your trowel clinks against something. Buried a hand deep in the community plot, wrapped in wax paper from a deli that closed decades ago:');
@@ -1084,7 +1131,7 @@
     }
     const def = CS.CROPS[pl.crop];
     if (pl.days >= def.days) {
-      if (!spendEnergy(CS.COSTS.harvest)) return;
+      if (!spendEnergy(S.farmUpgrades.sharpTools ? 1 : CS.COSTS.harvest)) return;
       const perfect = !pl.stunted && !pl.stormHit && Math.random() < .3;
       G.addItem(pl.crop, perfect ? 2 : 1);
       CS.ui.toast(perfect ? `Perfect ${def.name} — double harvest!` : `Harvested ${def.name}!`);
@@ -1101,7 +1148,14 @@
     if (!pl.watered) {
       if (!spendEnergy(CS.COSTS.water)) return;
       pl.watered = true;
-      CS.ui.toast('Watered');
+      let splashed = 0;
+      if (S.farmUpgrades.wideCan) {
+        for (const nb of [[x - 1, y], [x + 1, y]]) {
+          const npl = S.farm.plots[plotKey(scene, nb[0], nb[1])];
+          if (npl && npl.tilled && npl.crop && !npl.dead && !npl.watered) { npl.watered = true; splashed++; }
+        }
+      }
+      CS.ui.toast(splashed ? `Watered ${1 + splashed} plots` : 'Watered');
       return;
     }
     CS.ui.narrate(`${def.name} — day ${pl.days} of ${def.days}. Watered and doing its quiet vegetable thing.`);
@@ -1604,6 +1658,9 @@
           irrigation: '"Drip lines," Malik says, unrolling tube like it\'s treasure. "Now the plants drink on schedule and you sleep past sunrise. Civilization."',
           compost: 'Malik pats the new compost bin like an old friend. "Feed the soil, the soil feeds you. Oldest deal on earth."',
           hydro: 'Racks, pumps, soft grow-light hum. Malik whistles. "Greenhouse grows in January now. The old girl\'s got a second life."',
+          wideCan: 'Malik hands over a watering can with a rose wide as a dinner plate. "One pass, three plots. Work smarter, kid."',
+          sharpTools: 'An afternoon at the whetstone. Malik tests an edge on his thumbnail and nods. "Sharp tools, easy days."',
+          beehive: 'The hive goes up on the greenhouse roof. Malik taps the box gently. "Forty thousand employees, zero complaints. Check your shelf every few days."',
         }[key];
         CS.ui.narrate(react);
         discover('upgrade_' + key, `Farm upgrade: ${u.name}. ${u.desc}`);
