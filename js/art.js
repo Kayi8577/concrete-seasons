@@ -851,6 +851,35 @@
     circle(ctx, sx + T - 12, sy + T / 2, 1.8, P.yellow);
   };
 
+  /* FoMT-style emotion bubble above a sprite's head: '!', heart, or note */
+  A.emote = function (ctx, cx, topY, T, kind, t) {
+    const bobY = topY - 6 + Math.sin(t / 220) * 1.5;
+    ctx.fillStyle = '#fdf6e3';
+    ctx.strokeStyle = '#5a3e28'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.roundRect(cx - 9, bobY - 18, 18, 16, 5); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - 3, bobY - 3); ctx.lineTo(cx, bobY + 2); ctx.lineTo(cx + 3, bobY - 3);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    const gy = bobY - 10;
+    if (kind === 'heart') {
+      ctx.fillStyle = '#e0704f';
+      ctx.beginPath();
+      ctx.moveTo(cx, gy + 4.5);
+      ctx.bezierCurveTo(cx - 5, gy + 1, cx - 4.5, gy - 4, cx, gy - 1.5);
+      ctx.bezierCurveTo(cx + 4.5, gy - 4, cx + 5, gy + 1, cx, gy + 4.5);
+      ctx.fill();
+    } else if (kind === 'note') {
+      ctx.strokeStyle = '#4a6fa5'; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.moveTo(cx + 2.5, gy - 4.5); ctx.lineTo(cx + 2.5, gy + 2.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + 2.5, gy - 4.5); ctx.quadraticCurveTo(cx + 5.5, gy - 4, cx + 5, gy - 1.5); ctx.stroke();
+      ctx.fillStyle = '#4a6fa5';
+      ctx.beginPath(); ctx.ellipse(cx + 1, gy + 3, 2.4, 1.8, -.4, 0, Math.PI * 2); ctx.fill();
+    } else { // '!'
+      ctx.fillStyle = '#c0392b';
+      ctx.fillRect(cx - 1.4, gy - 5, 2.8, 6.5);
+      ctx.beginPath(); ctx.arc(cx, gy + 4.4, 1.6, 0, Math.PI * 2); ctx.fill();
+    }
+  };
+
   A.doormat = function (ctx, sx, sy, T, accent) { // welcome mat under a sprite facade's door
     rr(ctx, sx + 6, sy + 4, T - 12, T * .38, 2.5, accent || '#8a5a3b');
     rr(ctx, sx + 8, sy + 6, T - 16, T * .38 - 4, 1.5, 'rgba(255,244,220,.4)');
@@ -1395,7 +1424,7 @@
     ctx.restore();
   };
 
-  A.portrait = function (canvas, opts, id) {
+  A.portrait = function (canvas, opts, id, mood) {
     const c = canvas.getContext('2d');
     const S = canvas.width;
     c.clearRect(0, 0, S, S);
@@ -1404,11 +1433,13 @@
     c.beginPath(); c.roundRect(0, 0, S, S, S * .24); c.fill();
     c.fillStyle = 'rgba(92,138,111,.12)';
     c.beginPath(); c.roundRect(0, S * .55, S, S * .45, S * .24); c.fill();
-    // generated portrait sprite, when this NPC has one loaded;
-    // close friends get the happy expression, like FoMT heart portraits
+    // generated portrait sprite, when this NPC has one loaded.
+    // mood ('happy'/'calm') picks the expression per dialogue line, FoMT-style;
+    // without a mood, close friends default to the happy face
     let pim = null;
     if (id) {
-      const happy = CS.game && CS.game.tierOf && CS.game.tierOf(id) >= 3;
+      const happy = mood === 'happy' ||
+        (mood === undefined && CS.game && CS.game.tierOf && CS.game.tierOf(id) >= 3);
       pim = (happy && A.portraitImg(id + '_happy')) || A.portraitImg(id);
     }
     if (pim) {

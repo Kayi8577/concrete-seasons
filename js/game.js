@@ -1551,9 +1551,14 @@
     CS.ui.choose(`${npc.name} — ${status}`, opts);
   };
 
+  function showEmote(id, kind) {
+    S.emoteRT = { id, kind, until: performance.now() + 1600 };
+  }
+  G.showEmote = showEmote;
   function doTalk(id) {
     const npc = CS.NPCS[id];
     const r = S.npcs[id];
+    showEmote(id, !r.met ? 'exclaim' : G.tierOf(id) >= 3 ? 'heart' : 'note');
     r.fam += 1;
     if (!r.talkedToday && !npc.decorative) { r.friend += 8; r.talkedToday = true; }
     // festival warmth: first chat with each person at a festival is worth more
@@ -1582,9 +1587,11 @@
         const first = npc.name.split(' ')[0];
         if ((npc.loved || []).includes(k)) {
           gain = 22;
+          G.showEmote(id, 'heart');
           react = `${first}'s whole face changes. "Okay — you actually get me. Thank you." That one landed.`;
         } else if ((npc.liked || []).includes(k)) {
           gain = 12;
+          G.showEmote(id, 'note');
           react = `"Oh — that's really thoughtful." ${first} means it.`;
         } else {
           react = `${first} accepts it with the polite warmth of a good neighbor.`;

@@ -440,6 +440,7 @@
     entities.sort((a, b2) => a.b - b2.b || (a.pl ? 1 : 0) - (b2.pl ? 1 : 0));
     for (const e of entities) e.d();
 
+
     // labels
     if (map.labels) {
       ctx.font = 'bold 12px sans-serif';
@@ -488,6 +489,14 @@
         ctx.beginPath(); ctx.roundRect(nx - w / 2 - 5, ny - 9, w + 10, 16, 7); ctx.fill();
         ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle';
         ctx.fillText(CS.NPCS[id].name, nx, ny);
+      }
+    }
+
+    // FoMT-style emotion bubble over whoever just reacted (above the name tag)
+    if (state.emoteRT && performance.now() < state.emoteRT.until) {
+      const ert = state.npcRT[state.emoteRT.id];
+      if (ert && ert.scene === scene) {
+        CS.art.emote(ctx, ert.px - E.camX + TILE / 2, ert.py - E.camY - TILE * .8, TILE, state.emoteRT.kind, state.animT);
       }
     }
 

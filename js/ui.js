@@ -142,8 +142,18 @@
     choiceMode = false;
   }
 
+  let dlgNpc = null;
+  // FoMT-style per-line expression: guess the mood from the line itself
+  function guessMood(text) {
+    const t = (text || '').toLowerCase();
+    if (/sorry|miss |tired|sigh|worried|worry|hard week|rough|exhaust|can't sleep|lonely|scared/.test(t)) return 'calm';
+    if (/haha|laugh|grin|love|loved|thank|amazing|best |great|perfect|delicious|beautiful|yay|finally!|!!/.test(t)) return 'happy';
+    if (/!$|! /.test(t) && Math.random() < .6) return 'happy';
+    return 'calm';
+  }
   U.dialogue = function (npc, lines, done) {
     const pc = $('dlg-portrait');
+    dlgNpc = npc || null;
     if (npc) CS.art.portrait(pc, npc.look, npc.id); else CS.art.narratorPortrait(pc);
     $('dlg-name').textContent = npc ? npc.name : '';
     if (npc && npc.id && G().state().npcs[npc.id] && G().state().npcs[npc.id].met) {
@@ -177,6 +187,9 @@
     }
     const text = dialogueQueue.shift();
     if (text === undefined) { closeDlg(); const d = dialogueDone; dialogueDone = null; if (d) d(); return; }
+    if (dlgNpc && dlgNpc.id) {
+      CS.art.portrait($('dlg-portrait'), dlgNpc.look, dlgNpc.id, guessMood(text));
+    }
     typeText($('dlg-text'), text);
   };
 
