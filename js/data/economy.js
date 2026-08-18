@@ -73,6 +73,10 @@ CS.ITEMS = {
   planter_box:  { name:'Planter Box',    type:'thrift', sell:22, desc:'Cedar. Someone loved plants once.' },
   transit_sign: { name:'Transit Sign',   type:'thrift', sell:90, desc:'Authentic. Don\'t ask how it got here.', rare:true },
   paperback:    { name:'Worn Paperback', type:'thrift', sell:8,  desc:'Margins full of a stranger\'s thoughts.' },
+  // hub-shop goods (v27: the storefronts opened up)
+  red_envelope:  { name:'Lucky Red Envelope', type:'gift', sell:6,  desc:'Good fortune, folded flat.' },
+  paper_lantern: { name:'Paper Lantern',      type:'gift', sell:11, desc:'Warm light you can carry home.' },
+  boba_tea:      { name:'Bubble Tea',         type:'food', energy:22, sell:4, desc:'Brown sugar, extra pearls, to go.' },
   enamel_pot:   { name:'Enamel Pot',     type:'thrift', sell:33, desc:'Decades of Sunday sauce in its bones.' },
 };
 

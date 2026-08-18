@@ -8,54 +8,64 @@
 CS.NPCS = {
   maya: {
     name:'Maya Chen', color:'#c74f6d', gender:'F', rom:['F','M'],
+    bday:[1,3],
     look:{ skin:'#e8b98a', hair:'#26221e', style:'long', outfit:'#c74f6d' },
     bio:'Emergency medicine resident. Dry humor, always slightly under-slept.',
     loved:['coffee'], liked:['strawberry','meal_salad'],
   },
   daniel: {
     name:'Daniel Park', color:'#4a6fa5', gender:'M', rom:['F','M'],
+    bday:[0,21],
     look:{ skin:'#e8b98a', hair:'#1f1c19', style:'short', outfit:'#4a6fa5' },
     bio:'Product manager at a healthcare-tech startup. Structured. Funny about it.',
     loved:['basil'], liked:['bread','coffee'],
   },
   lena: {
     name:'Lena Hoffman', color:'#7d5ba6', gender:'F', rom:['F'],
+    bday:[3,9],
     look:{ skin:'#f6d7b8', hair:'#a0632a', style:'bun', outfit:'#7d5ba6' },
     bio:'Neuroscience PhD student. Intense, curious, keeps strange hours.',
     loved:['coffee'], liked:['strawberry','paperback'],
   },
   nico: {
     name:'Nico Russo', color:'#b0653a', gender:'M', rom:['F','M','NB'],
+    bday:[1,27],
     look:{ skin:'#e0aa78', hair:'#3a2c1e', style:'curly', outfit:'#b0653a' },
     bio:'Manages his family\'s restaurant in Queens. Warm, social, impulsive.',
     loved:['basil','tomato'], liked:['meal_pasta','enamel_pot','fish_bass','fish_porgy'],
   },
   grace: {
     name:'Grace Okafor', color:'#b07a2a', gender:'F', rom:[],
+    bday:[0,4],
     look:{ skin:'#8d5a33', hair:'#b3542e', style:'wrap', outfit:'#b07a2a' },
     bio:'Owns Moonrise Bakery. The neighborhood runs on her ovens.',
     loved:['strawberry','honey'], liked:['tulip','meal_galette'],
   },
   malik: {
     name:'Malik Johnson', color:'#5c8a6f', gender:'M', rom:[],
+    bday:[2,17],
     look:{ skin:'#8d5a33', hair:'#3f4f3a', style:'cap', outfit:'#5c8a6f' },
     bio:'Retired transit worker. Coordinates the community farm. Knows everyone.',
     loved:['tulip'], liked:['lettuce','radish','sunflower'],
   },
   joan: {
     name:'Joan', color:'#8a7361', gender:'F', rom:[],
+    bday:[0,26],
     look:{ skin:'#f6d7b8', hair:'#8a8a8a', style:'short', outfit:'#8a7361' },
     bio:'Juniper Café barista.', decorative:true,
   },
   rosa: {
     name:'Nonna Rosa', color:'#7a4a3a', gender:'F', rom:[],
+    bday:[3,3],
     look:{ skin:'#e0aa78', hair:'#c9c4bc', style:'bun', outfit:'#7a4a3a' },
     bio:"Nico's grandmother. Bellini's true head of state.", decorative:true,
   },
   mrs_woo: {
     name:'Mrs. Woo', color:'#5f6e4e', gender:'F', rom:[],
+    bday:[1,11],
     look:{ skin:'#f0c795', hair:'#8a8a8a', style:'bun', outfit:'#5f6e4e' },
     bio:'Runs the Jade Pavilion tea shop on Mott Street.', decorative:true,
+    loved:['red_envelope'], liked:['tulip'],
   },
 };
 
@@ -63,60 +73,70 @@ CS.NPCS = {
 Object.assign(CS.NPCS, {
   sofia: {
     name:'Sofia Martinez', color:'#e0704f', gender:'F', rom:['M'],
+    bday:[2,2],
     look:{ skin:'#c68a52', hair:'#26221e', style:'long', outfit:'#e0704f' },
     bio:'Public-school social worker. Lives with family. Knows everyone\'s cousin.',
     loved:['tulip'], liked:['bread','meal_salad'],
   },
   gabriel: {
     name:'Gabriel Rivera', color:'#3f6e56', gender:'M', rom:['F'],
+    bday:[0,12],
     look:{ skin:'#c68a52', hair:'#1f1c19', style:'short', outfit:'#3f6e56' },
     bio:'Paramedic. Jokes his way through twelve-hour shifts.',
     loved:['meal_pasta'], liked:['coffee','bread'],
   },
   theo: {
     name:'Theo Bennett', color:'#4d4a5e', gender:'M', rom:['F'],
+    bday:[2,21],
     look:{ skin:'#5d3a20', hair:'#141210', style:'curly', outfit:'#4d4a5e' },
     bio:'Documentary photographer. Calm, observant, allergic to five-year plans.',
     loved:['film_camera','vinyl_record'], liked:['coffee'],
   },
   avery: {
     name:'Avery Morgan', color:'#c2589e', gender:'NB', rom:['F','M'],
+    bday:[1,6],
     look:{ skin:'#f6d7b8', hair:'#3aa6a0', style:'short', outfit:'#c2589e' },
     bio:'Freelance designer, bartender at The Anchor. Funny, independent, tired.',
-    loved:['sunflower'], liked:['coffee','old_poster'],
+    loved:['sunflower'], liked:['coffee','old_poster','vinyl_record'],
   },
   naomi: {
     name:'Naomi Brooks', color:'#2f3f5c', gender:'F', rom:['M','F'],
+    bday:[3,17],
     look:{ skin:'#5d3a20', hair:'#141210', style:'bun', outfit:'#2f3f5c' },
     bio:'Corporate attorney. Polished, generous, running on fumes.',
     loved:['meal_galette'], liked:['coffee','tulip'],
   },
   arjun: {
     name:'Arjun Mehta', color:'#5b8aa6', gender:'M', rom:['F'],
+    bday:[0,29],
     look:{ skin:'#a06a3b', hair:'#1f1c19', style:'short', outfit:'#5b8aa6' },
     bio:'Machine-learning engineer at Pier Labs. Quiet, thoughtful, far from home.',
     loved:['meal_pasta'], liked:['cucumber','paperback'],
   },
   priya: {
     name:'Priya Nair', color:'#9c4f2e', gender:'F', rom:['M'],
+    bday:[2,9],
     look:{ skin:'#a06a3b', hair:'#26221e', style:'long', outfit:'#9c4f2e' },
     bio:'Urban-planning analyst on the Harbor Point redevelopment. Practical, direct.',
-    loved:['cucumber'], liked:['bread','planter_box'],
+    loved:['cucumber'], liked:['bread','planter_box','paper_lantern'],
   },
   jordan: {
     name:'Jordan Ellis', color:'#6e5a2e', gender:'M', rom:['F'],
+    bday:[1,20],
     look:{ skin:'#5d3a20', hair:'#141210', style:'short', outfit:'#6e5a2e' },
     bio:'Union infrastructure worker. Reliable in person, unreachable by text.',
-    loved:['bread'], liked:['radish','enamel_pot'],
+    loved:['bread'], liked:['radish','enamel_pot','vinyl_record'],
   },
   mei_lin: {
     name:'Mei-Lin Zhou', color:'#8a3b4a', gender:'F', rom:['M','F'],
+    bday:[3,21],
     look:{ skin:'#f0c795', hair:'#1a1714', style:'long', outfit:'#8a3b4a' },
     bio:'Museum exhibition producer. Stylish, observant, careful with her heart.',
-    loved:['film_camera','ceramic_vase'], liked:['strawberry'],
+    loved:['film_camera','ceramic_vase'], liked:['strawberry','red_envelope','boba_tea'],
   },
   mateo: {
     name:'Mateo Alvarez', color:'#48653a', gender:'M', rom:['M','F'],
+    bday:[2,24],
     look:{ skin:'#c68a52', hair:'#26221e', style:'curly', outfit:'#48653a' },
     bio:'Public defender. Takes care of everyone except himself.',
     loved:['coffee'], liked:['bread','meal_roast'],
@@ -147,6 +167,7 @@ CS.NPC_PAIRS = [
 
 CS.NPCS.claire = {
   name:'Claire Fontaine', color:'#37535e', gender:'F', rom:[],
+    bday:[1,29],
   look:{ skin:'#f6d7b8', hair:'#c9a24b', style:'long', outfit:'#37535e' },
   bio:'Opened Glasshouse Coffee with a loan, a dream, and very good taste.', decorative:true,
 };
@@ -155,15 +176,17 @@ CS.NPCS.claire = {
 Object.assign(CS.NPCS, {
   ava: {
     name:'Ava Coleman', color:'#c98a3c', gender:'F', rom:[],
+    bday:[0,18],
     look:{ skin:'#5d3a20', hair:'#141210', style:'curly', outfit:'#c98a3c' },
     bio:'Sixteen. Volunteers at Harbor House, plans three futures at once.',
-    loved:['strawberry'], liked:['bread'],
+    loved:['strawberry'], liked:['bread','boba_tea'],
   },
   nia: {
     name:'Nia Coleman', color:'#5b8aa6', gender:'F', rom:[],
+    bday:[2,14],
     look:{ skin:'#5d3a20', hair:'#141210', style:'bun', outfit:'#5b8aa6' },
     bio:"Twelve. Ava's little sister. Knows every cat on the island by name.",
-    loved:['strawberry'], liked:['tulip'],
+    loved:['strawberry'], liked:['tulip','boba_tea'],
   },
 });
 

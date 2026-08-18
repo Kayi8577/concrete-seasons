@@ -148,7 +148,7 @@
   }
   // exterior door accent per building
   const DOOR_ACCENT = { A:'#8a5a3b', C:'#5c8a6f', B:'#b07a2a', M:'#4a6fa5', G:'#88a89b',
-                        S:'#7d5ba6', R:'#8a3b4a', L:'#5b8aa6', H:'#c9553e', D:'#b0653a', Q:'#37535e' };
+                        S:'#7d5ba6', R:'#8a3b4a', L:'#5b8aa6', H:'#c9553e', D:'#b0653a', Q:'#37535e', J:'#c9553e' };
 
   /* ---------------- render ---------------- */
   E.render = function (state) {
@@ -384,7 +384,7 @@
             break;
           }
         }
-        if ('ACBMGSRLHDQ'.includes(ch) && isOut) doorTiles.push([x, y, ch]);
+        if ('ACBMGSRLHDQJ'.includes(ch) && isOut) doorTiles.push([x, y, ch]);
       }
     }
 

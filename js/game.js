@@ -250,6 +250,18 @@
       G.addMsg('hp', `${CS.SEASONS[S.time.seasonIndex]} has arrived in Harbor Point. The market has new seeds.`);
     }
 
+    // ---- birthdays: Sofia knows everyone's, and tells you once you're close ----
+    for (const bid of Object.keys(CS.NPCS)) {
+      const bn = CS.NPCS[bid];
+      if (!bn.bday || bn.bday[0] !== S.time.seasonIndex || bn.bday[1] !== S.time.day) continue;
+      if (!S.npcs[bid] || !S.npcs[bid].met || G.tierOf(bid) < 2) continue;
+      if (S.npcs.sofia && S.npcs.sofia.hasNumber && bid !== 'sofia') {
+        G.addMsg('sofia', `heads up — it's ${bn.name.split(' ')[0]}'s birthday today. bring something nice, act casual, thank me later`);
+      } else {
+        CS.ui.toast(`Today is ${bn.name.split(' ')[0]}'s birthday`);
+      }
+    }
+
     // ---- NPC↔NPC life (weekly, Mondays) ----
     if (S.time.weekdayIndex === 0) simulatePairs();
 
@@ -829,6 +841,10 @@
     if (ch === 'U' && scene === 'teahouse') return () => CS.ui.buyPrompt('tea', 5, "Mrs. Woo's oolong. +20 energy.");
     if (ch === 'U' && scene === 'bellinis') return () => bellinisMenu();
     if (ch === 'U' && scene === 'foodcourt') return () => foodcourtMenu();
+    if (ch === 'U' && scene === 'mott') return () => mottMenu();
+    if (ch === 'U' && scene === 'boba') return () => bobaMenu();
+    if (ch === 'U' && scene === 'wcafe') return () => wcafeMenu();
+    if (ch === 'U' && scene === 'wflea') return () => fleaHallMenu();
     if (ch === 'h') return () => {
       if (S.inv.rod) {
         CS.ui.choose('The railing is right there and the river is doing its thing.', [
@@ -961,6 +977,40 @@
       { label: 'Bar snacks — $6 (+15 energy)', fn: () => buyEnergy(6, 15, 'Salty enough to justify another seltzer.') },
       { label: 'Just soaking it in', fn: () => {} },
     ]);
+  }
+  function buyItem(id, price, flavor) {
+    if (S.player.money < price) { CS.ui.toast('Not enough money.'); return; }
+    S.player.money -= price;
+    G.addItem(id, 1);
+    CS.ui.refreshHUD();
+    CS.ui.narrate(flavor);
+  }
+  function mottMenu() {
+    CS.ui.choose('Golden Bowl. Dried herbs in glass jars, red paper, a cat asleep on the register.', [
+      { label: 'Chrysanthemum tea — $5 (+20 energy)', fn: () => buyEnergy(5, 20, 'Golden, floral, patient. The cat approves of your stillness.') },
+      { label: 'Lucky red envelope — $8', fn: () => buyItem('red_envelope', 8, 'The shopkeeper picks the crispest one. "For giving," she reminds you.') },
+      { label: 'Paper lantern — $15', fn: () => buyItem('paper_lantern', 15, 'Folded flat, waiting for a reason to glow.') },
+      { label: 'Just browsing', fn: () => {} },
+    ]);
+  }
+  function bobaMenu() {
+    CS.ui.choose('Sunrise Boba. The shaker machines drum like rain on a roof.', [
+      { label: 'Brown sugar milk tea — $6 (+22 energy)', fn: () => buyEnergy(6, 22, 'Tiger stripes down the cup. Pearls with commitment.') },
+      { label: 'Taro slush — $7 (+24 energy)', fn: () => buyEnergy(7, 24, 'Purple, absurd, perfect.') },
+      { label: 'One to go — $6 (a giftable Bubble Tea)', fn: () => buyItem('boba_tea', 6, 'Sealed, sleeved, and riding shotgun back to the island.') },
+      { label: 'Just soaking in the AC', fn: () => {} },
+    ]);
+  }
+  function wcafeMenu() {
+    CS.ui.choose('Turntable Coffee. Something warm is playing at 33 and a third.', [
+      { label: 'Pour-over — $5 (+18 energy)', fn: () => buyEnergy(5, 18, 'The barista annotates your cup with the tasting notes of the record, not the coffee.') },
+      { label: 'Dig the crates — vinyl $24', fn: () => buyItem('vinyl_record', 24, "You pull one out at random. The barista nods slowly. \"That's the one.\"") },
+      { label: 'Just listening', fn: () => {} },
+    ]);
+  }
+  function fleaHallMenu() {
+    if (S.time.weekdayIndex >= 5) CS.ui.openFlea();
+    else CS.ui.narrate('The hall on a weekday: folded tables, sleeping neon, one vendor doing inventory who nods at you. The flea wakes up Saturday.');
   }
   function buyEnergy(price, energy, flavor) {
     if (S.player.money < price) { CS.ui.toast('Not enough money.'); return; }
@@ -1183,10 +1233,22 @@
     }
   };
 
+  function passOut() {
+    const fee = Math.min(60, Math.max(0, Math.floor(S.player.money)));
+    S.player.money -= fee;
+    const hadMayaNumber = S.npcs.maya && S.npcs.maya.hasNumber;
+    discover('passout_' + G.totalDay(), `Pushed too hard and blacked out. Woke up in urgent care, $${fee} lighter. (${CS.SEASONS[S.time.seasonIndex]} ${S.time.day}, Year ${S.time.year})`);
+    CS.ui.narrate(`The edges of your vision go soft. You push through it — and the ground trades places with the sky.\n\nFluorescent lights. A paper bracelet. The world's most expensive nap${fee ? ` ($${fee})` : ''}. Someone from urgent care walked you home.`, () => {
+      G.sleep(true);
+      if (hadMayaNumber) G.addMsg('maya', 'Urgent care report came across my desk with your name on it. You COLLAPSED. Eat food. Sleep hours. I will make a chart of this. — Maya');
+    });
+  }
   function spendEnergy(n) {
     const cost = Math.max(1, Math.round(n * G.diff().energyMult));
     if (S.player.energy < cost) {
-      CS.ui.narrate("You're exhausted. Eat something, grab a coffee, or sleep it off.");
+      if (S.exhaustWarnDay === G.totalDay()) { passOut(); return false; }
+      S.exhaustWarnDay = G.totalDay();
+      CS.ui.narrate("You're exhausted — vision swimming, hands clumsy. Eat something, grab a coffee, or sleep. One more push and you'll drop.");
       return false;
     }
     S.player.energy -= cost;
@@ -1555,6 +1617,10 @@
     S.emoteRT = { id, kind, until: performance.now() + 1600 };
   }
   G.showEmote = showEmote;
+  G.isBday = function (id) {
+    const b = CS.NPCS[id] && CS.NPCS[id].bday;
+    return !!(b && b[0] === S.time.seasonIndex && b[1] === S.time.day);
+  };
   function doTalk(id) {
     const npc = CS.NPCS[id];
     const r = S.npcs[id];
@@ -1570,7 +1636,16 @@
       G.addMsg(id, CS.MESSAGES[id].hello);
       CS.ui.toast(`${npc.name.split(' ')[0]} texted you — you have their number now`);
     }
-    const line = pickLine(id);
+    let line = pickLine(id);
+    if (G.isBday(id) && r.met) {
+      const yk = 'bday_' + id + '_' + S.time.year;
+      if (!S.flags[yk]) {
+        S.flags[yk] = true;
+        r.friend += 6;
+        const first = npc.name.split(' ')[0];
+        line = `"It's my birthday today, actually." ${first} says it like a small secret. "I'm glad you're the one who caught me first."`;
+      }
+    }
     CS.ui.dialogue(npc, [line], () => checkEvents('talk', id));
   }
 
@@ -1583,6 +1658,7 @@
         const r = S.npcs[id];
         G.removeItem(k, 1);
         r.giftedDay = G.totalDay();
+        const bday = G.isBday(id);
         let gain = 5, react;
         const first = npc.name.split(' ')[0];
         if ((npc.loved || []).includes(k)) {
@@ -1595,6 +1671,11 @@
           react = `"Oh — that's really thoughtful." ${first} means it.`;
         } else {
           react = `${first} accepts it with the polite warmth of a good neighbor.`;
+        }
+        if (bday) {
+          gain *= 3;
+          G.showEmote(id, 'heart');
+          react += ` "And on my birthday, too." ${first} will remember this one.`;
         }
         r.friend += gain;
         if (r.romance === 'seeing' || r.attraction > 0) r.attraction += Math.floor(gain / 3);
@@ -1923,8 +2004,33 @@
     ]);
   }
 
+  function maybeHeartEvent(id) {
+    const evs = CS.HEART_EVENTS && CS.HEART_EVENTS[id];
+    if (!evs) return false;
+    const r = S.npcs[id];
+    r.hearts = r.hearts || [];
+    if (S.lastHeartDay === G.totalDay()) return false;
+    const ev = evs.find(e => G.tierOf(id) >= e.tier && !r.hearts.includes(e.key));
+    if (!ev) return false;
+    S.lastHeartDay = G.totalDay();
+    r.hearts.push(ev.key);
+    const npc = CS.NPCS[id];
+    discover('heart_' + ev.key, `${npc.name} — ${ev.memo} (${CS.SEASONS[S.time.seasonIndex]} ${S.time.day}, Year ${S.time.year})`);
+    CS.ui.dialogue(npc, ev.lines, () => {
+      CS.ui.choose(ev.prompt, ev.choices.map(c => ({
+        label: c.label,
+        fn: () => {
+          r.friend += c.friend || 0;
+          if (c.attraction && (npc.rom || []).length) r.attraction += c.attraction;
+          CS.ui.dialogue(npc, [c.line]);
+        },
+      })));
+    });
+    return true;
+  }
   function checkEvents(trigger, arg) {
     if (!S) return;
+    if (trigger === 'talk' && arg && maybeHeartEvent(arg)) return;
     const p = S.playerRT;
     const m = S.time.minutes;
 

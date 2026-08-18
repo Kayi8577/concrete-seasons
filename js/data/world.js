@@ -9,7 +9,7 @@
           A/C/B/M/G door tiles (apartment/cafe/bakery/market/greenhouse)  E interior exit
           K kitchen  b bed  t table  W window  = shelf  O oven  d display  U counter  q aquarium spot
 */
-CS.WALKABLE = new Set(['.', '-', '_', 'r', 's', 'g', 'P', 'V', 'w', 'A', 'C', 'B', 'M', 'G', 'E', 'S', 'R', 'L', 'H', 'D', 'Q']);
+CS.WALKABLE = new Set(['.', '-', '_', 'r', 's', 'g', 'P', 'V', 'w', 'A', 'C', 'B', 'M', 'G', 'E', 'S', 'R', 'L', 'H', 'D', 'Q', 'J']);
 
 function _grid(w, h, fill) {
   const g = [];
@@ -125,7 +125,8 @@ function buildChinatown() {
   for (let y = 0; y < H; y++) { g[y][0] = '#'; g[y][W - 1] = '#'; }
   _rect(g, 4, 2, 9, 3, '#');    // teahouse block
   g[4][8] = 'D';
-  _rect(g, 16, 2, 8, 3, '#');   // flavor storefronts
+  _rect(g, 16, 2, 8, 3, '#');   // Golden Bowl herbs & gifts
+  g[4][19] = 'J';
   _rect(g, 2, 6, 3, 2, 'P');    // subway back home
   [6, 11, 15, 20].forEach(x => { g[6][x] = 'l'; });
   [8, 13, 18].forEach(x => { g[10][x] = 'l'; });
@@ -155,8 +156,8 @@ CS.MAPS = {
       { x:16, y:3.4, text:'Golden Bowl · herbs · gifts' },
       { x:12, y:12.5, text:'Mott Street' },
     ],
-    doors: { D:'teahouse' },
-    doorSpawns: { D:[8,5] },
+    doors: { D:'teahouse', J:'mott' },
+    doorSpawns: { D:[8,5], J:[19,5] },
   },
   outdoor: {
     name: 'Harbor Point',
@@ -488,6 +489,7 @@ function buildFlushing() {
   for (let x = 3; x <= 14; x++) for (let y = 2; y <= 4; y++) g[y][x] = '#'; // Golden Mall block
   g[4][8] = 'D';
   for (let x = 17; x <= 23; x++) for (let y = 2; y <= 4; y++) g[y][x] = '#';
+  g[4][20] = 'J';
   for (let x = 2; x <= 4; x++) for (let y = 6; y <= 7; y++) g[y][x] = 'P';
   [11, 16, 21].forEach(x => { g[6][x] = 'l'; });
   [7, 14, 19].forEach(x => { g[10][x] = 'o'; });
@@ -503,8 +505,8 @@ CS.MAPS.flushing = {
     { x:17, y:3.4, text:'herbs · gifts · bakery' },
     { x:11, y:12.5, text:'Main Street, Flushing' },
   ],
-  doors: { D:'foodcourt' },
-  doorSpawns: { D:[8,5] },
+  doors: { D:'foodcourt', J:'boba' },
+  doorSpawns: { D:[8,5], J:[20,5] },
 };
 CS.MAPS.foodcourt = {
   name: 'Golden Mall', outdoor: false, exitTo: 'flushing', exitKey: 'D',
@@ -528,8 +530,10 @@ function buildWilliamsburg() {
   for (let y = 0; y < H; y++) g.push(new Array(W).fill('_'));
   for (let x = 0; x < W; x++) { g[0][x] = '#'; g[1][x] = '#'; g[H-2][x] = '#'; g[H-1][x] = '#'; }
   for (let y = 0; y < H; y++) { g[y][0] = '#'; g[y][W-1] = '#'; }
-  for (let x = 3; x <= 10; x++) for (let y = 2; y <= 4; y++) g[y][x] = '#';   // warehouse
-  for (let x = 14; x <= 23; x++) for (let y = 2; y <= 4; y++) g[y][x] = '#';
+  for (let x = 3; x <= 10; x++) for (let y = 2; y <= 4; y++) g[y][x] = '#';   // Turntable Coffee
+  g[4][6] = 'D';
+  for (let x = 14; x <= 23; x++) for (let y = 2; y <= 4; y++) g[y][x] = '#';  // Artists & Fleas hall
+  g[4][18] = 'J';
   for (let x = 2; x <= 4; x++) for (let y = 6; y <= 7; y++) g[y][x] = 'P';
   // the weekend flea: a cluster of stalls
   g[7][10] = 'k'; g[7][14] = 'k'; g[10][10] = 'k'; g[10][14] = 'k';
@@ -546,9 +550,66 @@ CS.MAPS.williamsburg = {
     { x:14, y:3.4, text:'records · vintage · coffee' },
     { x:10, y:13,  text:'Bedford Ave' },
   ],
-  doors: {},
-  doorSpawns: {},
+  doors: { D:'wcafe', J:'wflea' },
+  doorSpawns: { D:[6,5], J:[18,5] },
 };
+
+/* ---------------- v27: the storefronts you could never enter ---------------- */
+CS.MAPS.mott = {
+  name: 'Golden Bowl', outdoor: false, exitTo: 'chinatown', exitKey: 'J',
+  grid: [
+    '##########',
+    '#UU....UU#',
+    '#........#',
+    '#.t....t.#',
+    '#........#',
+    '####E#####',
+  ].map(r => r.split('')),
+  labels: [],
+};
+CS.INTERIOR_SPAWNS.mott = [4, 4];
+
+CS.MAPS.boba = {
+  name: 'Sunrise Boba', outdoor: false, exitTo: 'flushing', exitKey: 'J',
+  grid: [
+    '##########',
+    '#..UUUU..#',
+    '#........#',
+    '#.t....t.#',
+    '#........#',
+    '####E#####',
+  ].map(r => r.split('')),
+  labels: [],
+};
+CS.INTERIOR_SPAWNS.boba = [4, 4];
+
+CS.MAPS.wcafe = {
+  name: 'Turntable Coffee', outdoor: false, exitTo: 'williamsburg', exitKey: 'D',
+  grid: [
+    '##########',
+    '#UU....tt#',
+    '#........#',
+    '#.t..t...#',
+    '#........#',
+    '####E#####',
+  ].map(r => r.split('')),
+  labels: [],
+};
+CS.INTERIOR_SPAWNS.wcafe = [4, 4];
+
+CS.MAPS.wflea = {
+  name: 'Artists & Fleas Hall', outdoor: false, exitTo: 'williamsburg', exitKey: 'J',
+  grid: [
+    '############',
+    '#UU..UU..UU#',
+    '#..........#',
+    '#.t......t.#',
+    '#..........#',
+    '#####E######',
+  ].map(r => r.split('')),
+  labels: [],
+};
+CS.INTERIOR_SPAWNS.wflea = [5, 4];
 
 Object.assign(CS.SPOTS, {
   ft_court:  { scene:'foodcourt', x:5, y:4 },

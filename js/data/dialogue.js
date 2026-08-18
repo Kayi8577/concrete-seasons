@@ -916,3 +916,375 @@ CS.COHAB_LINES = [
 ];
 
 })();
+
+/* =========================================================================
+   v27 — Heart events (FoMT-style): one scripted scene per relationship
+   milestone for every datable resident. Triggered after a chat once the
+   tier is reached; the choice nudges friendship/attraction.
+   ========================================================================= */
+CS.HEART_EVENTS = {
+  maya: [
+    { key:'maya3', tier:3, memo:'Ten minutes of being a person, on the esplanade bench.',
+      lines:[
+        `Maya's on the esplanade bench, still in scrubs, coffee gone cold in her hand. "Sit. I just need to be a person for ten minutes."`,
+        `"Lost one today. First one in a while. You don't get used to it — you just get faster at carrying it."`,
+      ],
+      prompt:'What do you say?',
+      choices:[
+        { label:'Say nothing. Sit with her.', friend:10, attraction:4,
+          line:`You don't say anything. The river does. After a while she exhales. "Yeah. Exactly. Thanks for not doing the speech."` },
+        { label:'"You did everything you could."', friend:4,
+          line:`"I know," she says, too quickly. Then, softer: "I know. Sorry. Thank you for saying it anyway."` },
+      ]},
+    { key:'maya4', tier:4, memo:'Two coffees at Juniper. One was already fixed your way.',
+      lines:[
+        `Maya waves you into Juniper. On the table: two coffees, one already fixed exactly the way you take it.`,
+        `"I noticed I stopped decompressing after shifts alone," she says. "Now I decompress at you. Should I be worried about that?"`,
+      ],
+      prompt:'Should she?',
+      choices:[
+        { label:'"I like being decompressed at."', friend:8, attraction:8,
+          line:`She laughs into her cup. "Good. Because I memorized your coffee order, and that is not a thing I do."` },
+        { label:'"That\'s what neighbors are for."', friend:6,
+          line:`"Neighbors." She tries the word like a diagnosis she doesn't quite agree with. "Sure. Let's go with that. For now."` },
+      ]},
+  ],
+  daniel: [
+    { key:'daniel3', tier:3, memo:'Daniel, a whiteboard marker, and a week with nothing he likes in it.',
+      lines:[
+        `Daniel's at the F station with a whiteboard marker and no whiteboard. "I planned my whole week and forgot to put anything in it that I actually like."`,
+        `"When did that happen? I used to be a guy with a band. I had a band. We were terrible and it was great."`,
+      ],
+      prompt:'What do you tell him?',
+      choices:[
+        { label:'"Reunion show. This weekend. The lawn."', friend:10,
+          line:`He laughs for real. "The lawn is booked, huh. Okay. I'll bring the terrible." He writes BAND on the back of his hand.` },
+        { label:'"Schedule the fun first, then the rest."', friend:6,
+          line:`He stares. "Fun as a calendar anchor." You can see the roadmap forming. It's the happiest you've seen him all week.` },
+      ]},
+    { key:'daniel4', tier:4, memo:'THINGS THAT ARE WORKING: three items. You were one of them.',
+      lines:[
+        `Daniel shows you his phone: a note titled THINGS THAT ARE WORKING. "Therapy homework. Supposed to be ten items. I stopped at three."`,
+        `He turns the screen around. Item two is the farm. Item three is you.`,
+      ],
+      prompt:'What do you say?',
+      choices:[
+        { label:'"You made my list too."', friend:8, attraction:8,
+          line:`He nods slowly, like a retro that's finally going well. "Okay," he says. "Okay." He's smiling at the river.` },
+        { label:'"Three real ones beat ten filler."', friend:6,
+          line:`"Quality over quantity," he agrees. "You'd make a decent PM." From Daniel, this is nearly a love letter.` },
+      ]},
+  ],
+  lena: [
+    { key:'lena3', tier:3, memo:'Her data converged, and you were the first person she wanted to tell.',
+      lines:[
+        `Lena flags you down, laptop balanced on the seawall, 2 AM energy at 4 PM. "My data finally converged. I have been talking to a spreadsheet for six months and it TALKED BACK."`,
+        `"You're the first person I wanted to tell. That's — huh. Noting that for later analysis."`,
+      ],
+      prompt:'What do you say?',
+      choices:[
+        { label:'"What did it say?"', friend:10,
+          line:`Forty minutes later you understand memory consolidation at a party-conversation level, and Lena is glowing like someone finally asked the right question.` },
+        { label:'Congratulate her properly.', friend:5,
+          line:`"Thank you," she says, and does a small, precise fist pump — the gesture of someone who practiced it once in a mirror.` },
+      ]},
+    { key:'lena4', tier:4, memo:'"Five years?" she said. "An island." It was not a metaphor.',
+      lines:[
+        `Lena, quietly, at the greenhouse door: "My advisor asked where I see myself in five years. I said 'an island.' She thought it was a metaphor."`,
+        `"It's not a metaphor. It's specifically this island. Possibly specifically this greenhouse. Possibly—" she stops, recalibrating. "The sample size of people I tell things to is one. It's you."`,
+      ],
+      prompt:'What do you say?',
+      choices:[
+        { label:'"I like being your sample size."', friend:8, attraction:8,
+          line:`"Statistically indefensible," she says, going slightly pink. "Deeply comfortable, though." She stays another hour, not working.` },
+        { label:'"Five years sounds right."', friend:6,
+          line:`She nods and files it somewhere safe. "Longitudinal," she says, which from Lena is enormous.` },
+      ]},
+  ],
+  nico: [
+    { key:'nico3', tier:3, memo:'You became the official tiebreaker in the great lemon schism.',
+      lines:[
+        `Nico's on the ferry deck with two lidded cups of gelato. "Family recipe crisis. Zia says more lemon, Papa says less. You're the tiebreaker."`,
+        `"Choose carefully. Whichever way you go, someone in Queens lights a candle against you."`,
+      ],
+      prompt:'Verdict?',
+      choices:[
+        { label:'More lemon.', friend:8,
+          line:`"ZIA WINS." He texts the family group chat immediately. Your name is in it now. There is no leaving.` },
+        { label:'Less lemon.', friend:8,
+          line:`"Papa will weep with joy. Zia will avenge this." He grins. "Welcome to the family. The exits are decorative."` },
+      ]},
+    { key:'nico4', tier:4, memo:'After close: one table still set, and he cooked for one person who\'d look up.',
+      lines:[
+        `The restaurant after close — chairs up, lights low, one table still set. Nico waves you in like it's obvious.`,
+        `"Every night I cook for sixty strangers," he says, setting down two plates. "Tonight I wanted to cook for one person who'd actually look up."`,
+      ],
+      prompt:'What do you do?',
+      choices:[
+        { label:'Look up. Keep looking.', friend:8, attraction:8,
+          line:`The pasta goes cold. Neither of you notices in time to care. He walks you to the ferry after and forgets to be charming — which is the most charming he's ever been.` },
+        { label:'"Best table in Queens."', friend:6,
+          line:`"Best table, best company." He refills your water like a vow. "You get it. Most people never look up."` },
+      ]},
+  ],
+  sofia: [
+    { key:'sofia3', tier:3, memo:'Nine letters, one scholarship, and visible pride on a public bench.',
+      lines:[
+        `Sofia's on a bench outside Harbor House with a folder she's not opening. "One of my kids got the scholarship. The one nobody believed in. I wrote nine letters."`,
+        `"I can't tell anyone the details. I just needed to be visibly proud near a witness."`,
+      ],
+      prompt:'What do you do?',
+      choices:[
+        { label:'Be extremely proud with her.', friend:10,
+          line:`You celebrate a nameless kid's whole future on a public bench until Sofia has to hold the folder over her face, laughing.` },
+        { label:'"Nine letters. One believer with a printer."', friend:6,
+          line:`"A laser printer," she corrects, wiping her eyes. "Double-sided. I don't do things halfway."` },
+      ]},
+    { key:'sofia4', tier:4, memo:'The school made her update her own emergency contact. She wrote your name.',
+      lines:[
+        `"You know what's funny," Sofia says, walking you home the long way. "I'm the emergency contact for half this island."`,
+        `"Last week the school made me update MY form. I stood there like it was a pop quiz." She looks over. "I wrote your name. Is that okay?"`,
+      ],
+      prompt:'Is it?',
+      choices:[
+        { label:'"It\'s more than okay."', friend:8, attraction:8,
+          line:`She exhales like she'd been holding it since the school office. "Good. Don't make me regret it by getting into anything interesting."` },
+        { label:'"I\'ll pick up on the first ring."', friend:6,
+          line:`"First ring," she repeats, satisfied — a contract witnessed by the whole street.` },
+      ]},
+  ],
+  gabriel: [
+    { key:'gabriel3', tier:3, memo:'The thirteenth hour of a twelve-hour shift. You told him about radishes.',
+      lines:[
+        `Gabriel's sitting on the back step of the ambulance, unusually quiet. "Twelve-hour shift. The thirteenth hour is the one where the jokes run out."`,
+        `"Everyone thinks the sirens are the hard part. It's the quiet after. Anyway." He looks up. "Tell me something boring. Please."`,
+      ],
+      prompt:'What do you do?',
+      choices:[
+        { label:'Deliver a full crop report.', friend:10,
+          line:`He listens to the state of your radishes like it's scripture, shoulders dropping an inch a minute. "Beautiful," he says at the end. "Never let anything happen to those radishes."` },
+        { label:'Split your sandwich. Say nothing.', friend:8,
+          line:`Half a sandwich, zero conversation, one paramedic slowly returning to himself. "You're good at this," he says finally.` },
+      ]},
+    { key:'gabriel4', tier:4, memo:'"There\'s no protocol for liking someone. I checked the manual twice."',
+      lines:[
+        `"So I know CPR, splinting, four ways to deliver a baby in a moving vehicle," Gabriel says, walking the esplanade.`,
+        `"Nobody trains you for liking someone. There's no protocol. I checked the manual twice."`,
+      ],
+      prompt:'What do you tell him?',
+      choices:[
+        { label:'"Improvise. You\'re good under pressure."', friend:8, attraction:8,
+          line:`"Improvise," he repeats, and takes your hand like he's checking a pulse — then just keeps it. "Vitals strong," he reports. He's blushing.` },
+        { label:'"Start with the basics: keep showing up."', friend:6,
+          line:`He nods slowly. "Scene safety. Show up. Reassess." He bumps your shoulder. "I can run that protocol."` },
+      ]},
+  ],
+  theo: [
+    { key:'theo3', tier:3, memo:'A print with no comment: you, mid-harvest, laughing out of frame.',
+      lines:[
+        `Theo hands you a print with no comment: you, mid-harvest, laughing at something out of frame.`,
+        `"Been shooting this island for a year. Kept noticing the same person kept ending up in the good frames."`,
+      ],
+      prompt:'What do you say?',
+      choices:[
+        { label:'"Who are you calling a good frame?"', friend:10,
+          line:`"The camera doesn't editorialize," he says, entirely editorializing. "Keep the print." You do. It's really good.` },
+        { label:'Ask about the documentary.', friend:6,
+          line:`He talks about light and dignity for ten unhurried minutes. Watching him, you understand why people trust his lens.` },
+      ]},
+    { key:'theo4', tier:4, memo:'Golden hour, camera down. He\'s started planning little things. Like you.',
+      lines:[
+        `Golden hour on the seawall. Theo has his camera down, which never happens.`,
+        `"I don't plan five years out. Drives everyone crazy. But lately I keep planning little things. Next week. A walk. Whether you'd come." He shrugs like it's nothing. His hands say otherwise.`,
+      ],
+      prompt:'What do you say?',
+      choices:[
+        { label:'"Plan me into next week."', friend:8, attraction:8,
+          line:`"Tuesday," he says instantly, betraying that the plan already existed in full. The sun does its whole thing behind you. He never reaches for the camera.` },
+        { label:'"Little plans are still plans."', friend:6,
+          line:`"Yeah." He watches the water. "That's the terrifying part." He's smiling, though.` },
+      ]},
+  ],
+  avery: [
+    { key:'avery3', tier:3, memo:'The killed concept, resurrected by exactly the right compliment.',
+      lines:[
+        `Avery's sketching between pulls at The Anchor's slow hour — logos, posters, and one tiny drawing of the bar with everyone in it.`,
+        `"Client killed my favorite concept today. Third time this month. Sometimes I think 'freelance' is short for 'free labor, extra criticism.'"`,
+      ],
+      prompt:'What do you say?',
+      choices:[
+        { label:'"Show me the one they killed."', friend:10,
+          line:`They slide it over — wary, then watchful, then, as you point at exactly the right detail, visibly repaired. "Okay. You're allowed opinions forever."` },
+        { label:'"Their loss. Design for us instead."', friend:6,
+          line:`"A Harbor Point rebrand." They're already sketching a lighthouse. "Pro bono. Don't tell my rates."` },
+      ]},
+    { key:'avery4', tier:4, memo:'Funny, independent, tired. One of those they only say out loud to you.',
+      lines:[
+        `Closing time. Avery flips the chairs and pours two glasses of soda water like it's a ceremony.`,
+        `"I'm funny and independent and tired," they say. "Two of those are the brand. One of them I only say out loud to you. You noticed that?"`,
+      ],
+      prompt:'What do you say?',
+      choices:[
+        { label:'"You can be all three here."', friend:8, attraction:8,
+          line:`Something in their shoulders unknots. "Cheers to that." The glasses clink. The neon hums. It's the softest the bar has ever been.` },
+        { label:'"I noticed. I\'m glad it\'s me."', friend:6,
+          line:`"Don't make it a thing." It's already a thing. They're smiling at the taps.` },
+      ]},
+  ],
+  naomi: [
+    { key:'naomi3', tier:3, memo:'Eleven billable hours, then grass, shoes off, off the record.',
+      lines:[
+        `Naomi — immaculate, briefcase down, shoes OFF — on the lawn. "I billed eleven hours by four PM and then I just… got off the train here instead."`,
+        `"I can't remember the last time I sat on grass. Is it always this unstructured?"`,
+      ],
+      prompt:'What do you say?',
+      choices:[
+        { label:'"The grass doesn\'t bill by the hour."', friend:10,
+          line:`She laughs — an off-the-record laugh, nothing like her deposition one. "Don't tell anyone I have this setting. It would ruin me."` },
+        { label:'Teach her to do absolutely nothing.', friend:6,
+          line:`Twenty minutes of certified nothing. She's terrible at it, then suddenly excellent. "I'm adding this to my practice areas," she murmurs.` },
+      ]},
+    { key:'naomi4', tier:4, memo:'She made partner track and couldn\'t send the email. You\'re the reason.',
+      lines:[
+        `"I made partner track," Naomi says, and waits for your congratulations, and then: "I drafted the acceptance email and couldn't send it."`,
+        `"Every version of my life I planned has a corner office. None of them had a farm island in it. You're an unbudgeted line item, and I keep — protecting the budget."`,
+      ],
+      prompt:'What do you tell her?',
+      choices:[
+        { label:'"Some line items are worth restructuring for."', friend:8, attraction:8,
+          line:`She looks at you the way she must look at a winning argument. "Restructuring. Yes. Let's schedule that." She sends a different email entirely.` },
+        { label:'"Send it when it\'s true."', friend:6,
+          line:`She closes the laptop with lawyerly finality. "Adjourned, pending further review." The review, you understand, is you.` },
+      ]},
+  ],
+  arjun: [
+    { key:'arjun3', tier:3, memo:'His mother\'s recipe in the Labs kitchenette. He plated two without thinking.',
+      lines:[
+        `Arjun's cooking in the Pier Labs kitchenette after hours. The smell stops you at the door: cumin, ginger, home.`,
+        `"My mother's recipe. I call her every Sunday and pretend I make it weekly." He plates two servings automatically, then looks surprised at his own hands. "…Stay?"`,
+      ],
+      prompt:'What do you do?',
+      choices:[
+        { label:'Stay. Ask about Sundays.', friend:10,
+          line:`He tells you about Pune, monsoon cricket, his mother's spice tin with no labels — "labels are for people who don't pay attention." You get seconds without asking.` },
+        { label:'"It smells like someone loves you."', friend:6,
+          line:`He goes quiet. "That is exactly what it is," he says finally. "I never had the words in English." He writes the recipe out for you. By hand.` },
+      ]},
+    { key:'arjun4', tier:4, memo:'One suitcase, no roots, very efficient — until this island happened.',
+      lines:[
+        `"I optimized my whole life to be portable," Arjun says on the late ferry. "One suitcase. Remote-friendly skills. No roots. Very efficient."`,
+        `"Then this island happened. You happened. My loss function has a new term in it, and I find I am not minimizing it."`,
+      ],
+      prompt:'What do you say?',
+      choices:[
+        { label:'"Keep the term. Overfit a little."', friend:8, attraction:8,
+          line:`He laughs — the rare full one. "Terrible engineering advice. Excellent life advice." The ferry takes the long way. Neither of you minds.` },
+        { label:'"Roots aren\'t inefficient. They\'re infrastructure."', friend:6,
+          line:`He considers this the whole ride, then nods once, decisively — a man updating his priors. "Infrastructure," he agrees. "For staying."` },
+      ]},
+  ],
+  priya: [
+    { key:'priya3', tier:3, memo:'She traded two parking spots to save the community garden. Enemies for life.',
+      lines:[
+        `Priya unrolls actual blueprints on the picnic table. "Off the record: the redevelopment plan was cutting the community garden. I traded two parking spots to save it."`,
+        `"Two parking spots. In a public meeting. In this city. I have made enemies for life and it was worth it."`,
+      ],
+      prompt:'What do you say?',
+      choices:[
+        { label:'"You\'re the best thing to happen to this island."', friend:10,
+          line:`"Put it in a public comment," she deadpans — but she rolls the blueprints slowly, carefully, like something precious got said and she's keeping it flat.` },
+        { label:'Ask what she\'d build next.', friend:6,
+          line:`She talks for an hour. Benches with backs. Bus shelters that don't insult you. A city that assumes you matter. You'd vote for her tomorrow.` },
+      ]},
+    { key:'priya4', tier:4, memo:'She ran a site analysis on her own life. Best site: wherever you\'re standing.',
+      lines:[
+        `"I evaluate sites for a living," Priya says on the seawall, direct as ever. "Sun path, access, soil, longevity. This week I ran the analysis on my own life."`,
+        `"Best site on the island is wherever you're standing. The data's embarrassing. I'm reporting it anyway."`,
+      ],
+      prompt:'Your ruling?',
+      choices:[
+        { label:'"Approved. Break ground."', friend:8, attraction:8,
+          line:`"Permit granted," she says, and takes your hand with the firm certainty of someone who has read every regulation and found nothing against this.` },
+        { label:'"Most romantic zoning report ever filed."', friend:6,
+          line:`"I'll have it framed." She almost smiles. For Priya, it's a sunrise.` },
+      ]},
+  ],
+  jordan: [
+    { key:'jordan3', tier:3, memo:'An eleven-year-old weld, still perfect. Nobody looks up. You will now.',
+      lines:[
+        `Jordan's under the tram station catwalk on break, waving you over. "See that weld? Mine. Eleven years old. Still perfect."`,
+        `"Nobody looks up in this city. Everything holding it together is somebody's invisible best work."`,
+      ],
+      prompt:'What do you say?',
+      choices:[
+        { label:'"I\'ll look up from now on."', friend:10,
+          line:`He points out four more welds, two beams, and a railing he's proudest of. The island reassembles itself in your eyes as a thing made by hands.` },
+        { label:'"Show me your best one."', friend:8,
+          line:`He walks you three blocks to a bridge joint and says nothing — just nods at it. It's beautiful. You both stand there like it's a gallery.` },
+      ]},
+    { key:'jordan4', tier:4, memo:'He communicates in load-bearing gestures. The fence was the text back.',
+      lines:[
+        `"I don't text back," Jordan says, apropos of nothing, fixing the farm fence nobody asked him to fix.`,
+        `"My ma says I communicate in load-bearing gestures." He tightens the last bolt. "This fence'll outlive both of us. That's the text back."`,
+      ],
+      prompt:'What do you do?',
+      choices:[
+        { label:'"Best text I ever got."', friend:8, attraction:8,
+          line:`He ducks his head, suddenly shy over structural steel. "There's more where that came from," he mutters, and starts measuring your gate for new hinges.` },
+        { label:'Hold the rail. Help him finish.', friend:6,
+          line:`You hold, he fastens. No words the whole time. It's the longest conversation you've ever had with him, and one of the best.` },
+      ]},
+  ],
+  mei_lin: [
+    { key:'mei_lin3', tier:3, memo:'Everyone came to the opening. You were the one who asked about the making.',
+      lines:[
+        `Mei-Lin catches you outside the teahouse, holding an exhibition catalog. "The show opened. Two years of my life on walls. Everyone came to the party. Nobody asked what it cost."`,
+        `"You're the only person who ever asks about the making instead of the opening."`,
+      ],
+      prompt:'What do you say?',
+      choices:[
+        { label:'"Tell me the making. All of it."', friend:10,
+          line:`Standing on Mott Street she gives you the real tour: the loan that nearly fell through, the lighting she fought for, the label she rewrote nine times. It's better than the show.` },
+        { label:'"The making shows. That\'s why it\'s good."', friend:6,
+          line:`She holds the catalog a little closer. "Careful," she says softly. "I archive sentences like that."` },
+      ]},
+    { key:'mei_lin4', tier:4, memo:'Museum-grade glass around her heart — and she wants to hand you the key.',
+      lines:[
+        `"I produce exhibitions for a living," Mei-Lin says, tea untouched. "I know exactly how much light to put on a thing, and how much glass to keep in front of it."`,
+        `"I keep myself behind glass. Museum-grade. Climate-controlled." She turns her cup. "Lately I keep wanting to hand you the key, and I don't have a procedure for that."`,
+      ],
+      prompt:'What do you say?',
+      choices:[
+        { label:'"No procedure needed. Just the key."', friend:8, attraction:8,
+          line:`Very slowly, like deinstalling something priceless, she puts her hand over yours. "Handle with care," she says. It's a joke. It isn't.` },
+        { label:'"Glass protects. It also keeps out the light."', friend:6,
+          line:`She's quiet a long moment. "Spoken like a curator," she says finally — and moves her chair one inch out from behind the glass.` },
+      ]},
+  ],
+  mateo: [
+    { key:'mateo3', tier:3, memo:'He won the kid\'s case and had eaten a granola bar since Tuesday.',
+      lines:[
+        `Mateo's asleep at a café table, cheek on a case file. He jolts up when you sit. "I'm awake. I was resting my argument."`,
+        `"Client walked free today. Kid had nobody. Now he's got a second chance and I have—" he checks his pockets "—a granola bar. Since Tuesday."`,
+      ],
+      prompt:'What do you do?',
+      choices:[
+        { label:'March him to the counter. Buy him a meal.', friend:10,
+          line:`He protests for exactly one sentence, then eats like a man discovering food. "Objection withdrawn," he says, halfway through. "You're good counsel."` },
+        { label:'"Who defends the defender?"', friend:6,
+          line:`He blinks like the question is in a language he almost forgot. "Take a note," he says quietly. "That one should be someone's job."` },
+      ]},
+    { key:'mateo4', tier:4, memo:'He knows every safety net in the city. He was weaving his own here, knot by knot.',
+      lines:[
+        `"I know every safety net in this city," Mateo says on the walk home. "Shelters, hotlines, filing deadlines, which judges have mercy on Fridays."`,
+        `"Took me until this year to notice I never wove one for myself." He stops at your gate. "Turns out I was weaving it here. Visit by visit. You're most of the knots."`,
+      ],
+      prompt:'What do you say?',
+      choices:[
+        { label:'"Then hold on."', friend:8, attraction:8,
+          line:`He does — a hug like a closing statement, complete and unhurried. "The defense rests," he says into your shoulder. And for once, he actually might.` },
+        { label:'"Nets hold better with two weavers."', friend:6,
+          line:`"Co-counsel," he offers, hand out. You shake it. His grip says everything the joke is carrying.` },
+      ]},
+  ],
+};

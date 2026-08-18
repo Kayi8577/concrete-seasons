@@ -508,8 +508,10 @@
           CS.art.portrait(pc, npc.look, npc.id);
           card.appendChild(pc);
           const rel = S.npcs[id].romance === 'seeing' ? tier + ' · Seeing each other' : tier;
+          const bd = npc.bday && G().tierOf(id) >= 2
+            ? `<div class="res-note" style="color:#9c4f2e">Birthday: ${CS.SEASONS[npc.bday[0]]} ${npc.bday[1]}</div>` : '';
           card.insertAdjacentHTML('beforeend', `<div class="res-name">${npc.name}</div>
-            <div class="res-stage">${rel}</div>
+            <div class="res-stage">${rel}</div>${bd}
             <div class="res-note" style="clear:both">${npc.bio}</div>
             <div class="res-note" style="margin-top:4px;color:#8a7361">Right now: ${st.act}${st.spot ? '' : ' (not around)'}</div>`);
         }
