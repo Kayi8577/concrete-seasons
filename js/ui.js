@@ -364,8 +364,12 @@
     mult = mult || 1;
     const S = G().state();
     document.querySelector('#panel-sell h3').textContent = title || 'Shipping Bin';
-    document.querySelector('#panel-sell .panel-note').textContent = mult > 1
-      ? 'Festival prices — everything sells at a premium tonight.'
+    const boost = G().sellBoost ? G().sellBoost() : 1;
+    const md = G().marketDay ? G().marketDay() : null;
+    document.querySelector('#panel-sell .panel-note').textContent = boost > 1
+      ? 'Wish granted — everything sells for double today.'
+      : mult > 1 ? 'Festival prices — everything sells at a premium tonight.'
+      : md ? `${md.label}: ${md.type === 'crop' ? 'produce' : md.type === 'fish' ? 'fish' : 'cooked dishes'} in demand today.`
       : 'Malik trucks the bin to the weekend market. You get paid on the spot.';
     const list = $('sell-list');
     list.innerHTML = '';
@@ -376,7 +380,7 @@
     for (const k of sellables) {
       const def = CS.ITEMS[k];
       // seasonal demand quietly folds into the listed price — the price is the tell
-      const em = mult * (G().priceMult ? G().priceMult(k) : 1);
+      const em = mult * (G().priceMult ? G().priceMult(k) : 1) * boost;
       const unit = Math.round(def.sell * em);
       const hot = unit > Math.round(def.sell * mult);
       const el = document.createElement('div');

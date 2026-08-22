@@ -16,8 +16,9 @@ Cozy offline life-sim (fictional NYC island). Plain JS + canvas, **no build step
 | `data/dialogue.js` | `DIALOGUE` pools (+ cond objects), `MESSAGES`, festival/date/married/cohab lines |
 | `data/festivals.js` | `FESTIVALS` calendar + flavor lines |
 | `data/arcs.js` | `ARCS`: dated stages with `run(api)` effects (Year 2–5 storylines) |
+| `data/events.js` | `REGIONS`, `HEART_GATES` (where/when each heart event fires), `RANDOM_EVENTS` (walk-in scenes), `SHOP_HOURS`, `MARKET_DAYS`, `COOKOFF` |
 
-Load order in `index.html` matters: core → world → economy → npcs → schedules → dialogue → festivals → arcs → systems.
+Load order in `index.html` matters: core → world → economy → npcs → schedules → dialogue → festivals → arcs → events → systems.
 
 **Systems (logic) — touch only when adding mechanics:**
 `js/art.js` (ALL visuals, procedural canvas), `js/audio.js` (WebAudio synthesis), `js/engine.js` (render/pathfind/input), `js/game.js` (simulation, saves, cheats), `js/ui.js` (DOM panels), `js/main.js` (boot).

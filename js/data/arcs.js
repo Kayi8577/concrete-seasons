@@ -6,6 +6,24 @@
    Stages fire on wake once their date arrives, in order. */
 CS.ARCS = [
   {
+    id: 'theo_stays',
+    stages: [
+      { at:{ y:1, s:2, d:14 }, run(api) {
+        api.S.flags.harvestPush = true;
+        api.addMsg('hp', 'Malik needs hands for the fall harvest push — tomorrow, Fall 15, at the farm, all morning. Bring a friend if you have one who needs a reason to stay.');
+        if (api.S.npcs.theo.hasNumber) api.addMsg('theo', "documentary funding fell through. not sure the island's my story anymore. might be time to go shoot somewhere else. don't know yet");
+        api.toast('Fall harvest push tomorrow — Malik needs hands');
+      }},
+      { at:{ y:1, s:3, d:29 }, run(api) {
+        if (api.S.flags.theoStays) return;
+        api.setArc('theo', 'gone');
+        api.discover('theo_leaves', 'Winter 29, Year 1: Theo left the island on the morning ferry. The documentary went unfinished. He sends a print every New Year — always the lighthouse, always from the water.');
+        api.addMsg('hp', "Theo Bennett moved off the island this morning. He left a box of prints at Harbor House: 'For whoever looked up.'");
+        api.toast('Theo left the island');
+      }},
+    ],
+  },
+  {
     id: 'glasshouse',
     stages: [
       { at:{ y:2, s:1, d:1 }, run(api) {

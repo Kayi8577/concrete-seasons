@@ -77,12 +77,17 @@ CS.ITEMS = {
   red_envelope:  { name:'Lucky Red Envelope', type:'gift', sell:6,  desc:'Good fortune, folded flat.' },
   paper_lantern: { name:'Paper Lantern',      type:'gift', sell:11, desc:'Warm light you can carry home.' },
   boba_tea:      { name:'Bubble Tea',         type:'food', energy:22, sell:4, desc:'Brown sugar, extra pearls, to go.' },
+  umbrella:      { name:'Umbrella',           type:'tool', sell:0,  desc:'Rain stops costing you extra. The city\'s best $45.' },
+  chocolate_box: { name:'Chocolate Box',      type:'gift', sell:8,  energy:10, desc:'Moonrise dark chocolate, tied with twine. For giving.' },
+  cookies:       { name:'Reply-Day Cookies',  type:'food', energy:20, sell:0, desc:'Someone remembered. Still warm, somehow.' },
   enamel_pot:   { name:'Enamel Pot',     type:'thrift', sell:33, desc:'Decades of Sunday sauce in its bones.' },
 };
 
 /* Market stock — seeds filtered by current season at display time */
 CS.SHOP_MARKET = [
   { item:'rod',             price:120, once:true },
+  { item:'umbrella',        price:45,  once:true },
+  { item:'chocolate_box',   price:12 },
   { item:'lettuce_seed',    price:12, season:0 },
   { item:'radish_seed',     price:9,  season:0 },
   { item:'strawberry_seed', price:34, season:0 },

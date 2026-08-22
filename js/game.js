@@ -339,6 +339,44 @@
       CS.ui.toast('Year 6. Harbor Point keeps going — and new saves now start with your recipes (New Game+)');
     }
 
+    // ---- neglect has a shape ----
+    S.morningNotes = S.morningNotes || [];
+    if (S.pet) {
+      S.pet.hungry = S.pet.fedToday ? 0 : (S.pet.hungry || 0) + 1;
+      if (S.pet.hungry >= 3) {
+        S.pet.affection = Math.max(0, S.pet.affection - 4);
+        if (S.pet.hungry === 3) S.morningNotes.push(`${S.pet.name} has stopped meeting you at the door. Three days without dinner will do that. The look isn't angry. It's worse — it's patient.`);
+      }
+    }
+    if (S.spouse && S.npcs[S.spouse]) {
+      const sp = S.npcs[S.spouse];
+      const gap = G.totalDay() - (sp.lastTalkDay == null ? G.totalDay() : sp.lastTalkDay);
+      if (gap >= 10 && !S.flags.spouseSickOnce) {
+        S.flags.spouseSickOnce = true; S.spouseSickDay = G.totalDay(); sp.friend -= 8;
+        const first = CS.NPCS[S.spouse].name.split(' ')[0];
+        S.morningNotes.push(`${first} doesn't get up. "I'm fine. Just — tired." Ten days since you two really talked, and it turns out that has a weight. ${first} stays home today. Maybe sit with them.`);
+        discover('spouse_sick', `${CS.NPCS[S.spouse].name} took to bed — ten days of being roommates instead of married. You noticed. That's the start.`);
+      }
+    }
+    // ---- the calendar talks back ----
+    if (S.time.seasonIndex === 0 && S.time.day === 14) {
+      const ids = (S.flags['val_' + (S.time.year - 1)] || []).filter(id => S.npcs[id] && S.npcs[id].arc !== 'gone' && G.tierOf(id) >= 1);
+      if (ids.length) S.pendingReply = ids;
+    }
+    if (S.time.seasonIndex === 3 && S.time.day === 11 && !S.spouse) {
+      const inv = Object.keys(S.npcs).filter(id => S.npcs[id].met && S.npcs[id].hasNumber && S.npcs[id].arc !== 'gone' && !CS.NPCS[id].decorative && G.tierOf(id) >= 3);
+      S.holidayInvites = inv;
+      for (const id of inv) G.addMsg(id, (CS.HOLIDAY_INVITES && CS.HOLIDAY_INVITES[id]) || 'holiday market tomorrow night. walk it with me? no pressure. some pressure');
+    }
+    if (S.time.seasonIndex === 3 && S.time.day === 12 && S.holidayInvites && S.holidayInvites.length && !S.spouse) S.pendingHolidayChoice = true;
+    if (S.time.seasonIndex === 2 && S.time.day === 11) {
+      const yr = S.time.year, cat = CS.COOKOFF[yr <= 4 ? yr - 1 : (yr * 7) % CS.COOKOFF.length];
+      G.addMsg('hp', `Street Food Festival tomorrow — and the cook-off is back. This year's category: ${CS.ITEMS[cat].name}. Bring one to the judges' stall on Main before six.`);
+    }
+    if (S.time.seasonIndex === 1 && S.time.day === 21) G.addMsg('hp', 'Perseid meteor shower peaks tonight. If the sky is clear, the south lawn after nine is the place — bring a blanket.');
+    if (S.time.weekdayIndex === 4 && S.time.day === 13) G.addMsg('hp', 'F̸r̵i̵d̵a̵y̶ ̶t̶h̶e̷ ̷1̶3̷t̶h̴ — the community board app is acting up today. Nothing to see here. Probably.');
+    if (S.flags.harvestPush && !S.flags.harvestPushDone && (S.time.year > 1 || S.time.seasonIndex > 2 || (S.time.seasonIndex === 2 && S.time.day > 15))) S.flags.harvestPushDone = true;
+
     // ---- phone: morning texts ----
     generateTexts();
     // daily resets
@@ -672,6 +710,8 @@
         CS.ui.narrate("Juniper's windows are papered over. Someone taped a tomato-tin plant sketch to the door with 'THANK YOU JOAN' in six handwritings.");
         return;
       }
+      const sign = G.closedSign(target);
+      if (sign) { CS.ui.narrate(sign); return; }
       enterScene(target);
       return;
     }
@@ -684,6 +724,22 @@
     checkEvents('enter');
   }
 
+  G.isOpen = function (scene) {
+    const h = CS.SHOP_HOURS && CS.SHOP_HOURS[scene];
+    if (!h) return true;
+    const fest = G.currentFestival();
+    if (fest && !fest.quiet && (fest.where || 'outdoor') === scene) return true;
+    if (h.closed.includes(S.time.weekdayIndex)) return false;
+    return S.time.minutes >= h.open && S.time.minutes < h.close;
+  };
+  G.closedSign = function (scene) {
+    if (G.isOpen(scene)) return null;
+    const h = CS.SHOP_HOURS[scene], name = CS.MAPS[scene].name;
+    const fmt = mm => { const hh = Math.floor(mm / 60) % 24, m2 = mm % 60; return `${hh % 12 || 12}${m2 ? ':' + String(m2).padStart(2, '0') : ''}${hh < 12 ? 'am' : 'pm'}`; };
+    const days = h.closed.length ? ` Closed ${h.closed.map(d => CS.WEEKDAYS[d]).join('/')}.` : '';
+    const sign = h.closed.includes(S.time.weekdayIndex) ? 'The sign is flipped.' : (S.time.minutes < h.open ? 'Chairs still up on the tables.' : 'Lights off, door locked.');
+    return `${name} — closed. ${sign} Hours ${fmt(h.open)}–${fmt(h.close)}.${days}`;
+  };
   function enterScene(scene, x, y) {
     const p = S.playerRT;
     p.scene = scene;
@@ -816,6 +872,13 @@
       const rightPlace = fest && ((fest.where || 'outdoor') === scene);
       if (fest && stallFests[fest.key] && rightPlace) {
         if (fest.key === 'marathon') { marathonStall(); return; }
+        if (fest.key === 'street_food') {
+          CS.ui.choose('The stall doubles as the cook-off judges\' table today.', [
+            { label: 'Enter the cook-off', fn: () => cookoff() },
+            { label: 'Sell at the stall (festival prices)', fn: () => CS.ui.openSell(stallFests[fest.key], fest.name + ' Stall') },
+          ]);
+          return;
+        }
         CS.ui.openSell(stallFests[fest.key], fest.name + ' Stall');
       } else {
         CS.ui.narrate("An empty market stall. On festival days these come alive.");
@@ -874,6 +937,22 @@
       if (d.modes.includes(mode) && S.flags[d.unlockFlag]) {
         opts.push({ label: `${d.name} — $${fare.toFixed(2)}`, fn: () => ride(mode, dest) });
       }
+    }
+    const isNYE = S.time.seasonIndex === 3 && S.time.day === 30;
+    if (mode === 'tram' && isNYE && S.time.minutes >= 1020 && !S.flags['midnight_' + S.time.year]) {
+      opts.unshift({ label: 'Times Square for the ball drop — $2.90 (back at dawn)', fn: () => {
+        if (S.player.money < 2.9) { CS.ui.toast('Not enough money.'); return; }
+        S.player.money -= 2.9;
+        S.flags['midnight_' + S.time.year] = true;
+        CS.ui.narrateSeq([
+          `The tram, then a train, then a river of people moving at the speed of a crowd that has decided to be patient. You end up on 45th Street with a million strangers and a view of a very small, very famous ball.`,
+          `Midnight lands like weather. Confetti, a stranger's scarf around your neck, someone's grandmother kissing your cheek. You have no idea where you are. You have never been more in New York.`,
+          `The first train home runs at 4 AM. You sleep against the window. The island is still dark when the tram sets you down — and the promenade is empty, last night's sparklers still on the railings.`,
+        ], () => {
+          discover('times_square_' + S.time.year, `New Year's Eve, Year ${S.time.year}: Times Square. A million strangers, one very small ball. You missed the island's countdown and regret nothing.`);
+          G.sleep(true);
+        });
+      }});
     }
     const prompts = {
       tram: 'The cabin hangs at the platform, doors open, Manhattan waiting across the water.',
@@ -952,8 +1031,9 @@
   function askHangout(id, isDate) {
     const npc = CS.NPCS[id];
     CS.ui.choose(`Where to take ${npc.name.split(' ')[0]}?`, DATE_VENUES.map(v => ({
-      label: v.label,
+      label: G.isOpen(CS.SPOTS[v.spot].scene) ? v.label : v.label + ' — closed right now',
       fn: () => {
+        if (!G.isOpen(CS.SPOTS[v.spot].scene)) { CS.ui.toast('Closed right now — pick somewhere else.'); return; }
         if (S.player.money < v.cost) { CS.ui.toast('Not enough money.'); return; }
         if (!spendEnergy(8)) return;
         S.player.money -= v.cost;
@@ -1244,7 +1324,18 @@
     });
   }
   function spendEnergy(n) {
-    const cost = Math.max(1, Math.round(n * G.diff().energyMult));
+    let mult = G.diff().energyMult;
+    const outside = CS.MAPS[S.playerRT.scene] && CS.MAPS[S.playerRT.scene].outdoor;
+    const wet = S.weather.today === 'rain' || S.weather.today === 'snow';
+    if (outside && wet && !S.inv.umbrella) {
+      mult *= 1.5;
+      if (!S.flags.rainTax) { S.flags.rainTax = true; CS.ui.toast('Working in the rain wears you out faster — Corner Market sells umbrellas'); }
+    }
+    if (S.time.minutes >= 1320) {
+      mult *= 1.5;
+      if (!S.flags.lateTax) { S.flags.lateTax = true; CS.ui.toast('After 10pm everything costs more energy'); }
+    }
+    const cost = Math.max(1, Math.round(n * mult));
     if (S.player.energy < cost) {
       if (S.exhaustWarnDay === G.totalDay()) { passOut(); return false; }
       S.exhaustWarnDay = G.totalDay();
@@ -1353,7 +1444,12 @@
   G.npcStatus = function (id) {
     const npc = CS.NPCS[id];
     const r = S.npcs[id];
-    const fest = G.currentFestival();
+    const fest0 = G.currentFestival();
+    const fest = fest0 && !fest0.quiet ? fest0 : null;
+    // a spouse under the weather stays home all day
+    if (id === S.spouse && S.spouseSickDay === G.totalDay()) {
+      return { spot: CS.SPOTS.apartment_home, act: 'home, under the weather' };
+    }
     // moved away (fellowship, postdoc...) — but the holidays bring people home
     if (r.arc === 'gone') {
       if (fest && fest.key === 'holiday_market') {
@@ -1419,8 +1515,12 @@
     if (flower && t.seasonIndex === 3 && t.day >= 20) m *= 1.35;           // Lunar New Year
     if (['basil', 'tomato'].includes(itemId) && t.seasonIndex === 1) m *= 1.25; // restaurant summer demand
     if (['cucumber'].includes(itemId) && t.seasonIndex === 1 && S.weather.today === 'sunny') m *= 1.2;
+    const md = CS.MARKET_DAYS && CS.MARKET_DAYS[t.weekdayIndex];
+    if (md && CS.ITEMS[itemId] && CS.ITEMS[itemId].type === md.type) m *= md.mult;
     return m;
   };
+  G.sellBoost = () => (S.flags.doubleSellDay === G.totalDay() ? 2 : 1);
+  G.marketDay = () => (CS.MARKET_DAYS && CS.MARKET_DAYS[S.time.weekdayIndex]) || null;
 
   function refreshNPCs(force) {
     for (const id of Object.keys(CS.NPCS)) {
@@ -1636,7 +1736,14 @@
       G.addMsg(id, CS.MESSAGES[id].hello);
       CS.ui.toast(`${npc.name.split(' ')[0]} texted you — you have their number now`);
     }
+    r.lastTalkDay = G.totalDay();
     let line = pickLine(id);
+    const pend = pendingHeart(id);
+    if (pend && pend.hint && !gateOpen(pend) && Math.random() < .4) line = pend.hint;
+    if (id === S.spouse && S.spouseSickDay === G.totalDay()) {
+      if (!S.flags['spouseCared_' + G.totalDay()]) { S.flags['spouseCared_' + G.totalDay()] = true; r.friend += 12; }
+      line = `"You stayed." ${npc.name.split(' ')[0]} says it into the pillow. "That's the whole medicine, it turns out." A hand finds yours. Tomorrow will be better. Today is this.`;
+    }
     if (G.isBday(id) && r.met) {
       const yk = 'bday_' + id + '_' + S.time.year;
       if (!S.flags[yk]) {
@@ -1659,6 +1766,12 @@
         G.removeItem(k, 1);
         r.giftedDay = G.totalDay();
         const bday = G.isBday(id);
+        const fv = G.currentFestival();
+        if (k === 'chocolate_box' && fv && fv.key === 'valentine') {
+          const vk = 'val_' + S.time.year;
+          S.flags[vk] = S.flags[vk] || [];
+          if (!S.flags[vk].includes(id)) S.flags[vk].push(id);
+        }
         let gain = 5, react;
         const first = npc.name.split(' ')[0];
         if ((npc.loved || []).includes(k)) {
@@ -2004,14 +2117,233 @@
     ]);
   }
 
-  function maybeHeartEvent(id) {
+  function inPlace(where) {
+    const p = S.playerRT;
+    if (CS.REGIONS && CS.REGIONS[where]) return CS.REGIONS[where](p);
+    return p.scene === where;
+  }
+  function gateOpen(ev) {
+    if (ev.where && !inPlace(ev.where)) return false;
+    const m = S.time.minutes;
+    if (ev.when && (m < ev.when[0] || m >= ev.when[1])) return false;
+    if (ev.days && !ev.days.includes(S.time.weekdayIndex)) return false;
+    if (ev.weather && S.weather.today !== ev.weather) return false;
+    if (ev.year && S.time.year < ev.year) return false;
+    return true;
+  }
+  function pendingHeart(id) {
     const evs = CS.HEART_EVENTS && CS.HEART_EVENTS[id];
-    if (!evs) return false;
+    if (!evs) return null;
     const r = S.npcs[id];
+    if (!r || !r.met || r.arc === 'gone') return null;
     r.hearts = r.hearts || [];
+    return evs.find(e => G.tierOf(id) >= e.tier && !r.hearts.includes(e.key)) || null;
+  }
+  function scanHeartEvents() {
     if (S.lastHeartDay === G.totalDay()) return false;
-    const ev = evs.find(e => G.tierOf(id) >= e.tier && !r.hearts.includes(e.key));
+    for (const id of Object.keys(CS.HEART_EVENTS || {})) {
+      const ev = pendingHeart(id);
+      if (ev && ev.where && gateOpen(ev)) return maybeHeartEvent(id);
+    }
+    return false;
+  }
+  function applyFx(fx) {
+    for (const id of Object.keys(fx || {})) {
+      const r = S.npcs[id]; if (!r) continue;
+      r.friend += fx[id];
+      if (!r.met) { r.met = true; r.fam = 1; }
+    }
+  }
+  function runRandomEvents() {
+    if (!CS.RANDOM_EVENTS || S.lastRandomDay === G.totalDay()) return false;
+    const fest = G.currentFestival();
+    if (fest && !fest.quiet) return false;
+    for (const ev of CS.RANDOM_EVENTS) {
+      const fkey = ev.once === 'yearly' ? `rev_${ev.key}_${S.time.year}` : `rev_${ev.key}`;
+      if (S.flags[fkey] || !gateOpen(ev)) continue;
+      if (ev.req && Object.keys(ev.req).some(id => !S.npcs[id] || !S.npcs[id].met || G.tierOf(id) < ev.req[id])) continue;
+      if (ev.npc && S.npcs[ev.npc] && S.npcs[ev.npc].arc === 'gone') continue;
+      S.flags[fkey] = true;
+      S.lastRandomDay = G.totalDay();
+      playRandomEvent(ev);
+      return true;
+    }
+    return false;
+  }
+  function playRandomEvent(ev) {
+    const npc = ev.npc ? CS.NPCS[ev.npc] : null;
+    const finish = (c) => {
+      applyFx(ev.fx); if (c) applyFx(c.fx);
+      if (c && c.money) S.player.money = Math.max(0, S.player.money + c.money);
+      if (c && c.energy) S.player.energy = Math.max(0, S.player.energy - c.energy);
+      if (c && c.minutes) S.time.minutes += c.minutes;
+      if (c && c.flag) S.flags[c.flag] = true;
+      if (ev.items) for (const k of Object.keys(ev.items)) G.addItem(k, ev.items[k]);
+      discover('rev_' + ev.key + '_' + S.time.year, `${ev.lines[0].replace(/"/g, '').slice(0, 110)}… (${CS.SEASONS[S.time.seasonIndex]} ${S.time.day}, Year ${S.time.year})`);
+      CS.ui.refreshHUD();
+    };
+    CS.ui.dialogue(npc, ev.lines, () => {
+      if (!ev.choices) { finish(null); return; }
+      CS.ui.choose(ev.choices.prompt, ev.choices.options.map(c => ({
+        label: c.label, fn: () => { finish(c); CS.ui.dialogue(npc, [c.line]); },
+      })));
+    });
+  }
+  function runCalendarMoments() {
+    const p = S.playerRT, m = S.time.minutes;
+    const onDate = (se, d) => S.time.seasonIndex === se && S.time.day === d;
+    // morning notes that waited for a quiet moment
+    if (S.morningNotes && S.morningNotes.length) {
+      const n = S.morningNotes; S.morningNotes = [];
+      CS.ui.narrateSeq(n); return true;
+    }
+    if (S.pendingHolidayChoice) { S.pendingHolidayChoice = false; holidayChoice(); return true; }
+    if (S.pendingReply) { const ids = S.pendingReply; S.pendingReply = null; replyDay(ids); return true; }
+    // Halloween: the Coleman sisters at your door, 4pm and 5pm
+    if (onDate(2, 28)) {
+      for (const [id, at] of [['nia', 960], ['ava', 1020]]) {
+        const fk = `hw_${id}_${S.time.year}`;
+        if (S.flags[fk]) continue;
+        if (m >= at && m < at + 20 && p.scene === 'apartment') { S.flags[fk] = true; trickOrTreat(id); return true; }
+        if (m >= at + 20) { S.flags[fk] = true; CS.ui.toast(`You missed ${CS.NPCS[id].name.split(' ')[0]} at your door`); }
+      }
+    }
+    // Perseids over the south lawn
+    if (onDate(1, 21) && S.weather.today === 'sunny' && m >= 1260 && CS.REGIONS.lawn(p) && !S.flags['perseid_' + S.time.year]) {
+      S.flags['perseid_' + S.time.year] = true; perseidWish(); return true;
+    }
+    // Fall 15, Year 1: Malik's harvest push — and Theo's reason to stay
+    if (S.flags.harvestPush && !S.flags.harvestPushDone && S.time.year === 1 && S.time.seasonIndex === 2 && S.time.day === 15
+        && m >= 540 && m < 780 && CS.REGIONS.farm(p)) {
+      S.flags.harvestPushDone = true; harvestPush(); return true;
+    }
+    return false;
+  }
+  function trickOrTreat(id) {
+    const npc = CS.NPCS[id], first = npc.name.split(' ')[0], r = S.npcs[id];
+    const candy = Object.keys(S.inv).filter(k => S.inv[k] > 0 && CS.ITEMS[k] && (k === 'chocolate_box' || CS.ITEMS[k].type === 'food' || CS.ITEMS[k].type === 'crop'));
+    candy.sort((a, b) => (b === 'chocolate_box') - (a === 'chocolate_box'));
+    const costume = id === 'nia' ? 'a ferry captain (it is mostly a hat)' : 'a very convincing tram conductor';
+    const opts = candy.slice(0, 5).map(k => ({ label: `Give ${CS.ITEMS[k].name}`, fn: () => {
+      G.removeItem(k, 1);
+      const great = k === 'chocolate_box';
+      r.friend += great ? 10 : 4; if (!r.met) { r.met = true; r.fam = 1; }
+      CS.ui.narrate(great
+        ? `${first} inspects the chocolate box with the gravity of a customs officer, then beams. "TOP TIER. You're on the good-house list." The list is real. She keeps it.`
+        : `${first} looks at the ${CS.ITEMS[k].name}, then at you, then decides to be gracious about it. "Thank you," in the exact tone of a kid who wanted chocolate. Points for effort.`);
+    }}));
+    opts.push({ label: 'Pretend you\'re not home', fn: () => {
+      r.friend -= 3;
+      CS.ui.narrate(`The knocking stops. Through the door, clearly: "They're HOME, I saw the light." Footsteps. You have been recorded.`);
+    }});
+    CS.ui.choose(`A knock. ${first} at your door, dressed as ${costume}, holding out a pillowcase with total confidence. "Trick or treat."`, opts);
+  }
+  function perseidWish() {
+    CS.ui.narrate(`The lawn after nine, and the sky does something it never does over this city: it moves. One streak. Then three. A dozen neighbors on blankets go quiet at the same time.`, () => {
+      CS.ui.choose('Make a wish.', [
+        { label: 'A good market day', fn: () => { S.flags.doubleSellDay = G.totalDay() + 1; CS.ui.narrate('Tomorrow, for one day, everything you sell goes for double. Maybe the sky did it. Maybe the greenmarket. Nobody will question it.'); } },
+        { label: 'Everyone a little closer', fn: () => { for (const id of Object.keys(S.npcs)) if (S.npcs[id].met) S.npcs[id].friend += 8; CS.ui.narrate('Nothing visible changes. But tomorrow, people wave first.'); } },
+        { label: 'Let the garden drink', fn: () => {
+          for (const k of Object.keys(S.farm.plots)) { const pl = S.farm.plots[k]; if (pl.crop && !pl.dead) { pl.watered = true; pl.days += 1; } }
+          CS.ui.narrate('Dew, heavy and early. Every leaf on the island looks like it slept well.');
+        } },
+      ]);
+      discover('perseids_' + S.time.year, `Perseids over the south lawn, Year ${S.time.year}. You made a wish. Don't say it out loud.`);
+    });
+  }
+  function harvestPush() {
+    const theoHere = S.npcs.theo && S.npcs.theo.met && S.npcs.theo.arc !== 'gone';
+    const opts = [];
+    if (theoHere) opts.push({ label: 'Bring Theo — he needs a story', fn: () => {
+      S.flags.theoStays = true;
+      S.npcs.theo.friend += 15; S.npcs.malik.friend += 10;
+      CS.ui.narrateSeq([
+        `You text Theo one line: "Farm. Now. Bring the camera." He's there in eleven minutes.`,
+        `Four hours of squash and kale and Malik's running commentary. Theo shoots all of it — hands, crates, the tram going over, Malik laughing at something Nia said.`,
+        `At the end he looks at the back of the camera for a long time. "This is the story," he says. "It was here the whole time." He's not leaving.`,
+      ], () => discover('harvest_push', 'Fall 15, Year 1: the harvest push. Theo found his documentary in the crates. He stays.'));
+    }});
+    opts.push({ label: 'Just you and Malik', fn: () => {
+      S.npcs.malik.friend += 10;
+      CS.ui.narrate(`Four hours of squash and kale. Malik talks the whole time; you learn more about soil than you wanted and more about the island than you expected. The crates fill. Something, somewhere, was missing from the picture.`);
+    }});
+    CS.ui.choose(`Malik, sleeves rolled, a wall of crates behind him. "Harvest push. Everything comes in today or it rots. Who've you got?"`, opts);
+  }
+  function holidayChoice() {
+    const inv = S.holidayInvites || []; S.holidayInvites = null;
+    if (!inv.length) return;
+    CS.ui.choose('Holiday Market tonight. Your phone is full of invitations — you can only say yes to one.', inv.map(id => ({
+      label: CS.NPCS[id].name,
+      fn: () => {
+        S.holidayPick = id;
+        for (const o of inv) if (o !== id) S.npcs[o].friend -= 2;
+        CS.ui.toast(`Tonight: the market with ${CS.NPCS[id].name.split(' ')[0]}`);
+      },
+    })).concat([{ label: 'Go on your own', fn: () => { S.holidayPick = null; } }]));
+  }
+  function replyDay(ids) {
+    const lines = ids.map(id => {
+      S.npcs[id].friend += 8; G.addItem('cookies', 1);
+      return (CS.REPLY_LINES && CS.REPLY_LINES[id]) || `${CS.NPCS[id].name.split(' ')[0]} is at your door with a tin of cookies and a shrug. "Winter was a long time ago. I still remembered."`;
+    });
+    CS.ui.narrateSeq([`Spring 14. A knock before you've had coffee — and then another.`, ...lines, `A counter full of cookie tins. Every one of them is a sentence you said in winter.`], () => {
+      discover('reply_day_' + S.time.year, `Reply Day, Year ${S.time.year}: ${ids.map(i => CS.NPCS[i].name.split(' ')[0]).join(', ')} came by with cookies for last winter's chocolate.`);
+    });
+  }
+  function potluck() {
+    const meals = Object.keys(S.inv).filter(k => S.inv[k] > 0 && CS.ITEMS[k] && CS.ITEMS[k].type === 'meal');
+    const attendees = Object.keys(S.npcs).filter(id => S.npcs[id].met && !CS.NPCS[id].decorative && S.npcs[id].arc !== 'gone');
+    if (!meals.length) {
+      CS.ui.narrate(`You came empty-handed. Mateo hands you a plate anyway — "leftovers are a renewable resource" — and nobody says a word about it. You'll remember to cook next year.`);
+      return;
+    }
+    CS.ui.pick('What did you bring to the table?', meals.map(k => ({
+      icon: k, name: CS.ITEMS[k].name, desc: CS.ITEMS[k].desc,
+      fn: () => {
+        G.removeItem(k, 1);
+        const star = (CS.ITEMS[k].energy || 0) >= 60;
+        for (const id of attendees) S.npcs[id].friend += star ? 6 : 3;
+        CS.ui.narrate(star
+          ? `Your ${CS.ITEMS[k].name} goes down the long table and comes back empty. Grace asks for the recipe in front of everyone, which on this island is a knighthood.`
+          : `Your ${CS.ITEMS[k].name} holds its own between Mateo's four dishes and Malik's one. Somebody takes seconds. That's the review.`);
+        discover('potluck_' + S.time.year, `Friendsgiving, Year ${S.time.year}: you brought ${CS.ITEMS[k].name}.${star ? ' Grace asked for the recipe.' : ''}`);
+      },
+    })));
+  }
+  function cookoff() {
+    const yr = S.time.year;
+    const cat = CS.COOKOFF[yr <= 4 ? yr - 1 : (yr * 7) % CS.COOKOFF.length];
+    const catName = CS.ITEMS[cat].name;
+    const fk = 'cookoff_' + yr;
+    if (S.flags[fk]) { CS.ui.narrate(`The judges' table is cleared. This year's category was ${catName}; your entry is already in the books.`); return; }
+    if (!S.inv[cat]) {
+      CS.ui.narrate(`The chalkboard at the judges' table: "THIS YEAR: ${catName.toUpperCase()}." Nico, one of the judges, whispers: "Bring one before six and you're in."`);
+      return;
+    }
+    CS.ui.choose(`Category: ${catName}. You have one. Enter it?`, [
+      { label: `Enter your ${catName}`, fn: () => {
+        G.removeItem(cat, 1); S.flags[fk] = true;
+        const perfect = Math.random() < .6 + Math.min(.3, G.tierOf('grace') * .05);
+        if (perfect) {
+          S.player.money += 150; S.npcs.nico.friend += 8; S.npcs.grace.friend += 8;
+          CS.ui.narrate(`Three judges, one bite each, a pause you could park a tram in. Then Grace puts down her fork and starts clapping. First place. $150 and Nico yelling your name into a megaphone.`);
+          discover(fk, `Street Food cook-off, Year ${yr}: first place with your ${catName}. Grace clapped first.`);
+        } else {
+          S.player.money += 40; S.npcs.nico.friend += 4; S.npcs.grace.friend += 4;
+          CS.ui.narrate(`Second place, by a hair, to a food-cart legend from Astoria. Grace: "More salt. Next year." Forty dollars and a ribbon you will absolutely keep.`);
+          discover(fk, `Street Food cook-off, Year ${yr}: second place with your ${catName}. "More salt," said Grace.`);
+        }
+        CS.ui.refreshHUD();
+      }},
+      { label: 'Not this year', fn: () => {} },
+    ]);
+  }
+  function maybeHeartEvent(id) {
+    const ev = pendingHeart(id);
     if (!ev) return false;
+    const r = S.npcs[id];
+    if (S.lastHeartDay === G.totalDay()) return false;
+    if (ev.where && !gateOpen(ev)) return false;
     S.lastHeartDay = G.totalDay();
     r.hearts.push(ev.key);
     const npc = CS.NPCS[id];
@@ -2030,7 +2362,14 @@
   }
   function checkEvents(trigger, arg) {
     if (!S) return;
-    if (trigger === 'talk' && arg && maybeHeartEvent(arg)) return;
+    if (trigger === 'talk' && arg && !(G.currentFestival() && !G.currentFestival().quiet) && maybeHeartEvent(arg)) return;
+    if ((trigger === 'enter' || trigger === 'time' || trigger === 'wake') && !CS.ui.blocking()) {
+      // FoMT rule: no heart or random scenes on festival days — the festival is the scene
+      const fq = G.currentFestival(), festDay = !!(fq && !fq.quiet);
+      if (!festDay && scanHeartEvents()) return;
+      if (!festDay && runRandomEvents()) return;
+      if (runCalendarMoments()) return;
+    }
     const p = S.playerRT;
     const m = S.time.minutes;
 
@@ -2061,6 +2400,16 @@
         S.flags['fest_' + fest.key + '_' + S.time.year] = true;
         discover('fest_' + fest.key + '_' + S.time.year, FEST_TEXT[fest.key]);
         CS.ui.toast(`${fest.name} — everyone's here`);
+        if (fest.key === 'friendsgiving') potluck();
+        if (fest.key === 'holiday_market' && S.holidayPick && S.npcs[S.holidayPick]) {
+          const hid = S.holidayPick; S.holidayPick = null;
+          const hn = CS.NPCS[hid], hf = hn.name.split(' ')[0];
+          S.date = { npc: hid, spot: 'stall_b', until: fest.end, kind: (hn.rom || []).length ? 'date' : 'hangout' };
+          S.npcs[hid].friend += 12; if ((hn.rom || []).length) S.npcs[hid].attraction += 8;
+          refreshNPCs(true);
+          CS.ui.narrate(`${hf} is waiting under the first string of lights with two ciders, one already going cold from waiting. "You came." The market is long and slow and neither of you hurries it.`);
+          discover('holiday_pick_' + S.time.year, `Holiday Market, Year ${S.time.year}: you walked it with ${hn.name}. Two ciders, one cold.`);
+        }
         // the holidays bring the departed home
         if (fest.key === 'holiday_market') {
           for (const id of Object.keys(S.npcs)) {

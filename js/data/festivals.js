@@ -80,3 +80,13 @@ Object.assign(CS.FESTIVAL_LINES, {
     "Somewhere in the second act, half the lawn is watching the skyline instead. Same movie, really.",
   ],
 });
+
+/* ---------------- quiet calendar days (no gathering; game logic reacts) ---------------- */
+Object.assign(CS.FESTIVALS, {
+  valentine: { name:'Valentine\'s Day', season:3, day:14, start:360, end:1440, quiet:true,
+    blurb:'Give a Chocolate Box (Corner Market) to anyone you like. They remember — Spring 14 they come by.' },
+  reply_day: { name:'Reply Day', season:0, day:14, start:360, end:1440, quiet:true,
+    blurb:'Everyone you gave chocolate last winter finds your door this morning.' },
+  perseids: { name:'Perseids', season:1, day:21, start:1260, end:1440, quiet:true,
+    blurb:'Meteor shower over the south lawn after nine — if the sky is clear, make a wish.' },
+});

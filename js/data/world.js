@@ -403,8 +403,8 @@ CS.SPOTS = {
   lawn_c: { scene:'outdoor', x:25, y:56 },
   lawn_d: { scene:'outdoor', x:14, y:57 },
   lawn_e: { scene:'outdoor', x:20, y:53 },
-  stall_a: { scene:'outdoor', x:14, y:22 },
-  stall_b: { scene:'outdoor', x:18, y:34 },
+  stall_a: { scene:'outdoor', x:13, y:22 },   // beside the stall, not on it — the 'k' tile stays tappable
+  stall_b: { scene:'outdoor', x:18, y:35 },
   cafe_table_a:    { scene:'cafe', x:2,  y:4 },
   cafe_table_b:    { scene:'cafe', x:7,  y:4 },
   cafe_table_c:    { scene:'cafe', x:11, y:4 },
