@@ -16,6 +16,19 @@
   };
 
   /* ================= HUD ================= */
+  U.refreshHeld = function () {
+    const S = G().state(); const chip = $('held-chip');
+    if (!S || !chip) return;
+    if (S.held && S.inv[S.held] > 0) {
+      chip.classList.remove('hidden');
+      chip.innerHTML = '';
+      chip.appendChild(CS.art.iconCanvas(S.held, 22));
+      chip.insertAdjacentHTML('beforeend', `<span>Holding: ${CS.ITEMS[S.held].name}</span><b>✕</b>`);
+      chip.onclick = () => G().setHeld(null);
+    } else {
+      chip.classList.add('hidden');
+    }
+  };
   U.refreshHUD = function () {
     const S = G().state();
     if (!S) return;
@@ -292,7 +305,8 @@
     const S = G().state();
     const grid = $('inv-grid');
     grid.innerHTML = '';
-    $('inv-detail').innerHTML = '<span style="color:#b3a18c">Tap an item.</span>';
+    const bi = G().bagInfo ? G().bagInfo() : null;
+    $('inv-detail').innerHTML = `<span style="color:#b3a18c">Tap an item.${bi ? ` (${bi.used}/${bi.cap} slots — tools ride free)` : ''}</span>`;
     const keys = Object.keys(S.inv).filter(k => S.inv[k] > 0);
     if (!keys.length) grid.innerHTML = '<div style="grid-column:1/-1;color:#b3a18c;padding:20px;text-align:center">Empty. The farm awaits.</div>';
     for (const k of keys) {
@@ -300,7 +314,7 @@
       const cell = document.createElement('div');
       cell.className = 'inv-cell';
       cell.appendChild(CS.art.iconCanvas(k, 34));
-      cell.insertAdjacentHTML('beforeend', `<span class="count">${S.inv[k]}</span>`);
+      cell.insertAdjacentHTML('beforeend', `<span class="count">${S.inv[k]}</span><span class="inm">${def.name}</span>`);
       cell.onclick = () => {
         grid.querySelectorAll('.inv-cell').forEach(c => c.classList.remove('selected'));
         cell.classList.add('selected');
@@ -314,6 +328,15 @@
           b.onclick = () => { G().eatItem(k); renderInventory(); };
           $('inv-detail').appendChild(document.createElement('br'));
           $('inv-detail').appendChild(b);
+        }
+        if (def.type !== 'seed') {
+          const held = G().state().held === k;
+          const hb = document.createElement('button');
+          hb.className = 'btn small';
+          hb.textContent = held ? 'Put away' : 'Hold it';
+          hb.onclick = () => { G().setHeld(held ? null : k); U.closePanels(); };
+          if (!def.energy) $('inv-detail').appendChild(document.createElement('br'));
+          $('inv-detail').appendChild(hb);
         }
       };
       grid.appendChild(cell);

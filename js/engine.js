@@ -434,8 +434,13 @@
       entities.push({ b: rt.py + TILE, d: () =>
         CS.art.character(ctx, rt.px - E.camX, rt.py - E.camY, TILE, CS.NPCS[id].look, state.animT, rt.moving, rt.facing) });
     }
-    entities.push({ b: p.py + TILE, pl: true, d: () =>
-      CS.art.character(ctx, p.px - E.camX, p.py - E.camY, TILE, E.resolveLook(state.player.look), state.animT, p.path.length > 0, p.facing) });
+    entities.push({ b: p.py + TILE, pl: true, d: () => {
+      CS.art.character(ctx, p.px - E.camX, p.py - E.camY, TILE, E.resolveLook(state.player.look), state.animT, p.path.length > 0, p.facing);
+      // whatever you're carrying rides over your head, FoMT-style
+      if (state.held && state.inv[state.held] > 0) {
+        CS.art.drawIcon(ctx, state.held, p.px - E.camX + TILE / 2 - 9, p.py - E.camY - TILE * .58, 18);
+      }
+    } });
 
     entities.sort((a, b2) => a.b - b2.b || (a.pl ? 1 : 0) - (b2.pl ? 1 : 0));
     for (const e of entities) e.d();
@@ -489,6 +494,21 @@
         ctx.beginPath(); ctx.roundRect(nx - w / 2 - 5, ny - 9, w + 10, 16, 7); ctx.fill();
         ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle';
         ctx.fillText(CS.NPCS[id].name, nx, ny);
+      }
+    }
+
+    // home décor sits on the furniture it was placed on
+    if (scene === 'apartment' && state.decor) {
+      const g2 = CS.MAPS.apartment.grid;
+      const findCh = ch => { for (let y2 = 0; y2 < g2.length; y2++) { const x2 = g2[y2].indexOf(ch); if (x2 >= 0) return [x2, y2]; } return null; };
+      const spots = { table: findCh('t'), shelf: findCh('q') };
+      for (const slot of ['table', 'shelf']) {
+        const dk = state.decor[slot], sp = spots[slot];
+        if (dk && sp) CS.art.drawIcon(ctx, dk, sp[0] * TILE - E.camX + 7, sp[1] * TILE - E.camY - 8, 18);
+      }
+      if (state.decor.flowerDays > 0) {
+        const vs = state.decor.table === 'ceramic_vase' ? spots.table : (state.decor.shelf === 'ceramic_vase' ? spots.shelf : null);
+        if (vs) CS.art.drawIcon(ctx, 'tulip', vs[0] * TILE - E.camX + 15, vs[1] * TILE - E.camY - 18, 14);
       }
     }
 

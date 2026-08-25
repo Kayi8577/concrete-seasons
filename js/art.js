@@ -1692,6 +1692,12 @@
     }
   };
 
+  const ICON_CACHE = {};
+  A.drawIcon = function (ctx, id, x, y, s2) {
+    let c = ICON_CACHE[id];
+    if (!c) { c = A.iconCanvas(id, 32); ICON_CACHE[id] = c; }
+    ctx.drawImage(c, x, y, s2, s2);
+  };
   A.iconCanvas = function (id, size) {
     const c = document.createElement('canvas');
     c.width = c.height = size * (window.devicePixelRatio > 1 ? 2 : 1);

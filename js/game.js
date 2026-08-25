@@ -53,6 +53,11 @@
     S.housing = S.housing || 'studio';
     S.player.maxEnergy = S.player.maxEnergy || 100;
     S.bagels = S.bagels || [];
+    S.held = S.held || null;              // item carried over your head (FoMT-style)
+    S.homeFridge = S.homeFridge || {};    // food storage at home
+    S.homeShelf = S.homeShelf || {};      // everything-else storage
+    S.decor = S.decor || {};              // {table, shelf, flowerDays}
+    S.napToday = S.napToday || 0;
     S.volunteerDays = S.volunteerDays || 0;
     S.fishing = S.fishing || { casts: 0, caught: 0 };
     S.weather.severeToday = S.weather.severeToday || false;
@@ -382,6 +387,11 @@
     // daily resets
     S.date = null;
     for (const id of Object.keys(S.npcs)) S.npcs[id].talkedToday = false;
+    S.napToday = 0;
+    if (S.decor && S.decor.flowerDays > 0) {
+      S.decor.flowerDays -= 1;
+      S.player.energy = Math.min(S.player.maxEnergy || 100, S.player.energy + 10);
+    }
     if (S.pet) { S.pet.fedToday = false; S.pet.walkedToday = false; }
     if (S.weather.today === 'snow' && !S.flags.firstSnow) {
       S.flags.firstSnow = true;
@@ -844,11 +854,14 @@
   function interactionFor(scene, x, y, ch) {
     if (scene === 'apartment') {
       if (ch === 'b') return () => promptSleep();
-      if (ch === 'K') return () => openCooking();
-      if (ch === 'W') return () => CS.ui.narrate(windowFlavor());
-      if (ch === 'q') return () => S.pet && S.pet.type === 'fish'
-        ? G.interactPet()
-        : CS.ui.narrate("A sturdy shelf by the wall. An aquarium would look great here.");
+      if (ch === 'K') return () => CS.ui.choose('The kitchen corner.', [
+        { label: 'Cook something', fn: () => openCooking() },
+        { label: 'Open the fridge', fn: () => storagePanel('fridge') },
+        { label: 'Never mind', fn: () => {} },
+      ]);
+      if (ch === 'W') return () => windowMenu();
+      if (ch === 'q') return () => shelfMenu();
+      if (ch === 't') return () => tableMenu();
     }
     if (ch === 'U') {
       if (scene === 'cafe') return () => CS.ui.buyPrompt('coffee', 4, 'Juniper pour-over. +18 energy.', () => { S.coffeeJuniper++; });
@@ -858,7 +871,15 @@
       if (scene === 'thrift') return () => CS.ui.openThrift();
       if (scene === 'bar') return () => barMenu();
     }
-    if (ch === 'X') return () => CS.ui.openSell();
+    if (ch === 'X') return () => {
+      const k = S.held;
+      if (k && S.inv[k] > 0 && CS.ITEMS[k] && CS.ITEMS[k].sell) {
+        G.sellItem(k, 1, (G.priceMult ? G.priceMult(k) : 1) * G.sellBoost());
+        if (!S.inv[k]) G.setHeld(null);
+        return;
+      }
+      CS.ui.openSell();
+    };
     if (ch === 'N') return () => noticeboard(scene);
     if (ch === 'k') return () => {
       // the Williamsburg flea runs every weekend, festival or not
@@ -1124,6 +1145,117 @@
     })));
   }
 
+  function storagePanel(kind) {
+    const store = kind === 'fridge' ? S.homeFridge : S.homeShelf;
+    const isFood = k => { const d = CS.ITEMS[k] || {}; return d.energy || ['food', 'meal', 'crop'].includes(d.type); };
+    const fits = k => (kind === 'fridge') === !!isFood(k);
+    CS.ui.choose(kind === 'fridge' ? 'The fridge hums its one note.' : 'Shelf space: the city\'s rarest crop.', [
+      { label: 'Put something in', fn: () => {
+        const ks = Object.keys(S.inv).filter(k => S.inv[k] > 0 && CS.ITEMS[k] && CS.ITEMS[k].type !== 'tool' && fits(k));
+        if (!ks.length) { CS.ui.narrate('Nothing in the bag that belongs here.'); return; }
+        CS.ui.pick('Store what?', ks.map(k => ({ icon: k, name: `${CS.ITEMS[k].name} ×${S.inv[k]}`, desc: CS.ITEMS[k].desc,
+          fn: () => { store[k] = (store[k] || 0) + S.inv[k]; S.inv[k] = 0; if (S.held === k) G.setHeld(null); CS.ui.toast('Stored'); } })));
+      }},
+      { label: 'Take something out', fn: () => {
+        const ks = Object.keys(store).filter(k => store[k] > 0);
+        if (!ks.length) { CS.ui.narrate('Empty. Full of potential, but empty.'); return; }
+        CS.ui.pick('Take what?', ks.map(k => ({ icon: k, name: `${CS.ITEMS[k].name} ×${store[k]}`, desc: CS.ITEMS[k].desc,
+          fn: () => { S.inv[k] = (S.inv[k] || 0) + store[k]; store[k] = 0; CS.ui.toast('Back in the bag'); } })));
+      }},
+      { label: 'Close it', fn: () => {} },
+    ]);
+  }
+  function placeDecor(slot) {
+    const k = S.held;
+    if (!k || !(S.inv[k] > 0)) return false;
+    const d = CS.ITEMS[k] || {};
+    if (!['thrift', 'gift'].includes(d.type)) return false;
+    const prev = S.decor[slot];
+    S.inv[k] -= 1; if (!S.inv[k]) G.setHeld(null);
+    if (prev) G.addItem(prev, 1);
+    S.decor[slot] = k;
+    CS.ui.narrate(`The ${d.name} takes its place on the ${slot}. The studio looks ${prev ? 'rearranged, which is its own pleasure' : 'a little more lived-in'}.`);
+    return true;
+  }
+  function decorLine(slot) {
+    const k = S.decor[slot];
+    const lines = {
+      ceramic_vase: 'Hand-thrown, slightly crooked, completely right.' + (S.decor.flowerDays > 0 ? ' The flower still has a few good mornings in it.' : ' It wants a flower.'),
+      brass_lamp: 'Warm light, minor electrical mystery, major atmosphere.',
+      old_poster: 'A venue that no longer exists, headlining your wall forever.',
+      vinyl_record: "Someone's entire 1978, leaning against the wall like it owns the place.",
+      paper_lantern: 'It glows like a small, patient moon.',
+      planter_box: 'Cedar, waiting for spring, smelling faintly of it already.',
+      wool_scarf: 'Draped exactly where a scarf should never be. Perfect.',
+      red_envelope: 'Good fortune, on display where it can work.',
+    };
+    return lines[k] || (CS.ITEMS[k].desc || 'It suits the place.');
+  }
+  function shelfMenu() {
+    if (S.held && placeDecor('shelf')) return;
+    const opts = [];
+    if (S.pet && S.pet.type === 'fish') opts.push({ label: 'Watch the tank', fn: () => G.interactPet() });
+    opts.push({ label: 'Shelf storage', fn: () => storagePanel('shelf') });
+    if (S.decor.shelf) opts.push({ label: `Admire the ${CS.ITEMS[S.decor.shelf].name}`, fn: () => CS.ui.narrate(decorLine('shelf')) });
+    opts.push({ label: 'Leave it', fn: () => {} });
+    CS.ui.choose('The shelf by the wall.', opts);
+  }
+  function tableMenu() {
+    const k = S.held;
+    if (k && S.inv[k] > 0) {
+      const d = CS.ITEMS[k] || {};
+      if (['tulip', 'sunflower', 'chrysanthemum'].includes(k) && (S.decor.table === 'ceramic_vase' || S.decor.shelf === 'ceramic_vase')) {
+        S.inv[k] -= 1; if (!S.inv[k]) G.setHeld(null);
+        S.decor.flowerDays = 3;
+        CS.ui.narrate(`The ${d.name} goes into the vase, and the whole studio reorganizes itself around one stem. Mornings will be kinder for a few days.`);
+        return;
+      }
+      if (d.energy) {
+        const bonus = Math.round(d.energy * 1.15);
+        S.inv[k] -= 1; if (!S.inv[k]) G.setHeld(null);
+        S.player.energy = Math.min(S.player.maxEnergy || 100, S.player.energy + bonus);
+        CS.ui.refreshHUD();
+        CS.ui.narrate(`You sit and have the ${d.name} like a person — plate, chair, window light. (+${bonus} energy. Meals at the table just land better.)`);
+        return;
+      }
+      if (placeDecor('table')) return;
+    }
+    const opts = [];
+    const foods = Object.keys(S.inv).filter(x => S.inv[x] > 0 && CS.ITEMS[x] && CS.ITEMS[x].energy);
+    if (foods.length) opts.push({ label: 'Eat at the table (+15% energy)', fn: () => CS.ui.pick('Eat what?', foods.map(x => ({
+      icon: x, name: CS.ITEMS[x].name, desc: `+${Math.round(CS.ITEMS[x].energy * 1.15)} energy, eaten sitting down`,
+      fn: () => { const b = Math.round(CS.ITEMS[x].energy * 1.15); S.inv[x] -= 1; if (S.held === x && !S.inv[x]) G.setHeld(null); S.player.energy = Math.min(S.player.maxEnergy || 100, S.player.energy + b); CS.ui.refreshHUD(); CS.ui.toast(`+${b} energy`); } }))) });
+    if (S.decor.table) opts.push({ label: `Admire the ${CS.ITEMS[S.decor.table].name}`, fn: () => CS.ui.narrate(decorLine('table')) });
+    opts.push({ label: 'Just a table', fn: () => {} });
+    CS.ui.choose('The little table by the window.', opts);
+  }
+  function calendarText() {
+    const si = S.time.seasonIndex, today = S.time.day;
+    const fests = Object.values(CS.FESTIVALS).filter(f => f.season === si).sort((a, b) => a.day - b.day)
+      .map(f => `${f.day}${f.day === today ? ' (today)' : ''} — ${f.name}`);
+    const bdays = Object.keys(CS.NPCS).filter(id => CS.NPCS[id].bday && CS.NPCS[id].bday[0] === si && S.npcs[id] && S.npcs[id].met && G.tierOf(id) >= 2)
+      .sort((a, b) => CS.NPCS[a].bday[1] - CS.NPCS[b].bday[1])
+      .map(id => `${CS.NPCS[id].bday[1]} — ${CS.NPCS[id].name.split(' ')[0]}'s birthday`);
+    const out = [`The wall calendar, ${CS.SEASONS[si]} of Year ${S.time.year}. Circled dates:\n\n` + (fests.join('\n') || 'A quiet month.')];
+    if (bdays.length) out.push(`Penciled in the margins:\n\n` + bdays.join('\n'));
+    CS.ui.narrateSeq(out);
+  }
+  function reflectionText() {
+    const e = S.player.energy / (S.player.maxEnergy || 100);
+    const face = e >= .8 ? 'rested and ready for whatever the island invents today'
+      : e >= .5 ? 'fine — a little worn at the edges, nothing coffee can\'t negotiate'
+      : e >= .25 ? 'tired around the eyes. The kind a good meal and an early night would fix'
+      : 'running on fumes. Go to bed, farmer';
+    CS.ui.narrate(`Your reflection in the window glass, over the ${CS.SEASONS[S.time.seasonIndex]} light: you look ${face}.`);
+  }
+  function windowMenu() {
+    CS.ui.choose('The window over the sink, the wall calendar beside it.', [
+      { label: 'Look outside', fn: () => CS.ui.narrate(windowFlavor()) },
+      { label: 'Check the calendar', fn: () => calendarText() },
+      { label: 'Catch your reflection', fn: () => reflectionText() },
+      { label: 'Step away', fn: () => {} },
+    ]);
+  }
   function windowFlavor() {
     const opts = [
       "Manhattan glitters across the river like it's showing off. It is.",
@@ -1153,6 +1285,14 @@
     const opts = [
       { label: 'Sleep until morning (6:30 AM)', fn: () => G.sleep(false) },
       { label: 'Set an early alarm (5:15 AM)', fn: () => G.sleep(false, true) },
+      { label: 'Lie down for half an hour (+10 energy)', fn: () => {
+        if ((S.napToday || 0) >= 2) { CS.ui.narrate('Any more lying down and it legally becomes sleeping.'); return; }
+        S.napToday = (S.napToday || 0) + 1;
+        S.time.minutes += 30;
+        S.player.energy = Math.min(S.player.maxEnergy || 100, S.player.energy + 10);
+        CS.ui.refreshHUD();
+        CS.ui.narrate('Thirty minutes of ceiling. The radiator ticks. The city hums. Marginally restored.');
+      }},
       { label: 'Stay up', fn: () => {} },
     ];
     CS.ui.choose('Call it a day?', opts);
@@ -1348,8 +1488,29 @@
   }
   G.spendEnergy = spendEnergy;
 
+  G.bagInfo = function () {
+    const used = Object.keys(S.inv).filter(k => S.inv[k] > 0 && CS.ITEMS[k] && CS.ITEMS[k].type !== 'tool').length;
+    return { used, cap: S.inv.messenger_bag ? 20 : 12 };
+  };
   G.addItem = function (id, n) {
+    const def = CS.ITEMS[id] || {};
+    const isNew = !(S.inv[id] > 0);
+    if (isNew && def.type !== 'tool') {
+      const { used, cap } = G.bagInfo();
+      if (used >= cap) {
+        // no space for a new stack — Malik drops it at your place instead
+        const foody = def.energy || ['food', 'meal', 'crop'].includes(def.type);
+        const home = foody ? S.homeFridge : S.homeShelf;
+        home[id] = (home[id] || 0) + n;
+        CS.ui.toast(`Bag full — ${def.name || id} went to your ${foody ? 'fridge' : 'shelf'} at home`);
+        return;
+      }
+    }
     S.inv[id] = (S.inv[id] || 0) + n;
+  };
+  G.setHeld = function (k) {
+    S.held = k;
+    if (CS.ui.refreshHeld) CS.ui.refreshHeld();
   };
   G.removeItem = function (id, n) {
     if ((S.inv[id] || 0) < n) return false;
@@ -1671,6 +1832,17 @@
       });
       return;
     }
+    // holding something? hand it over directly, FoMT-style
+    if (S.held && S.inv[S.held] > 0 && !npc.decorative && CS.ITEMS[S.held] && CS.ITEMS[S.held].type !== 'seed') {
+      if (r.giftedDay === G.totalDay()) {
+        CS.ui.toast(`${npc.name.split(' ')[0]} already got something from you today`);
+      } else {
+        const hk = S.held;
+        giveGift(id, hk);
+        if (!S.inv[hk]) G.setHeld(null);
+        return;
+      }
+    }
     // interaction menu
     const opts = [{ label: 'Talk', fn: () => doTalk(id) }];
     const giftables = Object.keys(S.inv).filter(k => S.inv[k] > 0 && CS.ITEMS[k] && CS.ITEMS[k].type !== 'seed');
@@ -1756,44 +1928,46 @@
     CS.ui.dialogue(npc, [line], () => checkEvents('talk', id));
   }
 
+  function giveGift(id, k) {
+    const npc = CS.NPCS[id];
+    const r = S.npcs[id];
+    G.removeItem(k, 1);
+    r.giftedDay = G.totalDay();
+    const bday = G.isBday(id);
+    const fv = G.currentFestival();
+    if (k === 'chocolate_box' && fv && fv.key === 'valentine') {
+      const vk = 'val_' + S.time.year;
+      S.flags[vk] = S.flags[vk] || [];
+      if (!S.flags[vk].includes(id)) S.flags[vk].push(id);
+    }
+    let gain = 5, react;
+    const first = npc.name.split(' ')[0];
+    if ((npc.loved || []).includes(k)) {
+      gain = 22;
+      G.showEmote(id, 'heart');
+      react = `${first}'s whole face changes. "Okay — you actually get me. Thank you." That one landed.`;
+    } else if ((npc.liked || []).includes(k)) {
+      gain = 12;
+      G.showEmote(id, 'note');
+      react = `"Oh — that's really thoughtful." ${first} means it.`;
+    } else {
+      react = `${first} accepts it with the polite warmth of a good neighbor.`;
+    }
+    if (bday) {
+      gain *= 3;
+      G.showEmote(id, 'heart');
+      react += ` "And on my birthday, too." ${first} will remember this one.`;
+    }
+    r.friend += gain;
+    if (r.romance === 'seeing' || r.attraction > 0) r.attraction += Math.floor(gain / 3);
+    CS.ui.narrate(react);
+  }
   function giftPicker(id) {
     const npc = CS.NPCS[id];
     const giftables = Object.keys(S.inv).filter(k => S.inv[k] > 0 && CS.ITEMS[k] && CS.ITEMS[k].type !== 'seed');
     CS.ui.pick(`Give ${npc.name.split(' ')[0]} what?`, giftables.map(k => ({
       icon: k, name: CS.ITEMS[k].name, desc: CS.ITEMS[k].desc,
-      fn: () => {
-        const r = S.npcs[id];
-        G.removeItem(k, 1);
-        r.giftedDay = G.totalDay();
-        const bday = G.isBday(id);
-        const fv = G.currentFestival();
-        if (k === 'chocolate_box' && fv && fv.key === 'valentine') {
-          const vk = 'val_' + S.time.year;
-          S.flags[vk] = S.flags[vk] || [];
-          if (!S.flags[vk].includes(id)) S.flags[vk].push(id);
-        }
-        let gain = 5, react;
-        const first = npc.name.split(' ')[0];
-        if ((npc.loved || []).includes(k)) {
-          gain = 22;
-          G.showEmote(id, 'heart');
-          react = `${first}'s whole face changes. "Okay — you actually get me. Thank you." That one landed.`;
-        } else if ((npc.liked || []).includes(k)) {
-          gain = 12;
-          G.showEmote(id, 'note');
-          react = `"Oh — that's really thoughtful." ${first} means it.`;
-        } else {
-          react = `${first} accepts it with the polite warmth of a good neighbor.`;
-        }
-        if (bday) {
-          gain *= 3;
-          G.showEmote(id, 'heart');
-          react += ` "And on my birthday, too." ${first} will remember this one.`;
-        }
-        r.friend += gain;
-        if (r.romance === 'seeing' || r.attraction > 0) r.attraction += Math.floor(gain / 3);
-        CS.ui.narrate(react);
-      },
+      fn: () => giveGift(id, k),
     })));
   }
 
