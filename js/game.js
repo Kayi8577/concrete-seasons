@@ -25,10 +25,12 @@
       inv: { lettuce_seed: 0, radish_seed: 2 },
       npcs: {},                 // id -> {met, fam, friend, talkedToday}
       pet: null,
-      flags: {},
+      flags: { greenhouseOpen: false },
       discoveries: [],
       shipped: {},              // cropId -> count
       totalEarned: 0,
+      itemQuality: {},          // itemId -> total star points in the stack
+      cookingSkill: 0,          // meals made; improves contest results visibly
       settings: { speed: 1 },
     };
   };
@@ -38,6 +40,7 @@
     S = state;
     // ---- migrations & Phase-2 defaults (works for v1 saves too) ----
     S.saveVersion = CS.SAVE_VERSION;
+    S.flags = S.flags || {};
     S.player.pref = S.player.pref || 'discover';
     S.phone = S.phone || {};              // npcId/'hp' -> {msgs:[{from,text,day}], unread, repliedDay}
     S.couples = S.couples || [];          // [[a,b], ...]
@@ -56,6 +59,8 @@
     S.held = S.held || null;              // item carried over your head (FoMT-style)
     S.homeFridge = S.homeFridge || {};    // food storage at home
     S.homeShelf = S.homeShelf || {};      // everything-else storage
+    S.homeFridgeQuality = S.homeFridgeQuality || {};
+    S.homeShelfQuality = S.homeShelfQuality || {};
     S.decor = S.decor || {};              // {table, shelf, flowerDays}
     S.napToday = S.napToday || 0;
     S.volunteerDays = S.volunteerDays || 0;
@@ -67,8 +72,14 @@
     S.settings.textSize = S.settings.textSize || 'standard';
     S.settings.motion = S.settings.motion || 'full';
     S.settings.weatherFx = S.settings.weatherFx || 'full';
+    S.itemQuality = S.itemQuality || {};
+    S.cookingSkill = S.cookingSkill || 0;
+    if (S.flags.greenhouseOpen == null) {
+      const usedGreenhouse = Object.keys(S.farm.plots || {}).some(k => k.startsWith('greenhouse:'));
+      S.flags.greenhouseOpen = !!(S.flags.firstHarvest || S.farmUpgrades.hydro || usedGreenhouse);
+    }
     applyHousing();
-    applyHydro();
+    applyGreenhouse();
     for (const id of Object.keys(CS.NPCS)) {
       S.npcs[id] = Object.assign(
         { met: false, fam: 0, friend: 0, talkedToday: false, attraction: 0, romance: null, giftedDay: -1 },
@@ -147,12 +158,21 @@
     CS.MAPS.apartment.grid = (S.housing === 'onebr') ? CS.ONEBR_GRID : STUDIO_GRID;
     CS.MAPS.apartment.name = (S.housing === 'onebr') ? 'Your One-Bedroom' : 'Your Studio';
   }
-  function applyHydro() {
-    if (!S.farmUpgrades.hydro) return;
+  function applyGreenhouse() {
     const g = CS.MAPS.greenhouse.grid;
-    for (let y = 3; y <= 4; y++) for (let x = 5; x <= 8; x++) g[y][x] = 'g';
+    for (let y = 1; y <= 4; y++) for (let x = 1; x <= 8; x++) g[y][x] = '.';
+    for (let x = 1; x <= 4; x++) g[1][x] = 'g';
+    if (S.farmUpgrades.hydro) {
+      for (let y = 1; y <= 4; y++) for (let x = 1; x <= 4; x++) g[y][x] = 'g';
+    }
+    // Never invalidate a planted bed from an older save.
+    for (const key of Object.keys(S.farm.plots || {})) {
+      if (!key.startsWith('greenhouse:')) continue;
+      const [x, y] = key.split(':')[1].split(',').map(Number);
+      if (g[y] && g[y][x] !== '#') g[y][x] = 'g';
+    }
   }
-  G.applyHydro = applyHydro;
+  G.applyHydro = applyGreenhouse;
 
   /* ---- difficulty ---- */
   const DIFF = {
@@ -219,7 +239,7 @@
         const irrigated = !indoor && S.farmUpgrades.irrigation;
         if (pl.watered || indoor || irrigated || (S.weather.today === 'rain' && !indoor)) {
           pl.days += 1;
-          if (S.farmUpgrades.compost && Math.random() < .25) pl.days += 1; // rich soil
+          pl.care = (pl.care || 0) + 1;
         } else {
           pl.stunted = true; // missed a day — no perfect-harvest bonus
         }
@@ -407,8 +427,12 @@
     // rent on Mondays (from week 2)
     if (S.time.weekdayIndex === 0 && G.totalDay() >= 7) {
       const rent = G.rentAmount();
-      S.player.money = Math.max(0, S.player.money - rent);
-      CS.ui.toast(`Rent paid: -$${rent}`, 'money');
+      const paid = Math.min(S.player.money, rent);
+      S.player.money -= paid;
+      CS.ui.toast(paid === rent
+        ? `Rent paid: -$${paid}`
+        : `You paid $${paid}; community assistance covered the other $${rent - paid}`,
+      'money');
     }
 
     // wake up in apartment
@@ -763,6 +787,23 @@
     // outdoor door → interior (a few doors have history)
     if (map.outdoor && map.doors[ch]) {
       const target = map.doors[ch];
+      if (target === 'greenhouse' && !S.flags.greenhouseOpen) {
+        if (!S.flags.firstHarvest) {
+          CS.ui.narrate('The greenhouse is safe but not ready. Malik has a repair list taped to the door: "First prove the outdoor plot can grow something. Then we build."');
+          return;
+        }
+        CS.ui.choose('Malik and a half-dozen neighbors are replacing cracked panes. The community fund covered the repair — all it needs now is an afternoon of passing tools and ordering too much pizza.', [
+          { label: 'Join the repair afternoon', fn: () => {
+            S.flags.greenhouseOpen = true;
+            S.time.minutes += 120;
+            S.npcs.malik.friend += 10;
+            discover('greenhouse_repaired', 'The neighborhood repaired the greenhouse together. Four season-proof beds are ready; there is room to expand.');
+            CS.ui.narrate('By late afternoon four beds are clean, watered, and catching the light. Malik hands you the key. "Community greenhouse. Means nobody does it alone."', () => enterScene('greenhouse'));
+          }},
+          { label: 'Come back another day', fn: () => {} },
+        ]);
+        return;
+      }
       if (target === 'glasshouse' && !S.flags.glasshouseOpen) {
         CS.ui.narrate("A papered-over storefront. The 'For Lease' sign has been up so long it's basically a resident.");
         return;
@@ -1189,9 +1230,18 @@
       desc: `Needs: ${c.needsTxt}`,
       fn: () => {
         if (!c.have) { CS.ui.toast('Missing ingredients'); return; }
-        for (const ing of Object.keys(c.rec.needs)) G.removeItem(ing, c.rec.needs[ing]);
-        G.addItem(c.rid, 1);
-        CS.ui.toast(`Cooked ${CS.ITEMS[c.rid].name}`);
+        let qualityPoints = 0, ingredientCount = 0;
+        for (const ing of Object.keys(c.rec.needs)) {
+          const qty = c.rec.needs[ing];
+          qualityPoints += G.qualityOf(ing) * qty;
+          ingredientCount += qty;
+          G.removeItem(ing, qty);
+        }
+        S.cookingSkill += 1;
+        const skillBonus = Math.min(1, Math.floor(S.cookingSkill / 10));
+        const quality = Math.max(1, Math.min(5, Math.round(qualityPoints / ingredientCount) + skillBonus));
+        G.addItem(c.rid, 1, quality);
+        CS.ui.toast(`Cooked ${quality}★ ${CS.ITEMS[c.rid].name} · skill ${S.cookingSkill}`);
         if (!S.flags.firstCook) {
           S.flags.firstCook = true;
           discover('first_cook', `First meal cooked in the studio: ${CS.ITEMS[c.rid].name}. The radiator hissed approvingly.`);
@@ -1202,6 +1252,7 @@
 
   function storagePanel(kind) {
     const store = kind === 'fridge' ? S.homeFridge : S.homeShelf;
+    const qualityStore = kind === 'fridge' ? S.homeFridgeQuality : S.homeShelfQuality;
     const isFood = k => { const d = CS.ITEMS[k] || {}; return d.energy || ['food', 'meal', 'crop'].includes(d.type); };
     const fits = k => (kind === 'fridge') === !!isFood(k);
     CS.ui.choose(kind === 'fridge' ? 'The fridge hums its one note.' : 'Shelf space: the city\'s rarest crop.', [
@@ -1209,13 +1260,32 @@
         const ks = Object.keys(S.inv).filter(k => S.inv[k] > 0 && CS.ITEMS[k] && CS.ITEMS[k].type !== 'tool' && fits(k));
         if (!ks.length) { CS.ui.narrate('Nothing in the bag that belongs here.'); return; }
         CS.ui.pick('Store what?', ks.map(k => ({ icon: k, name: `${CS.ITEMS[k].name} ×${S.inv[k]}`, desc: CS.ITEMS[k].desc,
-          fn: () => { store[k] = (store[k] || 0) + S.inv[k]; S.inv[k] = 0; if (S.held === k) G.setHeld(null); CS.ui.toast('Stored'); } })));
+          fn: () => {
+            const qty = S.inv[k];
+            const storedBefore = store[k] || 0;
+            if (['crop', 'meal'].includes(CS.ITEMS[k].type)) {
+              qualityStore[k] = (qualityStore[k] || storedBefore) + (S.itemQuality[k] || qty);
+            }
+            store[k] = (store[k] || 0) + qty;
+            delete S.inv[k]; delete S.itemQuality[k];
+            if (S.held === k) G.setHeld(null);
+            CS.ui.toast('Stored');
+          } })));
       }},
       { label: 'Take something out', fn: () => {
         const ks = Object.keys(store).filter(k => store[k] > 0);
         if (!ks.length) { CS.ui.narrate('Empty. Full of potential, but empty.'); return; }
         CS.ui.pick('Take what?', ks.map(k => ({ icon: k, name: `${CS.ITEMS[k].name} ×${store[k]}`, desc: CS.ITEMS[k].desc,
-          fn: () => { S.inv[k] = (S.inv[k] || 0) + store[k]; store[k] = 0; CS.ui.toast('Back in the bag'); } })));
+          fn: () => {
+            const qty = store[k];
+            const bagBefore = S.inv[k] || 0;
+            S.inv[k] = (S.inv[k] || 0) + qty;
+            if (['crop', 'meal'].includes(CS.ITEMS[k].type)) {
+              S.itemQuality[k] = (S.itemQuality[k] || bagBefore) + (qualityStore[k] || qty);
+            }
+            delete store[k]; delete qualityStore[k];
+            CS.ui.toast('Back in the bag');
+          } })));
       }},
       { label: 'Close it', fn: () => {} },
     ]);
@@ -1423,7 +1493,7 @@
 
     if (!pl || !pl.tilled) {
       if (!spendEnergy(S.farmUpgrades.sharpTools ? 2 : CS.COSTS.till)) return;
-      S.farm.plots[key] = { tilled: true, crop: null, days: 0, watered: false };
+      S.farm.plots[key] = { tilled: true, crop: null, days: 0, watered: false, care: 0 };
       farmFeedback('till', scene, x, y);
       if (!S.bagels.includes('till') && Math.random() < .03) {
         findBagel('till', 'Your trowel clinks against something. Buried a hand deep in the community plot, wrapped in wax paper from a deli that closed decades ago:');
@@ -1453,7 +1523,7 @@
         if (!spendEnergy(CS.COSTS.plant)) return;
         S.inv[sd] -= 1;
         if (S.inv[sd] <= 0) { delete S.inv[sd]; if (S.held === sd) S.held = null; }
-        pl.crop = CS.ITEMS[sd].crop; pl.days = 0;
+        pl.crop = CS.ITEMS[sd].crop; pl.days = 0; pl.care = 0; pl.cycleTarget = CS.CROPS[pl.crop].days;
         pl.watered = (scene !== 'greenhouse' && S.weather.today === 'rain');
         farmFeedback('plant', scene, x, y);
         CS.ui.refreshHUD();
@@ -1469,13 +1539,20 @@
     const def = CS.CROPS[pl.crop];
     if (pl.days >= def.days) {
       if (!spendEnergy(S.farmUpgrades.sharpTools ? 1 : CS.COSTS.harvest)) return;
-      const perfect = !pl.stunted && !pl.stormHit && Math.random() < .3;
-      G.addItem(pl.crop, perfect ? 2 : 1);
+      const target = pl.cycleTarget || def.days;
+      const careRatio = Math.min(1, (pl.care || 0) / Math.max(1, target));
+      let quality = 1 + Math.floor(careRatio * 2);
+      if (S.farmUpgrades.compost) quality += 1;
+      if (S.farmUpgrades.sharpTools) quality += 1;
+      if (pl.stormHit) quality -= 1;
+      quality = Math.max(1, Math.min(5, quality));
+      const yieldCount = quality >= 4 ? 2 : 1;
+      G.addItem(pl.crop, yieldCount, quality);
       farmFeedback('harvest', scene, x, y);
-      CS.ui.toast(perfect ? `Perfect ${def.name} — double harvest!` : `Harvested ${def.name}!`);
+      CS.ui.toast(`Harvested ${quality}★ ${def.name}${yieldCount > 1 ? ' ×2' : ''}`);
       pl.stunted = false; pl.stormHit = false;
-      if (def.regrow > 0) { pl.days = def.days - def.regrow; }
-      else { pl.crop = null; pl.days = 0; }
+      if (def.regrow > 0) { pl.days = def.days - def.regrow; pl.care = 0; pl.cycleTarget = def.regrow; }
+      else { pl.crop = null; pl.days = 0; pl.care = 0; pl.cycleTarget = null; }
       if (!S.flags.firstHarvest) {
         S.flags.firstHarvest = true;
         discover('first_harvest', `First harvest: ${def.name}, Year 1 ${CS.SEASONS[S.time.seasonIndex]} ${S.time.day}. Grown on a rooftop of dirt in the middle of the East River.`);
@@ -1561,7 +1638,16 @@
     const used = Object.keys(S.inv).filter(k => S.inv[k] > 0 && CS.ITEMS[k] && CS.ITEMS[k].type !== 'tool').length;
     return { used, cap: S.inv.messenger_bag ? 20 : 12 };
   };
-  G.addItem = function (id, n) {
+  G.qualityOf = function (id) {
+    const qty = S.inv[id] || 0;
+    if (!qty || !S.itemQuality[id]) return 1;
+    return Math.max(1, Math.min(5, S.itemQuality[id] / qty));
+  };
+  G.qualityMult = function (id) {
+    const def = CS.ITEMS[id] || {};
+    return ['crop', 'meal'].includes(def.type) ? 1 + (G.qualityOf(id) - 1) * .15 : 1;
+  };
+  G.addItem = function (id, n, quality) {
     const def = CS.ITEMS[id] || {};
     const isNew = !(S.inv[id] > 0);
     if (isNew && def.type !== 'tool') {
@@ -1570,10 +1656,19 @@
         // no space for a new stack — Malik drops it at your place instead
         const foody = def.energy || ['food', 'meal', 'crop'].includes(def.type);
         const home = foody ? S.homeFridge : S.homeShelf;
+        const homeQuality = foody ? S.homeFridgeQuality : S.homeShelfQuality;
+        const homeBefore = home[id] || 0;
         home[id] = (home[id] || 0) + n;
+        if (['crop', 'meal'].includes(def.type)) {
+          homeQuality[id] = (homeQuality[id] || homeBefore) + n * Math.max(1, Math.min(5, quality || 1));
+        }
         CS.ui.toast(`Bag full — ${def.name || id} went to your ${foody ? 'fridge' : 'shelf'} at home`);
         return;
       }
+    }
+    if (['crop', 'meal'].includes(def.type)) {
+      if (!isNew && !S.itemQuality[id]) S.itemQuality[id] = (S.inv[id] || 0);
+      S.itemQuality[id] = (S.itemQuality[id] || 0) + n * Math.max(1, Math.min(5, quality || 1));
     }
     S.inv[id] = (S.inv[id] || 0) + n;
   };
@@ -1584,13 +1679,17 @@
   };
   G.removeItem = function (id, n) {
     if ((S.inv[id] || 0) < n) return false;
+    if (S.itemQuality[id]) S.itemQuality[id] = Math.max(0, S.itemQuality[id] - G.qualityOf(id) * n);
     S.inv[id] -= n; if (S.inv[id] <= 0) delete S.inv[id];
+    if (!(S.inv[id] > 0)) delete S.itemQuality[id];
     return true;
   };
   G.sellItem = function (id, n, mult) {
     const def = CS.ITEMS[id];
-    if (!def || !def.sell || !G.removeItem(id, n)) return;
-    const amt = Math.round(def.sell * n * (mult || 1));
+    if (!def || !def.sell) return;
+    const qualityMult = G.qualityMult(id);
+    if (!G.removeItem(id, n)) return;
+    const amt = Math.round(def.sell * n * (mult || 1) * qualityMult);
     S.player.money += amt;
     S.totalEarned += amt;
     S.shipped[id] = (S.shipped[id] || 0) + n;
@@ -2101,10 +2200,10 @@
         S.player.money -= u.cost;
         S.farmUpgrades[key] = true;
         CS.ui.refreshHUD();
-        if (key === 'hydro') applyHydro();
+        if (key === 'hydro') applyGreenhouse();
         const react = {
           irrigation: '"Drip lines," Malik says, unrolling tube like it\'s treasure. "Now the plants drink on schedule and you sleep past sunrise. Civilization."',
-          compost: 'Malik pats the new compost bin like an old friend. "Feed the soil, the soil feeds you. Oldest deal on earth."',
+          compost: 'Malik pats the new compost bin like an old friend. "No mystery speed-ups. Better soil makes better food. Oldest deal on earth."',
           hydro: 'Racks, pumps, soft grow-light hum. Malik whistles. "Greenhouse grows in January now. The old girl\'s got a second life."',
           wideCan: 'Malik hands over a watering can with a rose wide as a dinner plate. "One pass, three plots. Work smarter, kid."',
           sharpTools: 'An afternoon at the whetstone. Malik tests an edge on his thumbnail and nods. "Sharp tools, easy days."',
@@ -2567,11 +2666,13 @@
       CS.ui.narrate(`The chalkboard at the judges' table: "THIS YEAR: ${catName.toUpperCase()}." Nico, one of the judges, whispers: "Bring one before six and you're in."`);
       return;
     }
-    CS.ui.choose(`Category: ${catName}. You have one. Enter it?`, [
+    const quality = G.qualityOf(cat);
+    const skill = S.cookingSkill || 0;
+    const score = Math.round(quality * 20 + Math.min(20, skill * 2));
+    CS.ui.choose(`Category: ${catName}. Your dish is ${quality.toFixed(1)}★; cooking skill ${skill}. Score ${score}/100 — first place needs 80.`, [
       { label: `Enter your ${catName}`, fn: () => {
         G.removeItem(cat, 1); S.flags[fk] = true;
-        const perfect = Math.random() < .6 + Math.min(.3, G.tierOf('grace') * .05);
-        if (perfect) {
+        if (score >= 80) {
           S.player.money += 150; S.npcs.nico.friend += 8; S.npcs.grace.friend += 8;
           CS.ui.narrate(`Three judges, one bite each, a pause you could park a tram in. Then Grace puts down her fork and starts clapping. First place. $150 and Nico yelling your name into a megaphone.`);
           discover(fk, `Street Food cook-off, Year ${yr}: first place with your ${catName}. Grace clapped first.`);

@@ -361,12 +361,13 @@
       const cell = document.createElement('div');
       cell.className = 'inv-cell';
       cell.appendChild(CS.art.iconCanvas(k, 34));
-      cell.insertAdjacentHTML('beforeend', `<span class="count">${S.inv[k]}</span><span class="inm">${def.name}</span>`);
+      const quality = ['crop', 'meal'].includes(def.type) ? G().qualityOf(k) : null;
+      cell.insertAdjacentHTML('beforeend', `<span class="count">${S.inv[k]}</span><span class="inm">${def.name}${quality ? ` · ${quality.toFixed(1)}★` : ''}</span>`);
       cell.onclick = () => {
         grid.querySelectorAll('.inv-cell').forEach(c => c.classList.remove('selected'));
         cell.classList.add('selected');
-        let html = `<b>${def.name}</b> ×${S.inv[k]}<br>${def.desc || ''}`;
-        if (def.sell) html += `<br>Sells for $${def.sell} at the shipping bin.`;
+        let html = `<b>${def.name}</b> ×${S.inv[k]}${quality ? ` · ${quality.toFixed(1)}★ quality` : ''}<br>${def.desc || ''}`;
+        if (def.sell) html += `<br>Sells for $${Math.round(def.sell * (G().qualityMult ? G().qualityMult(k) : 1))} before daily demand bonuses.`;
         $('inv-detail').innerHTML = html;
         if (def.energy) {
           const b = document.createElement('button');
@@ -471,13 +472,15 @@
       const def = CS.ITEMS[k];
       // seasonal demand quietly folds into the listed price — the price is the tell
       const em = mult * (G().priceMult ? G().priceMult(k) : 1) * boost;
-      const unit = Math.round(def.sell * em);
-      const hot = unit > Math.round(def.sell * mult);
+      const quality = ['crop', 'meal'].includes(def.type) && G().qualityOf ? G().qualityOf(k) : null;
+      const qm = G().qualityMult ? G().qualityMult(k) : 1;
+      const unit = Math.round(def.sell * em * qm);
+      const hot = em > mult;
       const el = document.createElement('div');
       el.className = 'shop-row';
       el.appendChild(CS.art.iconCanvas(k, 30));
       el.insertAdjacentHTML('beforeend',
-        `<div class="info"><div class="nm">${def.name} ×${S.inv[k]}</div><div class="ds">$${unit} each${mult > 1 ? ' (festival!)' : hot ? ' (in demand)' : ''}</div></div>`);
+        `<div class="info"><div class="nm">${def.name} ×${S.inv[k]}${quality ? ` · ${quality.toFixed(1)}★` : ''}</div><div class="ds">$${unit} each${mult > 1 ? ' (festival!)' : hot ? ' (in demand)' : quality && quality > 1 ? ' (quality bonus)' : ''}</div></div>`);
       let qty = 1;
       const box = document.createElement('div'); box.className = 'shop-buybox';
       const controls = document.createElement('div'); controls.className = 'qty-control';
@@ -491,7 +494,7 @@
         const owned = S.inv[k] || 0;
         qty = Math.max(1, Math.min(qty, owned)); amount.textContent = qty;
         minus.disabled = qty <= 1; plus.disabled = qty >= owned; all.disabled = qty >= owned;
-        b.textContent = `Sell ${qty} · $${unit * qty}`;
+        b.textContent = `Sell ${qty} · $${Math.round(def.sell * em * qm * qty)}`;
       };
       minus.onclick = () => { qty--; redraw(); };
       plus.onclick = () => { qty++; redraw(); };
