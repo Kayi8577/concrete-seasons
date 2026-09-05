@@ -8,7 +8,7 @@
 <title>Concrete Seasons</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/style.css?v=29">
+<link rel="stylesheet" href="css/style.css?v=37">
 </head>
 <body>
 
@@ -108,6 +108,7 @@
           <div class="opt-line"><span>Outfit</span><div class="swatch-row" id="cc-outfit"></div></div>
         </div>
       </div>
+      <button id="cc-random" class="btn small ghost randomize">Surprise me</button>
     </div>
 
     <div class="create-actions">
@@ -133,6 +134,7 @@
   </div>
 
   <div id="held-chip" class="hidden"></div>
+  <div id="hotbar" aria-label="Quick items"></div>
   <div id="hud-buttons">
     <button id="btn-phone" class="hud-btn" title="Phone" aria-label="Phone">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6b5b4c" stroke-width="2" stroke-linecap="round"><rect x="7" y="3" width="10" height="18" rx="2.5" fill="#f0e6d4"/><line x1="10.5" y1="18" x2="13.5" y2="18"/></svg>
@@ -150,6 +152,7 @@
   </div>
 
   <div id="scene-label"></div>
+  <div id="tutorial-objective" class="hidden"></div>
   <div id="action-hint"></div>
   <div id="toast-area"></div>
 
@@ -186,6 +189,7 @@
   <div id="panel-journal" class="panel hidden">
     <div class="panel-head"><h3>City Journal</h3><button class="panel-close">✕</button></div>
     <div class="tab-row">
+      <button class="tab" data-tab="calendar">Calendar</button>
       <button class="tab selected" data-tab="residents">Residents</button>
       <button class="tab" data-tab="discoveries">Discoveries</button>
       <button class="tab" data-tab="farm">Farm</button>
@@ -215,6 +219,28 @@
         </div>
       </div>
       <div class="menu-sub">
+        <label>Text size</label>
+        <div class="chip-row small" id="menu-textsize">
+          <button class="chip selected" data-v="standard">Standard</button>
+          <button class="chip" data-v="large">Large</button>
+        </div>
+      </div>
+      <div class="menu-sub">
+        <label>Motion</label>
+        <div class="chip-row small" id="menu-motion">
+          <button class="chip selected" data-v="full">Full</button>
+          <button class="chip" data-v="reduced">Reduced</button>
+        </div>
+      </div>
+      <div class="menu-sub">
+        <label>Weather effects</label>
+        <div class="chip-row small" id="menu-weatherfx">
+          <button class="chip selected" data-v="full">Full</button>
+          <button class="chip" data-v="low">Low</button>
+          <button class="chip" data-v="off">Off</button>
+        </div>
+      </div>
+      <div class="menu-sub">
         <label>Developer console</label>
         <div class="cheat-row">
           <input id="cheat-input" type="text" placeholder="e.g. MONEYPLEASE" autocomplete="off" autocapitalize="characters">
@@ -237,21 +263,21 @@
 </div>
 
 <!-- content (data-driven; load order: constants → world → things → people → words) -->
-<script src="js/data/core.js?v=29"></script>
-<script src="js/data/world.js?v=29"></script>
-<script src="js/data/economy.js?v=29"></script>
-<script src="js/data/npcs.js?v=29"></script>
-<script src="js/data/schedules.js?v=29"></script>
-<script src="js/data/dialogue.js?v=29"></script>
-<script src="js/data/festivals.js?v=29"></script>
-<script src="js/data/arcs.js?v=29"></script>
-<script src="js/data/events.js?v=29"></script>
+<script src="js/data/core.js?v=37"></script>
+<script src="js/data/world.js?v=37"></script>
+<script src="js/data/economy.js?v=37"></script>
+<script src="js/data/npcs.js?v=37"></script>
+<script src="js/data/schedules.js?v=37"></script>
+<script src="js/data/dialogue.js?v=37"></script>
+<script src="js/data/festivals.js?v=37"></script>
+<script src="js/data/arcs.js?v=37"></script>
+<script src="js/data/events.js?v=37"></script>
 <!-- systems -->
-<script src="js/audio.js?v=29"></script>
-<script src="js/art.js?v=29"></script>
-<script src="js/engine.js?v=29"></script>
-<script src="js/game.js?v=29"></script>
-<script src="js/ui.js?v=29"></script>
-<script src="js/main.js?v=29"></script>
+<script src="js/audio.js?v=37"></script>
+<script src="js/art.js?v=37"></script>
+<script src="js/engine.js?v=37"></script>
+<script src="js/game.js?v=37"></script>
+<script src="js/ui.js?v=37"></script>
+<script src="js/main.js?v=37"></script>
 </body>
 </html>

@@ -63,6 +63,10 @@
     S.weather.severeToday = S.weather.severeToday || false;
     S.weather.severeTomorrow = S.weather.severeTomorrow || false;
     S.player.difficulty = S.player.difficulty || 'standard';
+    S.settings = S.settings || { speed: 1 };
+    S.settings.textSize = S.settings.textSize || 'standard';
+    S.settings.motion = S.settings.motion || 'full';
+    S.settings.weatherFx = S.settings.weatherFx || 'full';
     applyHousing();
     applyHydro();
     for (const id of Object.keys(CS.NPCS)) {
@@ -107,6 +111,7 @@
     movePlayer(dt);
     moveNPCs(dt);
     tickPet(dt);
+    updateGuidance();
     if (CS.ui.blocking() || S.flags.timeFrozen) return;
     msAcc += dt * (S.settings.speed || 1);
     while (msAcc >= MS_PER_GAME_MIN) {
@@ -629,6 +634,9 @@
       if (ex >= 0) { tx = ex; ty = ey; ch = 'E'; }
     }
     p.marker = [tx, ty]; p.markerT = 30;
+    p.markerValid = CS.WALKABLE.has(ch);
+    p.markerAction = false;
+    p.markerFarm = ch === 's' || ch === 'g';
 
     // NPC tapped?
     for (const id of Object.keys(S.npcRT)) {
@@ -646,11 +654,13 @@
 
     const interactable = interactionFor(scene, tx, ty, ch);
     if (interactable) {
+      p.markerValid = true; p.markerAction = true;
       if (CS.WALKABLE.has(ch)) walkTo(tx, ty, interactable);
       else walkToAdjacent(tx, ty, interactable);
       return;
     }
     if (CS.WALKABLE.has(ch)) walkTo(tx, ty, null);
+    else p.markerValid = false;
   };
 
   function walkTo(tx, ty, action) {
@@ -698,6 +708,51 @@
     } else {
       p.px += dx / dist * speed; p.py += dy / dist * speed;
     }
+  }
+
+  let guidanceAt = 0;
+  function updateGuidance(force) {
+    if (!S || !CS.ui.setContextHint) return;
+    const now = performance.now();
+    if (!force && now - guidanceAt < 160) return;
+    guidanceAt = now;
+    const p = S.playerRT;
+    let hint = '';
+    for (const id of Object.keys(S.npcRT)) {
+      const rt = S.npcRT[id];
+      if (rt.scene === p.scene && Math.abs(rt.x - p.x) + Math.abs(rt.y - p.y) <= 1) {
+        hint = `Talk to ${CS.NPCS[id].name.split(' ')[0]}`; break;
+      }
+    }
+    if (!hint && S.petRT && S.petRT.scene === p.scene && Math.abs(S.petRT.x - p.x) + Math.abs(S.petRT.y - p.y) <= 1) hint = `Spend time with ${S.pet.name}`;
+    if (!hint) {
+      const labels = {
+        b:'Sleep or rest', K:'Cook or open the fridge', W:'Look out the window', q:'Use the shelf', t:'Use the table',
+        U:'Browse or order', X:'Use the shipping bin', N:'Read the noticeboard', k:'Visit the stall', i:'Inspect the lighthouse',
+        u:'Inspect the ruins', P:'Use transit', V:'Enter the subway', w:'Use the ferry', h:'Sit by the river',
+        s:'Work this farm plot', g:'Work this greenhouse plot', E:'Leave the building',
+      };
+      for (const [dx, dy] of [[0,0],[0,1],[0,-1],[1,0],[-1,0]]) {
+        const x = p.x + dx, y = p.y + dy, ch = E().tileAt(p.scene, x, y);
+        if (labels[ch]) { hint = labels[ch]; break; }
+        const map = CS.MAPS[p.scene];
+        if (map.outdoor && map.doors[ch]) {
+          hint = `Enter ${CS.MAPS[map.doors[ch]] ? CS.MAPS[map.doors[ch]].name : 'building'}`; break;
+        }
+      }
+    }
+    CS.ui.setContextHint(hint);
+
+    const plots = Object.values(S.farm.plots);
+    let objective = '';
+    if (S.flags.intro && !S.flags.gardenIntro) objective = p.scene === 'apartment'
+      ? 'Leave your apartment and follow the path north-east'
+      : 'Find Malik at the community farm to the north-east';
+    else if (S.flags.gardenIntro && !plots.some(pl => pl.tilled)) objective = 'Till your first farm plot';
+    else if (!plots.some(pl => pl.crop)) objective = 'Select seeds below, then plant them in tilled soil';
+    else if (!plots.some(pl => pl.crop && pl.watered)) objective = 'Water the crop until the soil turns dark';
+    else if (!S.flags.firstHarvest) objective = 'Keep the crop watered each day until harvest';
+    CS.ui.setObjective(objective);
   }
 
   function onTileEnter(x, y) {
@@ -1356,6 +1411,11 @@
   /* ================= farming ================= */
   const plotKey = (scene, x, y) => `${scene}:${x},${y}`;
 
+  function farmFeedback(kind, scene, x, y) {
+    S.actionFX = { kind, scene, x, y, started: performance.now(), duration: kind === 'harvest' ? 720 : 520 };
+    if (CS.audio && CS.audio.action) CS.audio.action(kind);
+  }
+
   function farmAction(scene, x, y) {
     const key = plotKey(scene, x, y);
     const pl = S.farm.plots[key];
@@ -1364,6 +1424,7 @@
     if (!pl || !pl.tilled) {
       if (!spendEnergy(S.farmUpgrades.sharpTools ? 2 : CS.COSTS.till)) return;
       S.farm.plots[key] = { tilled: true, crop: null, days: 0, watered: false };
+      farmFeedback('till', scene, x, y);
       if (!S.bagels.includes('till') && Math.random() < .03) {
         findBagel('till', 'Your trowel clinks against something. Buried a hand deep in the community plot, wrapped in wax paper from a deli that closed decades ago:');
       } else {
@@ -1373,6 +1434,7 @@
     }
     if (pl.dead) {
       pl.crop = null; pl.dead = false; pl.days = 0;
+      farmFeedback('clear', scene, x, y);
       CS.ui.toast('Cleared the wilted plant');
       return;
     }
@@ -1386,16 +1448,21 @@
           : "Tilled and ready — but you're out of seeds. The Corner Market sells them.");
         return;
       }
+      const plantSeed = sd => {
+        if (!(S.inv[sd] > 0) || pl.crop) return;
+        if (!spendEnergy(CS.COSTS.plant)) return;
+        S.inv[sd] -= 1;
+        if (S.inv[sd] <= 0) { delete S.inv[sd]; if (S.held === sd) S.held = null; }
+        pl.crop = CS.ITEMS[sd].crop; pl.days = 0;
+        pl.watered = (scene !== 'greenhouse' && S.weather.today === 'rain');
+        farmFeedback('plant', scene, x, y);
+        CS.ui.refreshHUD();
+        CS.ui.toast(`Planted ${CS.CROPS[pl.crop].name}`);
+      };
+      if (S.held && seeds.includes(S.held)) { plantSeed(S.held); return; }
       CS.ui.pick('Plant what?', seeds.map(sd => ({
         icon: sd, name: `${CS.ITEMS[sd].name} ×${S.inv[sd]}`, desc: CS.ITEMS[sd].desc,
-        fn: () => {
-          if (!(S.inv[sd] > 0) || pl.crop) return; // stale click, seed gone or already planted
-          if (!spendEnergy(CS.COSTS.plant)) return;
-          S.inv[sd] -= 1; if (S.inv[sd] <= 0) delete S.inv[sd];
-          pl.crop = CS.ITEMS[sd].crop; pl.days = 0;
-          pl.watered = (scene !== 'greenhouse' && S.weather.today === 'rain');
-          CS.ui.toast(`Planted ${CS.CROPS[pl.crop].name}`);
-        },
+        fn: () => plantSeed(sd),
       })));
       return;
     }
@@ -1404,6 +1471,7 @@
       if (!spendEnergy(S.farmUpgrades.sharpTools ? 1 : CS.COSTS.harvest)) return;
       const perfect = !pl.stunted && !pl.stormHit && Math.random() < .3;
       G.addItem(pl.crop, perfect ? 2 : 1);
+      farmFeedback('harvest', scene, x, y);
       CS.ui.toast(perfect ? `Perfect ${def.name} — double harvest!` : `Harvested ${def.name}!`);
       pl.stunted = false; pl.stormHit = false;
       if (def.regrow > 0) { pl.days = def.days - def.regrow; }
@@ -1418,6 +1486,7 @@
     if (!pl.watered) {
       if (!spendEnergy(CS.COSTS.water)) return;
       pl.watered = true;
+      farmFeedback('water', scene, x, y);
       let splashed = 0;
       if (S.farmUpgrades.wideCan) {
         for (const nb of [[x - 1, y], [x + 1, y]]) {
@@ -1511,6 +1580,7 @@
   G.setHeld = function (k) {
     S.held = k;
     if (CS.ui.refreshHeld) CS.ui.refreshHeld();
+    if (CS.ui.refreshHotbar) CS.ui.refreshHotbar();
   };
   G.removeItem = function (id, n) {
     if ((S.inv[id] || 0) < n) return false;
@@ -1524,13 +1594,16 @@
     S.player.money += amt;
     S.totalEarned += amt;
     S.shipped[id] = (S.shipped[id] || 0) + n;
+    if (!(S.inv[id] > 0) && S.held === id) S.held = null;
     CS.ui.toast(`Sold ${n} × ${def.name} for $${amt}`, 'money');
     CS.ui.refreshHUD();
   };
-  G.buyItem = function (id, price) {
-    if (S.player.money < price) { CS.ui.toast("Not enough money."); return false; }
-    S.player.money -= price;
-    G.addItem(id, 1);
+  G.buyItem = function (id, price, quantity) {
+    quantity = Math.max(1, Math.floor(quantity || 1));
+    const total = price * quantity;
+    if (S.player.money < total) { CS.ui.toast("Not enough money."); return false; }
+    S.player.money -= total;
+    G.addItem(id, quantity);
     CS.ui.refreshHUD();
     return true;
   };

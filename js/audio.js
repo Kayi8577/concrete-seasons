@@ -158,6 +158,27 @@
     o.start(t); o.stop(t + 0.4);
   };
 
+  AU.action = function (kind) {
+    if (!fxReady()) return;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    const tones = {
+      till: [120, 72, 'triangle'], clear: [150, 95, 'triangle'],
+      plant: [360, 520, 'sine'], water: [520, 240, 'sine'],
+      harvest: [520, 880, 'sine'],
+    };
+    const spec = tones[kind] || tones.plant;
+    o.type = spec[2];
+    o.frequency.setValueAtTime(spec[0], t);
+    o.frequency.exponentialRampToValueAtTime(spec[1], t + 0.14);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.055, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + 0.24);
+  };
+
   AU.unlock = function () {
     if (unlocked) return;
     ensure();

@@ -4,7 +4,9 @@
    ========================================================================= */
 (function () {
   const E = CS.engine = {};
-  const TILE = 32; // 2x the atlas's 16px tiles — integer scale keeps pixels crisp
+  // Integer atlas scaling: 3x on desktop for a fuller, more readable world;
+  // 2x on compact screens to preserve useful map visibility.
+  const TILE = window.matchMedia('(min-width: 900px) and (min-height: 620px)').matches ? 48 : 32;
 
   let canvas, ctx, dpr = 1;
   E.viewW = 0; E.viewH = 0;
@@ -106,6 +108,9 @@
     const map = { ArrowUp:[0,-1], ArrowDown:[0,1], ArrowLeft:[-1,0], ArrowRight:[1,0],
                   w:[0,-1], s:[0,1], a:[-1,0], d:[1,0] };
     if (map[ev.key]) { CS.game.stepPlayer(map[ev.key]); ev.preventDefault(); }
+    if (/^[1-6]$/.test(ev.key) && CS.ui.selectHotbar) {
+      CS.ui.selectHotbar(Number(ev.key) - 1); ev.preventDefault();
+    }
     if (ev.key === ' ' || ev.key === 'Enter') { CS.game.interactNearby(); ev.preventDefault(); }
   }
 
@@ -520,17 +525,68 @@
       }
     }
 
-    // target marker
+    // Target feedback: green means an action/path is available; red means
+    // the tap cannot be fulfilled. Farm targets use a tile-shaped preview.
     if (p.marker && p.markerT > 0) {
       const mx = p.marker[0] * TILE - E.camX + TILE / 2, my = p.marker[1] * TILE - E.camY + TILE / 2;
-      ctx.strokeStyle = `rgba(255,255,255,${p.markerT / 30 * .8})`;
+      const alpha = p.markerT / 30;
+      const color = p.markerValid === false ? `rgba(199,79,109,${alpha * .9})`
+        : p.markerAction ? `rgba(92,138,111,${alpha * .95})` : `rgba(255,255,255,${alpha * .8})`;
+      if (p.markerFarm) {
+        ctx.fillStyle = p.markerValid === false ? `rgba(199,79,109,${alpha * .2})` : `rgba(92,138,111,${alpha * .2})`;
+        ctx.fillRect(mx - TILE / 2 + 2, my - TILE / 2 + 2, TILE - 4, TILE - 4);
+        ctx.strokeStyle = color; ctx.lineWidth = 2;
+        ctx.strokeRect(mx - TILE / 2 + 3, my - TILE / 2 + 3, TILE - 6, TILE - 6);
+      }
+      ctx.strokeStyle = color;
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(mx, my, 10 + (30 - p.markerT) * .3, 0, Math.PI * 2); ctx.stroke();
     }
 
+    // Short, non-blocking farm feedback. State changes happen immediately,
+    // while these particles make the impact readable without slowing chores.
+    const fx = state.settings.motion === 'reduced' ? null : state.actionFX;
+    if (fx && fx.scene === scene) {
+      const age = performance.now() - fx.started;
+      if (age < fx.duration) {
+        const q = age / fx.duration;
+        const cx = fx.x * TILE - E.camX + TILE / 2;
+        const cy = fx.y * TILE - E.camY + TILE / 2;
+        const fade = 1 - q;
+        const specs = {
+          till: ['#8a6242', 7], clear: ['#7fae6d', 6], plant: ['#e8c96b', 6],
+          water: ['#83b9d8', 9], harvest: ['#f4d35e', 10],
+        };
+        const [col, count] = specs[fx.kind] || specs.plant;
+        ctx.save();
+        ctx.globalAlpha = fade;
+        for (let i = 0; i < count; i++) {
+          const a = i / count * Math.PI * 2 + (fx.x * 1.7 + fx.y);
+          const spread = (8 + q * 18) * (i % 2 ? .75 : 1);
+          const px = cx + Math.cos(a) * spread;
+          const lift = fx.kind === 'water' ? Math.sin(a) * 8 : -Math.sin(q * Math.PI) * (10 + i % 3 * 3);
+          const py = cy + Math.sin(a) * spread * .45 + lift;
+          ctx.fillStyle = col;
+          if (fx.kind === 'water') {
+            ctx.beginPath(); ctx.ellipse(px, py, 2, 4, a, 0, Math.PI * 2); ctx.fill();
+          } else {
+            ctx.fillRect(Math.round(px) - 2, Math.round(py) - 2, 4, 4);
+          }
+        }
+        if (fx.kind === 'harvest') {
+          ctx.strokeStyle = `rgba(255,255,255,${fade})`; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(cx, cy - q * 14, 7 + q * 9, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.restore();
+      } else {
+        state.actionFX = null;
+      }
+    }
+
     // weather overlay
-    if (isOut && state.weather.today === 'rain') drawRain(state.animT);
-    if (isOut && state.weather.today === 'snow') drawSnow(state.animT);
+    const weatherFx = state.settings.weatherFx || 'full';
+    if (isOut && state.weather.today === 'rain' && weatherFx !== 'off') drawRain(state.animT, weatherFx === 'low' ? .35 : 1);
+    if (isOut && state.weather.today === 'snow' && weatherFx !== 'off') drawSnow(state.animT, weatherFx === 'low' ? .35 : 1);
     if (isOut && state.weather.today === 'cloudy') {
       ctx.fillStyle = 'rgba(90,100,115,.10)'; ctx.fillRect(0, 0, E.viewW, E.viewH);
     }
@@ -546,13 +602,14 @@
   };
 
   let snowFlakes = null;
-  function drawSnow(t) {
+  function drawSnow(t, density) {
     if (!snowFlakes) {
       snowFlakes = [];
       for (let i = 0; i < 70; i++) snowFlakes.push([Math.random(), Math.random(), .4 + Math.random(), Math.random() * 6]);
     }
     ctx.fillStyle = 'rgba(245,248,252,.85)';
-    for (const f of snowFlakes) {
+    for (let i = 0; i < Math.ceil(snowFlakes.length * density); i++) {
+      const f = snowFlakes[i];
       const x = ((f[0] * E.viewW) + Math.sin(t / 900 + f[3]) * 24) % E.viewW;
       const y = ((f[1] * E.viewH) + t * 0.035 * f[2]) % E.viewH;
       ctx.beginPath(); ctx.arc((x + E.viewW) % E.viewW, y, 1.2 + f[2], 0, Math.PI * 2); ctx.fill();
@@ -561,14 +618,15 @@
   }
 
   let rainDrops = null;
-  function drawRain(t) {
+  function drawRain(t, density) {
     if (!rainDrops) {
       rainDrops = [];
       for (let i = 0; i < 90; i++) rainDrops.push([Math.random(), Math.random(), .5 + Math.random()]);
     }
     ctx.strokeStyle = 'rgba(190,215,235,.5)'; ctx.lineWidth = 1;
     ctx.beginPath();
-    for (const d of rainDrops) {
+    for (let i = 0; i < Math.ceil(rainDrops.length * density); i++) {
+      const d = rainDrops[i];
       const x = ((d[0] * E.viewW) + t * 0.02 * d[2] * 30) % E.viewW;
       const y = ((d[1] * E.viewH) + t * 0.25 * d[2]) % E.viewH;
       ctx.moveTo(x, y); ctx.lineTo(x - 2, y + 9);

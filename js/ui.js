@@ -8,6 +8,7 @@
   const G = () => CS.game;
 
   let dialogueQueue = [], dialogueDone = null, choiceMode = false;
+  let lastContextHint = '', lastObjective = '';
 
   U.blocking = function () {
     return !$('dialogue').classList.contains('hidden')
@@ -29,6 +30,48 @@
       chip.classList.add('hidden');
     }
   };
+  U.refreshHotbar = function () {
+    const S = G().state(); const bar = $('hotbar');
+    if (!S || !bar) return;
+    const items = Object.keys(S.inv)
+      .filter(k => S.inv[k] > 0 && CS.ITEMS[k])
+      .sort((a, b) => {
+        const rank = k => CS.ITEMS[k].type === 'seed' ? 0 : CS.ITEMS[k].type === 'tool' ? 1 : 2;
+        return rank(a) - rank(b);
+      }).slice(0, 6);
+    bar.innerHTML = '';
+    items.forEach((k, i) => {
+      const b = document.createElement('button');
+      b.className = 'hotbar-slot' + (S.held === k ? ' selected' : '');
+      b.title = `${i + 1}: ${CS.ITEMS[k].name}`;
+      b.setAttribute('aria-label', `${CS.ITEMS[k].name}, ${S.inv[k]} available`);
+      b.appendChild(CS.art.iconCanvas(k, 30));
+      b.insertAdjacentHTML('beforeend', `<span class="hotkey">${i + 1}</span><span class="qty">${S.inv[k]}</span>`);
+      b.onclick = () => G().setHeld(S.held === k ? null : k);
+      bar.appendChild(b);
+    });
+    bar.classList.toggle('hidden', items.length === 0);
+  };
+  U.selectHotbar = function (index) {
+    const buttons = $('hotbar') ? $('hotbar').querySelectorAll('.hotbar-slot') : [];
+    if (buttons[index]) buttons[index].click();
+  };
+  U.setContextHint = function (text) {
+    if (text === lastContextHint) return;
+    lastContextHint = text || '';
+    const el = $('action-hint');
+    if (!el) return;
+    el.innerHTML = text ? `<kbd>Space</kbd>${text}` : '';
+    el.classList.toggle('show', !!text);
+  };
+  U.setObjective = function (text) {
+    if (text === lastObjective) return;
+    lastObjective = text || '';
+    const el = $('tutorial-objective');
+    if (!el) return;
+    el.textContent = text || '';
+    el.classList.toggle('hidden', !text);
+  };
   U.refreshHUD = function () {
     const S = G().state();
     if (!S) return;
@@ -42,6 +85,10 @@
     const unread = G().unreadTotal ? G().unreadTotal() : 0;
     $('phone-badge').style.display = unread > 0 ? 'flex' : 'none';
     $('phone-badge').textContent = unread > 9 ? '9+' : unread;
+    U.refreshHeld();
+    U.refreshHotbar();
+    document.body.classList.toggle('large-text', S.settings.textSize === 'large');
+    document.body.classList.toggle('reduced-motion', S.settings.motion === 'reduced');
   };
 
   /* ---- phone ---- */
@@ -356,12 +403,32 @@
       el.className = 'shop-row';
       el.appendChild(CS.art.iconCanvas(row.item, 30));
       el.insertAdjacentHTML('beforeend',
-        `<div class="info"><div class="nm">${def.name}</div><div class="ds">${def.desc}</div></div>`);
+        `<div class="info"><div class="nm">${def.name}</div><div class="ds">${def.desc}</div><div class="owned-count">Owned: ${S.inv[row.item] || 0}</div></div>`);
+      let qty = 1;
+      const box = document.createElement('div'); box.className = 'shop-buybox';
+      const controls = document.createElement('div'); controls.className = 'qty-control';
+      const minus = document.createElement('button'); minus.textContent = '−'; minus.setAttribute('aria-label', `Decrease ${def.name} quantity`);
+      const amount = document.createElement('output'); amount.textContent = qty;
+      const plus = document.createElement('button'); plus.textContent = '+'; plus.setAttribute('aria-label', `Increase ${def.name} quantity`);
       const b = document.createElement('button');
       b.className = 'buy';
-      b.textContent = `$${row.price}`;
-      b.onclick = () => { if (G().buyItem(row.item, row.price)) U.toast(`Bought ${def.name}`); };
-      el.appendChild(b);
+      const redraw = () => {
+        const max = row.once ? 1 : Math.max(1, Math.min(99, Math.floor(S.player.money / row.price)));
+        qty = Math.max(1, Math.min(qty, max)); amount.textContent = qty;
+        minus.disabled = qty <= 1; plus.disabled = qty >= max || !!row.once;
+        b.textContent = qty === 1 ? `Buy · $${row.price}` : `Buy ${qty} · $${row.price * qty}`;
+        b.disabled = S.player.money < row.price * qty;
+      };
+      minus.onclick = () => { qty--; redraw(); };
+      plus.onclick = () => { qty++; redraw(); };
+      b.onclick = () => {
+        if (!G().buyItem(row.item, row.price, qty)) return;
+        U.toast(`Bought ${qty} × ${def.name}`);
+        const owned = el.querySelector('.owned-count'); if (owned) owned.textContent = `Owned: ${S.inv[row.item] || 0}`;
+        if (row.once) { el.remove(); return; }
+        qty = 1; redraw();
+      };
+      controls.append(minus, amount, plus); box.append(controls, b); el.appendChild(box); redraw();
       list.appendChild(el);
     }
     // aquarium owners can grow the tank (up to three fish)
@@ -411,11 +478,29 @@
       el.appendChild(CS.art.iconCanvas(k, 30));
       el.insertAdjacentHTML('beforeend',
         `<div class="info"><div class="nm">${def.name} ×${S.inv[k]}</div><div class="ds">$${unit} each${mult > 1 ? ' (festival!)' : hot ? ' (in demand)' : ''}</div></div>`);
+      let qty = 1;
+      const box = document.createElement('div'); box.className = 'shop-buybox';
+      const controls = document.createElement('div'); controls.className = 'qty-control';
+      const minus = document.createElement('button'); minus.textContent = '−'; minus.setAttribute('aria-label', `Decrease ${def.name} sale quantity`);
+      const amount = document.createElement('output'); amount.textContent = qty;
+      const plus = document.createElement('button'); plus.textContent = '+'; plus.setAttribute('aria-label', `Increase ${def.name} sale quantity`);
+      const all = document.createElement('button'); all.className = 'qty-all'; all.textContent = 'All'; all.setAttribute('aria-label', `Sell all ${def.name}`);
       const b = document.createElement('button');
       b.className = 'buy sell';
-      b.textContent = `Sell all ($${unit * S.inv[k]})`;
-      b.onclick = () => { G().sellItem(k, S.inv[k], em); U.openSell(mult, title); };
-      el.appendChild(b);
+      const redraw = () => {
+        const owned = S.inv[k] || 0;
+        qty = Math.max(1, Math.min(qty, owned)); amount.textContent = qty;
+        minus.disabled = qty <= 1; plus.disabled = qty >= owned; all.disabled = qty >= owned;
+        b.textContent = `Sell ${qty} · $${unit * qty}`;
+      };
+      minus.onclick = () => { qty--; redraw(); };
+      plus.onclick = () => { qty++; redraw(); };
+      all.onclick = () => { qty = S.inv[k]; redraw(); };
+      b.onclick = () => {
+        if (def.rare && !confirm(`Sell ${qty} × ${def.name}? This is a rare find.`)) return;
+        G().sellItem(k, qty, em); U.openSell(mult, title);
+      };
+      controls.append(minus, amount, plus, all); box.append(controls, b); el.appendChild(box); redraw();
       list.appendChild(el);
     }
     openPanel('panel-sell');
@@ -516,6 +601,44 @@
     const S = G().state();
     const body = $('journal-body');
     body.innerHTML = '';
+    if (tab === 'calendar') {
+      const si = S.time.seasonIndex;
+      const events = Array.from({ length: 31 }, () => []);
+      for (const f of Object.values(CS.FESTIVALS)) {
+        if (f.season === si) events[f.day].push({ cls:'festival', text:f.name, title:f.blurb });
+      }
+      if (S.player.birthSeason === si) events[S.player.birthDay].push({ cls:'birthday', text:'Your birthday', title:'Your birthday' });
+      for (const id of Object.keys(CS.NPCS)) {
+        const n = CS.NPCS[id], r = S.npcs[id];
+        if (n.bday && n.bday[0] === si && r && r.met && G().tierOf(id) >= 2) {
+          events[n.bday[1]].push({ cls:'birthday', text:`${n.name.split(' ')[0]}'s birthday`, title:`${n.name}'s birthday` });
+        }
+      }
+      const maturity = {};
+      for (const pl of Object.values(S.farm.plots)) {
+        if (!pl.crop || pl.dead || !CS.CROPS[pl.crop]) continue;
+        const left = Math.max(0, CS.CROPS[pl.crop].days - pl.days);
+        const day = S.time.day + left;
+        if (day <= 30) maturity[day] = (maturity[day] || 0) + 1;
+      }
+      for (const day of Object.keys(maturity)) events[day].push({ cls:'crop', text:`${maturity[day]} crop${maturity[day] > 1 ? 's' : ''} ready`, title:'Estimated maturity if watered daily' });
+      const firstWeekday = (S.time.weekdayIndex - (S.time.day - 1)) % 7;
+      body.insertAdjacentHTML('beforeend', `<div class="calendar-head"><div class="calendar-title">${CS.SEASONS[si]} · Year ${S.time.year}</div><div class="calendar-legend">Festival · Birthday · Crop</div></div>`);
+      const grid = document.createElement('div'); grid.className = 'calendar-grid';
+      for (const wd of CS.WEEKDAYS) grid.insertAdjacentHTML('beforeend', `<div class="calendar-weekday">${wd.slice(0,1)}</div>`);
+      const offset = (firstWeekday + 7) % 7;
+      for (let i = 0; i < offset; i++) grid.appendChild(document.createElement('div'));
+      for (let d = 1; d <= 30; d++) {
+        const cell = document.createElement('div');
+        cell.className = 'calendar-day' + (d === S.time.day ? ' today' : '') + (d < S.time.day ? ' past' : '');
+        cell.insertAdjacentHTML('beforeend', `<div class="calendar-num">${d}</div>`);
+        for (const ev of events[d].slice(0, 3)) cell.insertAdjacentHTML('beforeend', `<div class="calendar-event ${ev.cls}" title="${ev.title || ev.text}">${ev.text}</div>`);
+        grid.appendChild(cell);
+      }
+      body.appendChild(grid);
+      body.insertAdjacentHTML('beforeend', '<div class="panel-note" style="padding-left:0">Crop dates are estimates and assume daily watering.</div>');
+      return;
+    }
     if (tab === 'residents') {
       let any = false;
       for (const id of Object.keys(CS.NPCS)) {
@@ -592,7 +715,18 @@
   }
 
   /* ---- menu ---- */
-  $('btn-menu').onclick = () => openPanel('panel-menu');
+  function syncSettingRow(id, value) {
+    $(id).querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', c.dataset.v === String(value)));
+  }
+  $('btn-menu').onclick = () => {
+    const s = G().state().settings;
+    syncSettingRow('menu-speed', s.speed || 1);
+    syncSettingRow('menu-sound', s.sound === false ? 'off' : 'on');
+    syncSettingRow('menu-textsize', s.textSize || 'standard');
+    syncSettingRow('menu-motion', s.motion || 'full');
+    syncSettingRow('menu-weatherfx', s.weatherFx || 'full');
+    openPanel('panel-menu');
+  };
   $('menu-save').onclick = () => {
     const S = G().state();
     if (G().saveToSlot(S.slot)) U.toast('Saved');
@@ -628,6 +762,16 @@
     c.classList.add('selected');
     CS.audio.setEnabled(c.dataset.v === 'on');
   });
+  function bindComfortRow(id, key) {
+    $(id).querySelectorAll('.chip').forEach(c => c.onclick = () => {
+      syncSettingRow(id, c.dataset.v);
+      G().state().settings[key] = c.dataset.v;
+      U.refreshHUD();
+    });
+  }
+  bindComfortRow('menu-textsize', 'textSize');
+  bindComfortRow('menu-motion', 'motion');
+  bindComfortRow('menu-weatherfx', 'weatherFx');
   $('cheat-go').onclick = () => {
     const v = $('cheat-input').value;
     if (!v.trim()) return;
@@ -772,6 +916,25 @@
   function updatePreview() {
     CS.engine.drawPlayerPreview($('cc-preview'), cc.look);
   }
+
+  $('cc-random').onclick = () => {
+    const names = ['Alex', 'Casey', 'Jamie', 'Jordan', 'Morgan', 'Quinn', 'Riley', 'Sam', 'Taylor'];
+    $('cc-name').value = names[Math.floor(Math.random() * names.length)];
+    cc.gender = Math.random() < .5 ? 'F' : 'M';
+    cc.pref = ['discover', 'M', 'W', 'MW', 'none'][Math.floor(Math.random() * 5)];
+    cc.bseason = Math.floor(Math.random() * 4);
+    cc.bday = 1 + Math.floor(Math.random() * 30);
+    cc.look.skin = Math.floor(Math.random() * CS.SKINS.length);
+    cc.look.hair = Math.floor(Math.random() * CS.HAIRS.length);
+    cc.look.hairStyle = ['short', 'long', 'bun'][Math.floor(Math.random() * 3)];
+    cc.look.outfit = Math.floor(Math.random() * CS.OUTFITS.length);
+    const select = (id, value) => {
+      $(id).querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', c.dataset.v === String(value)));
+    };
+    select('cc-gender', cc.gender); select('cc-pref', cc.pref); select('cc-bseason', cc.bseason); select('cc-hairstyle', cc.look.hairStyle);
+    buildBdays(); buildSwatches(); updatePreview();
+    $('cc-random').textContent = 'Try another look';
+  };
 
   $('cc-back').onclick = () => U.renderMenu();
   $('cc-start').onclick = () => {
