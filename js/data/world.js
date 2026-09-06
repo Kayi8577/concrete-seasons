@@ -5,7 +5,7 @@
 (function () {
 /* ---------------- Maps ----------------
    Tiles: . grass  - path  ~ water  T tree  F fence  # wall  s soil  g soil(greenhouse)
-          P tram platform  h bench  X ship bin  N noticeboard  o planter
+          P tram platform  h bench  X ship bin  N noticeboard  Z chicken coop  o planter
           A/C/B/M/G door tiles (apartment/cafe/bakery/market/greenhouse)  E interior exit
           K kitchen  b bed  t table  W window  = shelf  O oven  d display  U counter  q aquarium spot
 */
@@ -61,6 +61,7 @@ function buildOutdoor() {
   for (let y = 10; y <= 20; y++) { g[y][20] = 'F'; g[y][30] = 'F'; }
   g[15][20] = '.'; g[16][20] = '.'; // gate faces Main Street
   _rect(g, 24, 11, 5, 4, '#'); g[14][26] = 'G'; // greenhouse
+  g[13][22] = 'Z';                              // community chicken coop
   _rect(g, 21, 16, 6, 4, 's');                  // 24 plots
   g[16][28] = 'X'; g[18][28] = 'N';
   // ---- Main Street commercial strip, both sides ----

@@ -128,6 +128,7 @@ Everything from the v0.1 slice, plus:
 - **Seasonal gathering**: trees yield small spring, summer, fall, and winter finds without turning them into mandatory chores
 - **Responsible salvage**: optional cleanup at the protected ruin produces reclaimed materials and salvage experience; higher skill reveals better recovery jobs
 - **Tool progression**: farming actions build skill, while selected upgrades require both experience and recovered materials
+- **Low-pressure chickens**: build a three-hen community rescue coop, name each hen, feed or freely graze the whole flock, collect persistent quality eggs, and cook a garden omelet; skipped care has no illness, affection loss, death, or other penalty
 
 ### Release checklist
 

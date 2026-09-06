@@ -64,12 +64,15 @@ CS.ITEMS = {
   bread:      { name:'Sesame Roll',type:'food', energy:25, desc:'Moonrise Bakery. Still warm.' },
   coffee:     { name:'Coffee',     type:'food', energy:18, desc:'Juniper Café pour-over.' },
   pet_food:   { name:'Pet Food',   type:'misc', desc:'For a hungry roommate.' },
+  chicken_feed:{ name:'Chicken Feed', type:'material', desc:'One scoop feeds the whole little flock for a day.' },
+  egg:        { name:'Farm Egg', type:'animal', sell:28, energy:12, desc:'Collected from the community coop. The shell is still warm.' },
   warm_roll:  { name:'5:42 Roll',  type:'food', energy:30, desc:'Grace\'s first batch. You were there.' },
   // meals (cooked at your kitchen)
   meal_salad:   { name:'Garden Salad',      type:'meal', energy:40, sell:55,  desc:'Your lettuce, your radish, your kitchen.' },
   meal_roast:   { name:'Roasted Radishes',  type:'meal', energy:35, sell:48,  desc:'Peppery, caramelized, gone.' },
   meal_galette: { name:'Strawberry Galette',type:'meal', energy:60, sell:95,  desc:'Grace\'s recipe. Rustic on purpose.' },
   meal_pasta:   { name:'Basil Pomodoro',    type:'meal', energy:65, sell:110, desc:'The Bellini family would approve. Mostly.' },
+  meal_omelet:  { name:'Soft Farm Omelet', type:'meal', energy:55, sell:82, desc:'Two good eggs, folded soft. Simple food done carefully.' },
   // thrift finds (Second Life)
   vinyl_record: { name:'Vinyl Record',   type:'thrift', sell:24, desc:'Someone\'s entire 1978.' },
   film_camera:  { name:'Film Camera',    type:'thrift', sell:70, desc:'Heavy, mechanical, perfect.', rare:true },
@@ -110,6 +113,7 @@ CS.SHOP_MARKET = [
   { item:'squash_seed',     price:36, season:2 },
   { item:'chrysanthemum_seed', price:22, season:2 },
   { item:'pet_food',        price:10 },
+  { item:'chicken_feed',    price:6 },
   { item:'bread',           price:6 },
 ];
 
@@ -126,6 +130,7 @@ CS.RECIPES = {
   meal_roast:   { needs:{ radish:3 } },
   meal_galette: { needs:{ strawberry:2, bread:1 }, teacher:'grace' },
   meal_pasta:   { needs:{ basil:2, tomato:1 },     teacher:'nico' },
+  meal_omelet:  { needs:{ egg:2 } },
 };
 
 /* ---------------- ring ---------------- */
@@ -148,6 +153,9 @@ CS.FARM_UPGRADES = {
     desc:'Keen edges. Tilling and harvesting take less out of you.' },
   beehive:    { name:'Rooftop beehive', cost:500,
     desc:'A quiet box of coworkers. Honey every few days, spring through fall.' },
+  coop:       { name:'Community chicken coop', cost:180,
+    items:{ scrap_metal:2, reclaimed_brick:2 }, skill:{ farming:6 },
+    desc:'A small rescue coop. Skipping care never hurts the hens; it only pauses egg laying.' },
 };
 
 /* flea-market weekend stock: mostly the thrift pool at hipster prices,

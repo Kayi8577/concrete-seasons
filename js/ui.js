@@ -361,7 +361,7 @@
       const cell = document.createElement('div');
       cell.className = 'inv-cell';
       cell.appendChild(CS.art.iconCanvas(k, 34));
-      const quality = ['crop', 'meal'].includes(def.type) ? G().qualityOf(k) : null;
+      const quality = ['crop', 'meal', 'animal'].includes(def.type) ? G().qualityOf(k) : null;
       cell.insertAdjacentHTML('beforeend', `<span class="count">${S.inv[k]}</span><span class="inm">${def.name}${quality ? ` · ${quality.toFixed(1)}★` : ''}</span>`);
       cell.onclick = () => {
         grid.querySelectorAll('.inv-cell').forEach(c => c.classList.remove('selected'));
@@ -472,7 +472,7 @@
       const def = CS.ITEMS[k];
       // seasonal demand quietly folds into the listed price — the price is the tell
       const em = mult * (G().priceMult ? G().priceMult(k) : 1) * boost;
-      const quality = ['crop', 'meal'].includes(def.type) && G().qualityOf ? G().qualityOf(k) : null;
+      const quality = ['crop', 'meal', 'animal'].includes(def.type) && G().qualityOf ? G().qualityOf(k) : null;
       const qm = G().qualityMult ? G().qualityMult(k) : 1;
       const unit = Math.round(def.sell * em * qm);
       const hot = em > mult;
@@ -712,7 +712,8 @@
       body.innerHTML = `<div class="res-card">
           <div class="res-name">Harbor Point Community Farm</div>
           <div class="res-note">Total earned: $${S.totalEarned}</div>
-          <div class="res-note">Skills: farming ${S.skills.farming} · foraging ${S.skills.foraging} · salvage ${S.skills.salvage} · cooking ${S.cookingSkill || 0}</div>
+          <div class="res-note">Skills: farming ${S.skills.farming} · foraging ${S.skills.foraging} · salvage ${S.skills.salvage} · animal care ${S.skills.animals || 0} · cooking ${S.cookingSkill || 0}</div>
+          <div class="res-note">${S.farmUpgrades.coop ? (S.coop.hens.length ? `Community coop: ${S.coop.hens.map(h => `${h.name} (${h.affection || 0} affection)`).join(' · ')} · ${S.coop.eggs.length} egg${S.coop.eggs.length === 1 ? '' : 's'} waiting` : 'Community coop: ready for its first rescue hen whenever you are.') : 'Community coop: available from Malik after farming skill 6.'}</div>
           <div class="res-note">${S.pet ? `Farm morale officer: ${S.pet.name} the ${S.pet.type} (affection ${S.pet.affection})` : 'No pet yet — check the farm noticeboard.'}</div>
         </div>` + (shippedRows || '<div style="color:#8a7361">Nothing shipped yet.</div>');
     }

@@ -31,7 +31,8 @@
       totalEarned: 0,
       itemQuality: {},          // itemId -> total star points in the stack
       cookingSkill: 0,          // meals made; improves contest results visibly
-      skills: { farming: 0, foraging: 0, salvage: 0 },
+      skills: { farming: 0, foraging: 0, salvage: 0, animals: 0 },
+      coop: { hens: [], eggs: [], tendedToday: false },
       settings: { speed: 1 },
     };
   };
@@ -75,7 +76,10 @@
     S.settings.weatherFx = S.settings.weatherFx || 'full';
     S.itemQuality = S.itemQuality || {};
     S.cookingSkill = S.cookingSkill || 0;
-    S.skills = Object.assign({ farming: 0, foraging: 0, salvage: 0 }, S.skills || {});
+    S.skills = Object.assign({ farming: 0, foraging: 0, salvage: 0, animals: 0 }, S.skills || {});
+    S.coop = Object.assign({ hens: [], eggs: [], tendedToday: false }, S.coop || {});
+    S.coop.hens = S.coop.hens || [];
+    S.coop.eggs = S.coop.eggs || [];
     if (S.flags.greenhouseOpen == null) {
       const usedGreenhouse = Object.keys(S.farm.plots || {}).some(k => k.startsWith('greenhouse:'));
       S.flags.greenhouseOpen = !!(S.flags.firstHarvest || S.farmUpgrades.hydro || usedGreenhouse);
@@ -90,7 +94,11 @@
     // the map grew in v2 — rescue positions/plots saved against the old layout
     const mapOf = sc => CS.MAPS[sc] && CS.MAPS[sc].grid;
     const tileOf = (sc, x, y) => { const g = mapOf(sc); return g && g[y] && g[y][x] || '#'; };
-    if (!CS.WALKABLE.has(tileOf(S.player.scene, S.player.x, S.player.y))) {
+    // v40 placed the coop on what used to be grass. Move an old save one tile
+    // aside instead of unexpectedly sending a farmer all the way home.
+    if (S.player.scene === 'outdoor' && tileOf(S.player.scene, S.player.x, S.player.y) === 'Z') {
+      S.player.x = 21; S.player.y = 13;
+    } else if (!CS.WALKABLE.has(tileOf(S.player.scene, S.player.x, S.player.y))) {
       S.player.scene = 'apartment'; S.player.x = 5; S.player.y = 4;
     }
     for (const key of Object.keys(S.farm.plots)) {
@@ -357,6 +365,18 @@
       S.pet.affection += 2;
     }
 
+    // The coop is deliberately forgiving: care produces an egg, while a missed
+    // day changes nothing. Uncollected eggs wait safely in the nest boxes.
+    if (S.farmUpgrades.coop && S.coop.hens.length) {
+      for (const hen of S.coop.hens) {
+        if (!hen.fedToday) continue;
+        hen.affection = Math.min(100, (hen.affection || 0) + 1);
+        const quality = hen.affection >= 80 ? 5 : hen.affection >= 50 ? 4 : hen.affection >= 25 ? 3 : hen.affection >= 10 ? 2 : 1;
+        S.coop.eggs.push(quality);
+        hen.laid = (hen.laid || 0) + 1;
+      }
+    }
+
     // ---- the long game: Then & Now at Year 5, New Game+ at Year 6 ----
     if (S.time.year >= 5 && !S.flags.thenNow) {
       S.flags.thenNow = true;
@@ -420,6 +440,10 @@
       S.player.energy = Math.min(S.player.maxEnergy || 100, S.player.energy + 10);
     }
     if (S.pet) { S.pet.fedToday = false; S.pet.walkedToday = false; }
+    if (S.coop) {
+      S.coop.tendedToday = false;
+      for (const hen of S.coop.hens) { hen.fedToday = false; hen.pettedToday = false; }
+    }
     if (S.weather.today === 'snow' && !S.flags.firstSnow) {
       S.flags.firstSnow = true;
       CS.ui.toast('First snow. Harbor Point goes quiet.');
@@ -755,7 +779,7 @@
       const labels = {
         b:'Sleep or rest', K:'Cook or open the fridge', W:'Look out the window', q:'Use the shelf', t:'Use the table',
         U:'Browse or order', X:'Use the shipping bin', N:'Read the noticeboard', k:'Visit the stall', i:'Inspect the lighthouse',
-        u:'Explore the ruins', T:'Look for seasonal finds', P:'Use transit', V:'Enter the subway', w:'Use the ferry', h:'Sit by the river',
+        u:'Explore the ruins', T:'Look for seasonal finds', Z:'Visit the chicken coop', P:'Use transit', V:'Enter the subway', w:'Use the ferry', h:'Sit by the river',
         s:'Work this farm plot', g:'Work this greenhouse plot', E:'Leave the building',
       };
       for (const [dx, dy] of [[0,0],[0,1],[0,-1],[1,0],[-1,0]]) {
@@ -981,6 +1005,7 @@
       CS.ui.openSell();
     };
     if (ch === 'N') return () => noticeboard(scene);
+    if (ch === 'Z') return () => coopMenu();
     if (ch === 'k') return () => {
       // the Williamsburg flea runs every weekend, festival or not
       if (scene === 'williamsburg') {
@@ -1317,7 +1342,7 @@
   function storagePanel(kind) {
     const store = kind === 'fridge' ? S.homeFridge : S.homeShelf;
     const qualityStore = kind === 'fridge' ? S.homeFridgeQuality : S.homeShelfQuality;
-    const isFood = k => { const d = CS.ITEMS[k] || {}; return d.energy || ['food', 'meal', 'crop'].includes(d.type); };
+    const isFood = k => { const d = CS.ITEMS[k] || {}; return d.energy || ['food', 'meal', 'crop', 'animal'].includes(d.type); };
     const fits = k => (kind === 'fridge') === !!isFood(k);
     CS.ui.choose(kind === 'fridge' ? 'The fridge hums its one note.' : 'Shelf space: the city\'s rarest crop.', [
       { label: 'Put something in', fn: () => {
@@ -1327,7 +1352,7 @@
           fn: () => {
             const qty = S.inv[k];
             const storedBefore = store[k] || 0;
-            if (['crop', 'meal'].includes(CS.ITEMS[k].type)) {
+            if (['crop', 'meal', 'animal'].includes(CS.ITEMS[k].type)) {
               qualityStore[k] = (qualityStore[k] || storedBefore) + (S.itemQuality[k] || qty);
             }
             store[k] = (store[k] || 0) + qty;
@@ -1344,7 +1369,7 @@
             const qty = store[k];
             const bagBefore = S.inv[k] || 0;
             S.inv[k] = (S.inv[k] || 0) + qty;
-            if (['crop', 'meal'].includes(CS.ITEMS[k].type)) {
+            if (['crop', 'meal', 'animal'].includes(CS.ITEMS[k].type)) {
               S.itemQuality[k] = (S.itemQuality[k] || bagBefore) + (qualityStore[k] || qty);
             }
             delete store[k]; delete qualityStore[k];
@@ -1713,7 +1738,7 @@
   };
   G.qualityMult = function (id) {
     const def = CS.ITEMS[id] || {};
-    return ['crop', 'meal'].includes(def.type) ? 1 + (G.qualityOf(id) - 1) * .15 : 1;
+    return ['crop', 'meal', 'animal'].includes(def.type) ? 1 + (G.qualityOf(id) - 1) * .15 : 1;
   };
   G.addItem = function (id, n, quality) {
     const def = CS.ITEMS[id] || {};
@@ -1722,19 +1747,19 @@
       const { used, cap } = G.bagInfo();
       if (used >= cap) {
         // no space for a new stack — Malik drops it at your place instead
-        const foody = def.energy || ['food', 'meal', 'crop'].includes(def.type);
+        const foody = def.energy || ['food', 'meal', 'crop', 'animal'].includes(def.type);
         const home = foody ? S.homeFridge : S.homeShelf;
         const homeQuality = foody ? S.homeFridgeQuality : S.homeShelfQuality;
         const homeBefore = home[id] || 0;
         home[id] = (home[id] || 0) + n;
-        if (['crop', 'meal'].includes(def.type)) {
+        if (['crop', 'meal', 'animal'].includes(def.type)) {
           homeQuality[id] = (homeQuality[id] || homeBefore) + n * Math.max(1, Math.min(5, quality || 1));
         }
         CS.ui.toast(`Bag full — ${def.name || id} went to your ${foody ? 'fridge' : 'shelf'} at home`);
         return;
       }
     }
-    if (['crop', 'meal'].includes(def.type)) {
+    if (['crop', 'meal', 'animal'].includes(def.type)) {
       if (!isNew && !S.itemQuality[id]) S.itemQuality[id] = (S.inv[id] || 0);
       S.itemQuality[id] = (S.itemQuality[id] || 0) + n * Math.max(1, Math.min(5, quality || 1));
     }
@@ -2289,6 +2314,7 @@
           wideCan: 'Malik hands over a watering can with a rose wide as a dinner plate. "One pass, three plots. Work smarter, kid."',
           sharpTools: 'An afternoon at the whetstone. Malik tests an edge on his thumbnail and nods. "Sharp tools, easy days."',
           beehive: 'The hive goes up on the greenhouse roof. Malik taps the box gently. "Forty thousand employees, zero complaints. Check your shelf every few days."',
+          coop: 'Malik hangs the little red door and steps back. "Rescue hens, when you\'re ready. No quotas. No guilt. This coop runs on your time."',
         }[key];
         CS.ui.narrate(react);
         discover('upgrade_' + key, `Farm upgrade: ${u.name}. ${u.desc}`);
@@ -2296,6 +2322,77 @@
     }
     opts.push({ label: 'Maybe later', fn: () => {} });
     CS.ui.choose('Malik pulls a folded list from his cap. "Been thinking about this plot\'s future. Pick your improvement."', opts);
+  }
+
+  /* ================= gentle chicken coop ================= */
+  function welcomeHen() {
+    const colors = [
+      { label:'A warm brown hen', value:'#a96f45' },
+      { label:'A cream-white hen', value:'#eee5cf' },
+      { label:'A golden hen', value:'#d9a441' },
+    ];
+    CS.ui.choose('A Harbor House rescue crate arrives with three interested faces.', colors.map(c => ({
+      label:c.label, fn:() => CS.ui.textInput("What's her name?", name => {
+        name = (name || 'Poppy').trim().slice(0, 16) || 'Poppy';
+        S.coop.hens.push({ name, color:c.value, affection:10, fedToday:false, pettedToday:false, laid:0 });
+        S.skills.animals += 1;
+        CS.ui.toast(`${name} joins the community coop`);
+        discover('hen_' + S.coop.hens.length, `${name}, a rescue hen, joined the community coop. No production contract. Just a safe roost and time.`);
+        CS.ui.narrate(`${name} steps out, inspects one brick, and scratches the soil like she has always worked here.`);
+      })
+    })));
+  }
+
+  function coopMenu() {
+    if (!S.farmUpgrades.coop) {
+      CS.ui.narrate('A sheltered corner of the farm, marked out for a small coop. Malik can build it once you have a little farming experience and a few reclaimed materials.');
+      return;
+    }
+    const hens = S.coop.hens;
+    if (!hens.length) {
+      CS.ui.choose('The new coop is ready. Harbor House can bring over one rescue hen — free, whenever you want.', [
+        { label:'Welcome a hen', fn:welcomeHen },
+        { label:'Leave it quiet for now', fn:() => {} },
+      ]);
+      return;
+    }
+    const opts = [];
+    if (S.coop.eggs.length) opts.push({ label:`Collect eggs ×${S.coop.eggs.length}`, fn:() => {
+      const eggs = S.coop.eggs.splice(0);
+      for (const q of eggs) G.addItem('egg', 1, q);
+      S.skills.animals += eggs.length;
+      if (!S.recipes.includes('meal_omelet')) {
+        S.recipes.push('meal_omelet');
+        CS.ui.toast('Recipe learned: Soft Farm Omelet');
+      }
+      CS.ui.toast(`Collected ${eggs.length} egg${eggs.length === 1 ? '' : 's'}`);
+      if (!S.flags.firstEgg) { S.flags.firstEgg = true; discover('first_egg', `First egg from the community coop. Warm shell, careful hands, ${hens[0].name} watching closely.`); }
+    }});
+    if (!S.coop.tendedToday) {
+      const canGraze = S.time.seasonIndex !== 3 && !['rain','snow'].includes(S.weather.today);
+      if (canGraze) opts.push({ label:'Open the sunny run (free)', fn:() => {
+        for (const hen of hens) hen.fedToday = true;
+        S.coop.tendedToday = true; S.skills.animals += 1; S.time.minutes += 10;
+        CS.ui.toast('The flock spends the day scratching in the sunny run');
+      }});
+      if ((S.inv.chicken_feed || 0) > 0) opts.push({ label:'Feed the whole flock (1 scoop)', fn:() => {
+        G.removeItem('chicken_feed', 1);
+        for (const hen of hens) hen.fedToday = true;
+        S.coop.tendedToday = true; S.skills.animals += 1; S.time.minutes += 10;
+        CS.ui.toast('One scoop, every hen fed');
+      }});
+      else opts.push({ label:'Feed the flock (Corner Market sells feed)', fn:() => {} });
+    }
+    if (!hens.every(h => h.pettedToday)) opts.push({ label:'Spend time with the flock', fn:() => {
+      for (const hen of hens) { if (!hen.pettedToday) hen.affection = Math.min(100, (hen.affection || 0) + 2); hen.pettedToday = true; }
+      S.skills.animals += 1; S.time.minutes += 10;
+      CS.ui.narrate(hens.length === 1 ? `${hens[0].name} settles into the dust beside your shoe. Ten quiet minutes pass.` : `${hens.map(h => h.name).join(', ')} conduct a small, serious meeting around your boots.`);
+    }});
+    const nextAt = hens.length === 1 ? 12 : 30;
+    if (hens.length < 3 && S.skills.animals >= nextAt) opts.push({ label:'Welcome another rescue hen', fn:welcomeHen });
+    opts.push({ label:'Read the coop log', fn:() => CS.ui.narrate(`${hens.map(h => `${h.name}: affection ${h.affection || 0}, eggs laid ${h.laid || 0}`).join('\n')}\n\nNest box: ${S.coop.eggs.length} egg${S.coop.eggs.length === 1 ? '' : 's'}. Missing a day never harms the flock; it only pauses tomorrow's eggs.`) });
+    opts.push({ label:'Close the little gate', fn:() => {} });
+    CS.ui.choose(`Community coop · ${hens.length}/3 hens · animal care ${S.skills.animals}`, opts);
   }
 
   function canWorkShift() {

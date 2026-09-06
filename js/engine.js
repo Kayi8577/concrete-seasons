@@ -354,6 +354,7 @@
           case 'h': entities.push({ b: (y + 1) * TILE, d: () => A.bench(ctx, sx, sy, TILE) }); break;
           case 'X': entities.push({ b: (y + 1) * TILE, d: () => A.bin(ctx, sx, sy, TILE) }); break;
           case 'N': entities.push({ b: (y + 1) * TILE, d: () => A.board(ctx, sx, sy, TILE) }); break;
+          case 'Z': entities.push({ b: (y + 1) * TILE, d: () => A.coop(ctx, sx, sy, TILE, !!state.farmUpgrades.coop, state.coop && state.coop.hens || [], state.animT) }); break;
           case 'o': A.planter(ctx, sx, sy, TILE); break;
           case 'y': entities.push({ b: (y + 1) * TILE, d: () => A.streetlight(ctx, sx, sy, TILE, nightWin) }); break;
           case 'V':

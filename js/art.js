@@ -1172,6 +1172,37 @@
   };
 
   /* ================= pets ================= */
+  A.coop = function (ctx, sx, sy, T, built, hens, t) {
+    sh(ctx, sx + T / 2, sy + T - 3, T * .42, 3);
+    if (!built) {
+      ctx.strokeStyle = '#9b8060'; ctx.lineWidth = 2; ctx.setLineDash([3, 2]);
+      ctx.strokeRect(sx + 4, sy + 9, T - 8, T - 13); ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(123,68,53,.62)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(sx + 5, sy + 11); ctx.lineTo(sx + T/2, sy + 4); ctx.lineTo(sx + T - 5, sy + 11); ctx.stroke();
+      ctx.fillStyle = '#d9c5a2'; ctx.fillRect(sx + 7, sy + T - 12, T - 14, 5);
+      ctx.strokeStyle = '#76583f'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(sx + 11, sy + T - 7); ctx.lineTo(sx + 11, sy + T - 2); ctx.moveTo(sx + T - 11, sy + T - 7); ctx.lineTo(sx + T - 11, sy + T - 2); ctx.stroke();
+      circle(ctx, sx + T/2, sy + T - 10, 2.2, '#b86445');
+      return;
+    }
+    rr(ctx, sx + 3, sy + 5, T - 6, T - 10, 3, '#b86445');
+    ctx.fillStyle = '#7b4435';
+    ctx.beginPath(); ctx.moveTo(sx + 1, sy + 9); ctx.lineTo(sx + T / 2, sy + 1); ctx.lineTo(sx + T - 1, sy + 9); ctx.closePath(); ctx.fill();
+    rr(ctx, sx + T * .37, sy + T * .48, T * .26, T * .37, 2, '#48382f');
+    ctx.fillStyle = '#e9d48b'; ctx.fillRect(sx + 7, sy + 14, 6, 6);
+    (hens || []).slice(0, 3).forEach((h, i) => A.chicken(ctx, h.color, sx + 2 + i * 9, sy + T - 12 + (i % 2) * 2, T * .42, t + i * 300));
+  };
+
+  A.chicken = function (ctx, color, sx, sy, T, t) {
+    const bob = Math.sin(t / 260) * .7, cx = sx + T / 2, cy = sy + T / 2 + bob;
+    circle(ctx, cx, cy + 2, T * .24, color || '#d9a441');
+    circle(ctx, cx - T * .15, cy - T * .08, T * .16, color || '#d9a441');
+    ctx.fillStyle = '#d85b43';
+    ctx.beginPath(); ctx.moveTo(cx - T*.23, cy - T*.21); ctx.lineTo(cx - T*.17, cy - T*.32); ctx.lineTo(cx - T*.1, cy - T*.2); ctx.fill();
+    ctx.fillStyle = '#d7a233'; ctx.beginPath(); ctx.moveTo(cx - T*.3,cy - T*.06); ctx.lineTo(cx - T*.42,cy); ctx.lineTo(cx - T*.29,cy + T*.04); ctx.fill();
+    circle(ctx, cx - T*.2, cy - T*.1, 1, P.dark);
+  };
+
   A.pet = function (ctx, type, fur, sx, sy, T, t) {
     const cx = sx + T / 2, cy = sy + T / 2;
     const bob = Math.sin(t / 500) * 1;
@@ -1574,6 +1605,14 @@
         ctx.beginPath(); ctx.arc(S*.5,S*.52,S*.13,0,Math.PI*2); ctx.stroke();
         ctx.fillStyle='#d9985d'; ctx.fillRect(S*.7,S*.22,S*.08,S*.2);
         break;
+      case 'egg':
+        ctx.fillStyle='#f2e5c8'; ctx.beginPath(); ctx.ellipse(S*.5,S*.53,S*.24,S*.32,0,0,Math.PI*2); ctx.fill();
+        circle(ctx,S*.43,S*.42,S*.04,'rgba(255,255,255,.55)');
+        break;
+      case 'chicken_feed':
+        rr(ctx,S*.24,S*.18,S*.52,S*.64,S*.06,'#c9a76b'); rr(ctx,S*.29,S*.34,S*.42,S*.26,S*.02,'#6f8b55');
+        ctx.fillStyle='#fff3d1'; ctx.font=`bold ${S*.22}px sans-serif`; ctx.textAlign='center'; ctx.fillText('FEED',S*.5,S*.52);
+        break;
       case 'fancy_fish': {
         ctx.fillStyle = '#c2589e';
         ctx.beginPath(); ctx.ellipse(S * .52, S * .5, S * .2, S * .13, 0, 0, Math.PI * 2); ctx.fill();
@@ -1592,11 +1631,11 @@
         ctx.strokeStyle = 'rgba(150,140,120,.6)'; ctx.lineWidth = 1.4;
         ctx.beginPath(); ctx.moveTo(S * .44, S * .34); ctx.quadraticCurveTo(S * .5, S * .26, S * .44, S * .18); ctx.stroke();
         break;
-      case 'meal_salad': case 'meal_roast': case 'meal_galette': case 'meal_pasta': {
+      case 'meal_salad': case 'meal_roast': case 'meal_galette': case 'meal_pasta': case 'meal_omelet': {
         // plate + food mound
         circle(ctx, S / 2, S * .58, S * .38, '#e8e0d0');
         circle(ctx, S / 2, S * .58, S * .3, '#f6f1e6');
-        const food = { meal_salad: P.leafLight, meal_roast: P.berry, meal_galette: P.red, meal_pasta: '#d9a75c' };
+        const food = { meal_salad: P.leafLight, meal_roast: P.berry, meal_galette: P.red, meal_pasta: '#d9a75c', meal_omelet:'#e7c85b' };
         circle(ctx, S / 2, S * .55, S * .2, food[id]);
         if (id === 'meal_salad') { circle(ctx, S * .42, S * .5, S * .07, P.leaf); circle(ctx, S * .58, S * .55, S * .06, P.berry); }
         if (id === 'meal_galette') { circle(ctx, S * .5, S * .55, S * .12, '#c99a5b'); circle(ctx, S * .5, S * .53, S * .07, P.red); }
