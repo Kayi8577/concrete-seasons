@@ -1539,6 +1539,41 @@
       case 'kale': case 'carrot': case 'squash': case 'chrysanthemum':
         A.crop(ctx, id, 1, 0, S * .05, S);
         break;
+      case 'wild_greens':
+        ctx.strokeStyle = P.leafDark; ctx.lineWidth = S * .055;
+        for (const dx of [-.14, 0, .14]) {
+          ctx.beginPath(); ctx.moveTo(S*.5, S*.78); ctx.quadraticCurveTo(S*(.5+dx), S*.55, S*(.5+dx), S*.25); ctx.stroke();
+          ctx.fillStyle = P.leafLight; ctx.beginPath(); ctx.ellipse(S*(.5+dx), S*.36, S*.13, S*.07, dx < 0 ? -.6 : .6, 0, Math.PI*2); ctx.fill();
+        }
+        break;
+      case 'mulberries':
+        for (const [x,y] of [[.38,.42],[.53,.36],[.62,.5],[.45,.58],[.58,.64]]) circle(ctx,S*x,S*y,S*.12,'#62446f');
+        ctx.strokeStyle=P.leafDark; ctx.lineWidth=S*.05; ctx.beginPath(); ctx.moveTo(S*.5,S*.3); ctx.lineTo(S*.62,S*.18); ctx.stroke();
+        break;
+      case 'ginkgo_bundle':
+        ctx.strokeStyle='#98752f'; ctx.lineWidth=S*.045;
+        for (const dx of [-.16,0,.16]) { ctx.beginPath(); ctx.moveTo(S*.5,S*.8); ctx.lineTo(S*(.5+dx),S*.36); ctx.stroke();
+          ctx.fillStyle=P.yellow; ctx.beginPath(); ctx.arc(S*(.5+dx),S*.34,S*.16,Math.PI,Math.PI*2); ctx.lineTo(S*(.5+dx),S*.34); ctx.fill(); }
+        break;
+      case 'fallen_twigs':
+        ctx.strokeStyle=P.woodDark; ctx.lineWidth=S*.09; ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(S*.24,S*.7); ctx.lineTo(S*.76,S*.3); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(S*.26,S*.32); ctx.lineTo(S*.74,S*.72); ctx.stroke();
+        break;
+      case 'scrap_metal':
+        rr(ctx,S*.2,S*.28,S*.6,S*.18,S*.04,'#7e8587'); rr(ctx,S*.28,S*.52,S*.5,S*.16,S*.04,'#a4abad');
+        circle(ctx,S*.3,S*.37,S*.04,'#d7dddd'); circle(ctx,S*.68,S*.6,S*.04,'#62696b');
+        break;
+      case 'reclaimed_brick':
+        rr(ctx,S*.16,S*.3,S*.68,S*.42,S*.05,'#a85f48');
+        ctx.strokeStyle='#d6a187'; ctx.lineWidth=S*.035; ctx.beginPath(); ctx.moveTo(S*.5,S*.3); ctx.lineTo(S*.5,S*.72); ctx.stroke();
+        break;
+      case 'copper_wire':
+        ctx.strokeStyle='#b56c35'; ctx.lineWidth=S*.08;
+        ctx.beginPath(); ctx.arc(S*.5,S*.52,S*.25,0,Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(S*.5,S*.52,S*.13,0,Math.PI*2); ctx.stroke();
+        ctx.fillStyle='#d9985d'; ctx.fillRect(S*.7,S*.22,S*.08,S*.2);
+        break;
       case 'fancy_fish': {
         ctx.fillStyle = '#c2589e';
         ctx.beginPath(); ctx.ellipse(S * .52, S * .5, S * .2, S * .13, 0, 0, Math.PI * 2); ctx.fill();

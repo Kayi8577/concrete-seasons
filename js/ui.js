@@ -34,7 +34,7 @@
     const S = G().state(); const bar = $('hotbar');
     if (!S || !bar) return;
     const items = Object.keys(S.inv)
-      .filter(k => S.inv[k] > 0 && CS.ITEMS[k])
+      .filter(k => S.inv[k] > 0 && CS.ITEMS[k] && CS.ITEMS[k].type !== 'material')
       .sort((a, b) => {
         const rank = k => CS.ITEMS[k].type === 'seed' ? 0 : CS.ITEMS[k].type === 'tool' ? 1 : 2;
         return rank(a) - rank(b);
@@ -377,7 +377,7 @@
           $('inv-detail').appendChild(document.createElement('br'));
           $('inv-detail').appendChild(b);
         }
-        if (def.type !== 'seed') {
+        if (!['seed', 'material'].includes(def.type)) {
           const held = G().state().held === k;
           const hb = document.createElement('button');
           hb.className = 'btn small';
@@ -712,6 +712,7 @@
       body.innerHTML = `<div class="res-card">
           <div class="res-name">Harbor Point Community Farm</div>
           <div class="res-note">Total earned: $${S.totalEarned}</div>
+          <div class="res-note">Skills: farming ${S.skills.farming} · foraging ${S.skills.foraging} · salvage ${S.skills.salvage} · cooking ${S.cookingSkill || 0}</div>
           <div class="res-note">${S.pet ? `Farm morale officer: ${S.pet.name} the ${S.pet.type} (affection ${S.pet.affection})` : 'No pet yet — check the farm noticeboard.'}</div>
         </div>` + (shippedRows || '<div style="color:#8a7361">Nothing shipped yet.</div>');
     }

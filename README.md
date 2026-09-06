@@ -105,7 +105,7 @@ Everything from the v0.1 slice, plus:
 ### v0.6 (Phase 5) additions — texture and depth
 
 - **Procedural sound** (`js/audio.js`): no audio files, fully offline — a soft synth pad keyed to time of day, filtered-noise ambience that follows weather (rain hiss, muffled snow) and goes quiet indoors, sparse pentatonic plinks that brighten during festivals. Starts on first tap (mobile-safe), toggle in Menu
-- **Farm progression**: buy improvements from Malik — drip irrigation (outdoor plots self-water), compost (crops sometimes grow two days in one), hydroponic racks (requires irrigation; doubles the greenhouse to 16 season-proof beds). Late-game farming means less watering, not more
+- **Farm progression**: buy improvements from Malik — drip irrigation (outdoor plots self-water), compost (raises crop quality), hydroponic racks (requires irrigation; expands the repaired greenhouse to 16 season-proof beds). Late-game farming means less watering, not more
 - **Housing**: Year 2 lease offer — stay in the studio or take the one-bedroom ($500 + higher rent): a bigger apartment with two windows and a reading nook, and everyone (spouse, kid, pets) moves with you
 - **Difficulty**: Cozy / Standard / Challenging at character creation — starting money, rent, and energy costs scale
 - **Three more festivals**: Halloween on Main (Fall 28), Friendsgiving at Harbor House (Fall 26), and New Year's Eve — with a midnight countdown moment on the promenade, different if someone's holding your hand
@@ -117,6 +117,17 @@ Everything from the v0.1 slice, plus:
 - **Cohabitation**: a partner can move in before marriage (one-bedroom required — the studio can't hold two lives). Live-in partners come home evenings, wake up with you, and get their own domestic small-talk
 - **Three more festivals**: Open Streets (Spring 8), Marathon Weekend (Fall 5 — the cheer-station stall sells at 1.4×, runners buy anything cold), Movie Night on the Lawn (Summer 18, with a shoulder-situation moment if you bring a date)
 - **Deeper pets**: the unofficial Saturday dog-park hour at Lighthouse Park ({your dog} and Biscuit the corgi, founding members), and aquariums grow to three fish via the Corner Market
+
+### v0.8–0.9 additions — readable farming and a real progression loop
+
+- **Farming UX**: a six-slot hotbar, number-key/touch selection, visible target feedback, action sound/particles, contextual hints, onboarding objectives, bulk buying/selling, calendar crop estimates, and comfort settings for text, motion, and weather effects
+- **Gentle economy**: rent never creates debt, arrears, or penalties; if cash is short, community assistance quietly covers the difference
+- **Crop quality**: deterministic 1–5 star harvests reflect care, compost, tools, and storm damage; quality survives storage, improves selling price, and carries into cooking
+- **Meaningful cook-off**: visible dish quality and cooking skill replace hidden random judging
+- **Community greenhouse**: unlocked through a free neighborhood repair after the first harvest, beginning with four beds and expanding to sixteen
+- **Seasonal gathering**: trees yield small spring, summer, fall, and winter finds without turning them into mandatory chores
+- **Responsible salvage**: optional cleanup at the protected ruin produces reclaimed materials and salvage experience; higher skill reveals better recovery jobs
+- **Tool progression**: farming actions build skill, while selected upgrades require both experience and recovered materials
 
 ### Release checklist
 

@@ -31,6 +31,7 @@
       totalEarned: 0,
       itemQuality: {},          // itemId -> total star points in the stack
       cookingSkill: 0,          // meals made; improves contest results visibly
+      skills: { farming: 0, foraging: 0, salvage: 0 },
       settings: { speed: 1 },
     };
   };
@@ -74,6 +75,7 @@
     S.settings.weatherFx = S.settings.weatherFx || 'full';
     S.itemQuality = S.itemQuality || {};
     S.cookingSkill = S.cookingSkill || 0;
+    S.skills = Object.assign({ farming: 0, foraging: 0, salvage: 0 }, S.skills || {});
     if (S.flags.greenhouseOpen == null) {
       const usedGreenhouse = Object.keys(S.farm.plots || {}).some(k => k.startsWith('greenhouse:'));
       S.flags.greenhouseOpen = !!(S.flags.firstHarvest || S.farmUpgrades.hydro || usedGreenhouse);
@@ -753,7 +755,7 @@
       const labels = {
         b:'Sleep or rest', K:'Cook or open the fridge', W:'Look out the window', q:'Use the shelf', t:'Use the table',
         U:'Browse or order', X:'Use the shipping bin', N:'Read the noticeboard', k:'Visit the stall', i:'Inspect the lighthouse',
-        u:'Inspect the ruins', P:'Use transit', V:'Enter the subway', w:'Use the ferry', h:'Sit by the river',
+        u:'Explore the ruins', T:'Look for seasonal finds', P:'Use transit', V:'Enter the subway', w:'Use the ferry', h:'Sit by the river',
         s:'Work this farm plot', g:'Work this greenhouse plot', E:'Leave the building',
       };
       for (const [dx, dy] of [[0,0],[0,1],[0,-1],[1,0],[-1,0]]) {
@@ -776,6 +778,8 @@
     else if (!plots.some(pl => pl.crop)) objective = 'Select seeds below, then plant them in tilled soil';
     else if (!plots.some(pl => pl.crop && pl.watered)) objective = 'Water the crop until the soil turns dark';
     else if (!S.flags.firstHarvest) objective = 'Keep the crop watered each day until harvest';
+    else if (!S.flags.firstForage) objective = 'Check beneath a park tree for a seasonal find';
+    else if (!S.flags.firstSalvage) objective = 'Visit the south-point ruins and help with careful cleanup';
     CS.ui.setObjective(objective);
   }
 
@@ -1013,8 +1017,9 @@
         findBagel('ruin', 'The ruin at night is all shadows and river sound. On the old stone sill, glinting under your phone light:');
         return;
       }
-      CS.ui.narrate('The smallpox hospital ruin. Gothic windows full of sky. It gets stranger and more beautiful after dark.');
+      salvageAtRuin();
     };
+    if (ch === 'T') return () => forageTree(scene, x, y);
     if (ch === 'P') return () => (scene === 'outdoor' ? stationMenu('tram') : returnMenu());
     if (ch === 'V') return () => stationMenu('subway');
     if (ch === 'w') return () => stationMenu('ferry');
@@ -1215,6 +1220,65 @@
     S.player.energy = Math.min(S.player.maxEnergy || 100, S.player.energy + energy);
     CS.ui.refreshHUD();
     CS.ui.narrate(flavor);
+  }
+
+  /* ---- seasonal gathering & careful urban salvage ---- */
+  const FORAGE_BY_SEASON = ['wild_greens', 'mulberries', 'ginkgo_bundle', 'fallen_twigs'];
+  function dailyGatherState() {
+    const day = G.totalDay();
+    if (!S.gathering || S.gathering.day !== day) S.gathering = { day, trees: [], salvaged: false };
+    return S.gathering;
+  }
+  function gainSkill(id, n) {
+    S.skills[id] = (S.skills[id] || 0) + (n || 1);
+  }
+  function forageTree(scene, x, y) {
+    const d = dailyGatherState();
+    const spot = `${scene}:${x},${y}`;
+    if (d.trees.includes(spot)) { CS.ui.narrate('You already checked here today. The tree gets to keep the rest.'); return; }
+    if (d.trees.length >= 3) { CS.ui.narrate('Your tote has enough small finds for one day. The rest stays with the park.'); return; }
+    if (!spendEnergy(1)) return;
+    const item = FORAGE_BY_SEASON[S.time.seasonIndex];
+    d.trees.push(spot);
+    S.time.minutes += 10;
+    gainSkill('foraging', 1);
+    G.addItem(item, 1);
+    CS.ui.toast(`Found ${CS.ITEMS[item].name} · foraging ${S.skills.foraging}`);
+    if (!S.flags.firstForage) {
+      S.flags.firstForage = true;
+      discover('first_forage', `First seasonal find: ${CS.ITEMS[item].name}. The city grows things outside fences, too.`);
+    }
+  }
+  function salvageAtRuin() {
+    const d = dailyGatherState();
+    if (d.salvaged) {
+      CS.ui.narrate('The marked cleanup section is settled for today. The ruin will still be here tomorrow; there is no rush.');
+      return;
+    }
+    const opts = [
+      { label:'Sort surface metal (6 energy · 40 min)', item:'scrap_metal', qty:2, energy:6, minutes:40, xp:2,
+        line:'You separate rusted fasteners from clean, reusable metal. Nothing historic is disturbed; two useful bundles go into your tote.' },
+      { label:'Stack loose masonry (5 energy · 35 min)', item:'reclaimed_brick', qty:2, energy:5, minutes:35, xp:2,
+        line:'Two loose bricks are documented, brushed, and cleared from the walking path. Malik will know where they belong next.' },
+    ];
+    if (S.skills.salvage >= 6) opts.push(
+      { label:'Trace an abandoned conduit (9 energy · 60 min)', item:'copper_wire', qty:1, energy:9, minutes:60, xp:3,
+        line:'Behind a modern inspection plate—not the historic stone—you find a safe length of abandoned copper. Exactly the sort of thing an irrigation timer needs.' });
+    opts.push({ label:'Just look around', fn:() => CS.ui.narrate('Gothic windows full of sky. Beautiful, fragile, and worth doing slowly.') });
+    CS.ui.choose(`The protected ruin cleanup log is clipped to the fence. Salvage skill ${S.skills.salvage}. One careful job is available today.`, opts.map(o => o.fn ? o : ({
+      label:o.label, fn:() => {
+        if (!spendEnergy(o.energy)) return;
+        d.salvaged = true;
+        S.time.minutes += o.minutes;
+        gainSkill('salvage', o.xp);
+        G.addItem(o.item, o.qty);
+        CS.ui.narrate(`${o.line}\n\nReceived ${o.qty} × ${CS.ITEMS[o.item].name}. Salvage skill ${S.skills.salvage}.`);
+        if (!S.flags.firstSalvage) {
+          S.flags.firstSalvage = true;
+          discover('first_salvage', 'Helped document and clear a small section of the Renwick ruin. Useful material, recovered responsibly.');
+        }
+      },
+    })));
   }
 
   function openCooking() {
@@ -1494,6 +1558,7 @@
     if (!pl || !pl.tilled) {
       if (!spendEnergy(S.farmUpgrades.sharpTools ? 2 : CS.COSTS.till)) return;
       S.farm.plots[key] = { tilled: true, crop: null, days: 0, watered: false, care: 0 };
+      gainSkill('farming', 1);
       farmFeedback('till', scene, x, y);
       if (!S.bagels.includes('till') && Math.random() < .03) {
         findBagel('till', 'Your trowel clinks against something. Buried a hand deep in the community plot, wrapped in wax paper from a deli that closed decades ago:');
@@ -1524,6 +1589,7 @@
         S.inv[sd] -= 1;
         if (S.inv[sd] <= 0) { delete S.inv[sd]; if (S.held === sd) S.held = null; }
         pl.crop = CS.ITEMS[sd].crop; pl.days = 0; pl.care = 0; pl.cycleTarget = CS.CROPS[pl.crop].days;
+        gainSkill('farming', 1);
         pl.watered = (scene !== 'greenhouse' && S.weather.today === 'rain');
         farmFeedback('plant', scene, x, y);
         CS.ui.refreshHUD();
@@ -1548,6 +1614,7 @@
       quality = Math.max(1, Math.min(5, quality));
       const yieldCount = quality >= 4 ? 2 : 1;
       G.addItem(pl.crop, yieldCount, quality);
+      gainSkill('farming', 2);
       farmFeedback('harvest', scene, x, y);
       CS.ui.toast(`Harvested ${quality}★ ${def.name}${yieldCount > 1 ? ' ×2' : ''}`);
       pl.stunted = false; pl.stormHit = false;
@@ -1563,6 +1630,7 @@
     if (!pl.watered) {
       if (!spendEnergy(CS.COSTS.water)) return;
       pl.watered = true;
+      gainSkill('farming', 1);
       farmFeedback('water', scene, x, y);
       let splashed = 0;
       if (S.farmUpgrades.wideCan) {
@@ -2005,7 +2073,8 @@
       return;
     }
     // holding something? hand it over directly, FoMT-style
-    if (S.held && S.inv[S.held] > 0 && !npc.decorative && CS.ITEMS[S.held] && CS.ITEMS[S.held].type !== 'seed') {
+    if (S.held && S.inv[S.held] > 0 && !npc.decorative && CS.ITEMS[S.held]
+        && !['seed', 'tool', 'material'].includes(CS.ITEMS[S.held].type)) {
       if (r.giftedDay === G.totalDay()) {
         CS.ui.toast(`${npc.name.split(' ')[0]} already got something from you today`);
       } else {
@@ -2017,7 +2086,7 @@
     }
     // interaction menu
     const opts = [{ label: 'Talk', fn: () => doTalk(id) }];
-    const giftables = Object.keys(S.inv).filter(k => S.inv[k] > 0 && CS.ITEMS[k] && CS.ITEMS[k].type !== 'seed');
+    const giftables = Object.keys(S.inv).filter(k => S.inv[k] > 0 && CS.ITEMS[k] && !['seed', 'tool', 'material'].includes(CS.ITEMS[k].type));
     if (!npc.decorative && r.giftedDay !== G.totalDay() && giftables.length) {
       opts.push({ label: 'Give a gift', fn: () => giftPicker(id) });
     }
@@ -2136,7 +2205,7 @@
   }
   function giftPicker(id) {
     const npc = CS.NPCS[id];
-    const giftables = Object.keys(S.inv).filter(k => S.inv[k] > 0 && CS.ITEMS[k] && CS.ITEMS[k].type !== 'seed');
+    const giftables = Object.keys(S.inv).filter(k => S.inv[k] > 0 && CS.ITEMS[k] && !['seed', 'tool', 'material'].includes(CS.ITEMS[k].type));
     CS.ui.pick(`Give ${npc.name.split(' ')[0]} what?`, giftables.map(k => ({
       icon: k, name: CS.ITEMS[k].name, desc: CS.ITEMS[k].desc,
       fn: () => giveGift(id, k),
@@ -2195,8 +2264,20 @@
       const u = CS.FARM_UPGRADES[key];
       if (S.farmUpgrades[key]) continue;
       if (u.needs && !S.farmUpgrades[u.needs]) continue;
-      opts.push({ label: `${u.name} — $${u.cost}`, fn: () => {
+      const itemText = u.items ? Object.keys(u.items).map(k => `${u.items[k]} ${CS.ITEMS[k].name}`).join(', ') : '';
+      const skillText = u.skill ? Object.keys(u.skill).map(k => `${k} ${u.skill[k]}`).join(', ') : '';
+      const reqText = [skillText, itemText].filter(Boolean).join(' · ');
+      opts.push({ label: `${u.name} — $${u.cost}${reqText ? ` · ${reqText}` : ''}`, fn: () => {
         if (S.player.money < u.cost) { CS.ui.toast('Not enough money.'); return; }
+        if (u.skill) {
+          const short = Object.keys(u.skill).find(k => (S.skills[k] || 0) < u.skill[k]);
+          if (short) { CS.ui.toast(`Needs ${short} skill ${u.skill[short]} (you have ${S.skills[short] || 0})`); return; }
+        }
+        if (u.items) {
+          const short = Object.keys(u.items).find(k => (S.inv[k] || 0) < u.items[k]);
+          if (short) { CS.ui.toast(`Needs ${u.items[short]} × ${CS.ITEMS[short].name}`); return; }
+          for (const k of Object.keys(u.items)) G.removeItem(k, u.items[k]);
+        }
         S.player.money -= u.cost;
         S.farmUpgrades[key] = true;
         CS.ui.refreshHUD();
